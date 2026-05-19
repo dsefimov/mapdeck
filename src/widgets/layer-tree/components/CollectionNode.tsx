@@ -2,7 +2,7 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import type { TreeNode } from "@core/framework/types";
 import { isGroupNode, isLayerNode } from "@core/framework/types";
-import { CollapsableMenu } from "@core/ui/components";
+import { CollapsibleMenu } from "@core/ui/components";
 
 import BaseNode, { type BaseNodeProps } from "./BaseNode";
 import ItemNode from "./ItemNode";
@@ -109,7 +109,7 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
                     <BaseNode {...baseNodeProps} />
 
                     {isPanelOpen && hasReports && (
-                        <CollapsableMenu
+                        <CollapsibleMenu
                             open={true}
                             onClose={() => treeStore.togglePanel(node.id)}
                             className={styles.layerTree__menuContainer}
@@ -119,7 +119,7 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
                             nodeId={node.id}
                         >
                             <ReportDownloads nodeId={node.id} />
-                        </CollapsableMenu>
+                        </CollapsibleMenu>
                     )}
 
                     {expanded && childNodes.length > 0 && (

@@ -3,7 +3,7 @@ import type { TranslationDict } from "@core/framework/types";
 import type { GeometryColumnConfig } from "../types";
 import { formatValue } from "../utils";
 import { ZoomButtonCell } from "./ZoomButtonCell";
-import styles from "../attribute-table.module.css";
+import styles from "../AttributeTable.module.css";
 
 interface ColumnarRowProps {
     row: Record<string, unknown>;

@@ -196,7 +196,7 @@
     font-style: italic;
 }
 
-/* ==================== CollapsableMenu Integration ==================== */
+/* ==================== CollapsibleMenu Integration ==================== */
 
 .layerTree__menuContainer {
     margin: var(--space-sm);

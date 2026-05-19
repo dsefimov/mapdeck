@@ -1,6 +1,6 @@
 import React from "react";
 import type { TranslationDict } from "@core/framework/types";
-import styles from "../attribute-table.module.css";
+import styles from "../AttributeTable.module.css";
 
 interface TableControlsProps {
     showFilters: boolean;
@@ -11,14 +11,30 @@ interface TableControlsProps {
 }
 
 export const TableControls: React.FC<TableControlsProps> = React.memo(
-    ({ showFilters, hasActiveFilters, onToggleFilters, onClearFilters, dict }) => (
+    ({
+        showFilters,
+        hasActiveFilters,
+        onToggleFilters,
+        onClearFilters,
+        dict,
+    }) => (
         <div className={styles.controls}>
-            <button type="button" className={styles.controlButton} onClick={onToggleFilters}>
-                {showFilters ? dict["attributeTable.hide"] : dict["attributeTable.show"]}{" "}
+            <button
+                type="button"
+                className={styles.controlButton}
+                onClick={onToggleFilters}
+            >
+                {showFilters
+                    ? dict["attributeTable.hide"]
+                    : dict["attributeTable.show"]}{" "}
                 {dict["attributeTable.filters"]}
             </button>
             {hasActiveFilters && (
-                <button type="button" className={styles.controlButton} onClick={onClearFilters}>
+                <button
+                    type="button"
+                    className={styles.controlButton}
+                    onClick={onClearFilters}
+                >
                     {dict["attributeTable.clearFilters"]}
                 </button>
             )}

@@ -3,7 +3,7 @@ import { Icon } from "@core/ui/components";
 import type { Bbox } from "@core/shared/geo";
 import { Bbox as BboxClass } from "@core/shared/geo";
 import type { TranslationDict } from "@core/framework/types";
-import styles from "../attribute-table.module.css";
+import styles from "../AttributeTable.module.css";
 
 interface ZoomButtonCellProps {
     bbox: unknown;

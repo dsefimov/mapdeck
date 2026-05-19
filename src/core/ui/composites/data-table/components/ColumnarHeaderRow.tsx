@@ -3,7 +3,7 @@ import { Icon } from "@core/ui/components";
 import type { TranslationDict } from "@core/framework/types";
 import type { SortDirection, GeometryColumnConfig } from "../types";
 import { getSortIndicator } from "../utils";
-import styles from "../attribute-table.module.css";
+import styles from "../AttributeTable.module.css";
 
 interface ColumnarHeaderRowProps {
     columns: string[];

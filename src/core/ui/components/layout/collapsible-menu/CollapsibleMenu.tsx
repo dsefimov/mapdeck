@@ -1,15 +1,15 @@
 import React, { useRef, useCallback, useState } from "react";
 import { useClickOutside } from "@core/framework/hooks";
 import { cn } from "@core/ui/utils/cn";
-import styles from "./CollapsableMenu.module.css";
+import styles from "./CollapsibleMenu.module.css";
 
-export interface CollapsableMenuItem {
+export interface CollapsibleMenuItem {
     id: string;
     component: (nodeId: string) => React.ReactNode;
 }
 
-export interface CollapsableMenuProps {
-    items?: CollapsableMenuItem[];
+export interface CollapsibleMenuProps {
+    items?: CollapsibleMenuItem[];
     children?: React.ReactNode;
     open?: boolean;
     onClose?: () => void;
@@ -20,7 +20,7 @@ export interface CollapsableMenuProps {
     nodeId?: string;
 }
 
-export const CollapsableMenu: React.FC<CollapsableMenuProps> = (props) => {
+export const CollapsibleMenu: React.FC<CollapsibleMenuProps> = (props) => {
     const items = props.items ?? [];
     const open = props.open ?? false;
     const closeOnClickOutside = props.closeOnClickOutside ?? true;
@@ -54,7 +54,7 @@ export const CollapsableMenu: React.FC<CollapsableMenuProps> = (props) => {
         return null;
     }
 
-    const containerClasses = cn(styles.collapsableMenu, props.className);
+    const containerClasses = cn(styles.collapsibleMenu, props.className);
     const panelClasses = cn(
         styles.menuPanel,
         props.panelClassName,
@@ -66,7 +66,7 @@ export const CollapsableMenu: React.FC<CollapsableMenuProps> = (props) => {
         <div
             ref={menuRef}
             className={containerClasses}
-            data-testid="collapsable-menu"
+            data-testid="collapsible-menu"
         >
             <div
                 ref={panelRef}
@@ -86,7 +86,7 @@ export const CollapsableMenu: React.FC<CollapsableMenuProps> = (props) => {
 };
 
 interface MenuItemsProps {
-    items: CollapsableMenuItem[];
+    items: CollapsibleMenuItem[];
     nodeId: string | undefined;
     children?: React.ReactNode;
 }
@@ -120,4 +120,4 @@ function getPanelStyle(
     };
 }
 
-export default CollapsableMenu;
+export default CollapsibleMenu;

@@ -18,7 +18,7 @@ Pure presentational components. **No stores, no `useRootStore`, no `observer()`.
 | `feedback/error-screen/` | Full-page error with retry |
 | `feedback/inline-error/` | Inline error with retry |
 | `feedback/loading-screen/` | Full-page loading spinner |
-| `layout/collapsable-menu/` | Expandable menu panel |
+| `layout/collapsible-menu/` | Expandable menu panel |
 | `layout/context-menu/` | Right-click context menu for map tools |
 
 ### Rules

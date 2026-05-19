@@ -11,7 +11,7 @@ import { ColumnarHeaderRow } from "./components/ColumnarHeaderRow";
 import { ColumnarRow } from "./components/ColumnarRow";
 import { KvHeaderRow } from "./components/KvHeaderRow";
 import type { DataTableProps, GeometryColumnConfig } from "./types";
-import styles from "./attribute-table.module.css";
+import styles from "./AttributeTable.module.css";
 
 export { type DataTableProps, type GeometryColumnConfig } from "./types";
 

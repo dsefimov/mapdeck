@@ -17,10 +17,10 @@ export { LoadingScreen } from "./feedback/loading-screen/LoadingScreen";
 
 // ── Layout ──────────────────────────────────────────────────────────────────
 export {
-    CollapsableMenu,
-    type CollapsableMenuItem,
-    type CollapsableMenuProps,
-} from "./layout/collapsable-menu/CollapsableMenu";
+    CollapsibleMenu,
+    type CollapsibleMenuItem,
+    type CollapsibleMenuProps,
+} from "./layout/collapsible-menu/CollapsibleMenu";
 export { default as ContextMenu } from "./layout/context-menu/ContextMenu";
 export {
     useContextMenu,

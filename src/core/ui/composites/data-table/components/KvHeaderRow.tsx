@@ -2,7 +2,7 @@ import React from "react";
 import type { TranslationDict } from "@core/framework/types";
 import type { SortDirection } from "../types";
 import { getSortIndicator } from "../utils";
-import styles from "../attribute-table.module.css";
+import styles from "../AttributeTable.module.css";
 
 interface KvHeaderRowProps {
     sortColumn: string | null;

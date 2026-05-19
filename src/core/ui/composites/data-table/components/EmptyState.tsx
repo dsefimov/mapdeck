@@ -1,7 +1,7 @@
 import React from "react";
 import { Icon } from "@core/ui/components";
 import type { TranslationDict } from "@core/framework/types";
-import styles from "../attribute-table.module.css";
+import styles from "../AttributeTable.module.css";
 
 interface EmptyStateProps {
     header?: string | undefined;
