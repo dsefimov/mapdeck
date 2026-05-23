@@ -2,11 +2,18 @@
  * Layer configuration for rendering based on layer role.
  * Contains styling and visualization parameters separate from data source.
  */
-import { LayerRole } from "./role";
+import { LayerRoles, type LayerRole } from "./role";
 import { ColorScheme } from "../../data/pointCloud";
 
 // Base interface for all layer configurations
 export interface LayerConfigBase {
+    /**
+     * The layer role discriminator.
+     * Built-in configs narrow this to a literal (e.g. `"raster"`);
+     * modules provide their own config via this base type.
+     */
+    role: LayerRole;
+
     /**
      * Layer opacity (0.0 to 1.0)
      * @default 1.0
@@ -24,7 +31,7 @@ export interface LayerConfigBase {
  * Raster layer configuration
  */
 export interface RasterLayerConfig extends LayerConfigBase {
-    role: LayerRole.RASTER;
+    role: typeof LayerRoles.RASTER;
 
     /**
      * Raster source type
@@ -99,7 +106,7 @@ export interface RasterLayerConfig extends LayerConfigBase {
  * Vector layer configuration
  */
 export interface VectorLayerConfig extends LayerConfigBase {
-    role: LayerRole.VECTOR;
+    role: typeof LayerRoles.VECTOR;
 
     /**
      * Type of vector layer (fill, line, circle, symbol)
@@ -154,7 +161,7 @@ export interface VectorLayerConfig extends LayerConfigBase {
  * Point cloud layer configuration
  */
 export interface PointCloudLayerConfig extends LayerConfigBase {
-    role: LayerRole.POINT_CLOUD;
+    role: typeof LayerRoles.POINT_CLOUD;
 
     /**
      * Point size in pixels
@@ -206,7 +213,7 @@ export interface PointCloudLayerConfig extends LayerConfigBase {
  * Vector 3D layer configuration (lines, paths, 3D vectors)
  */
 export interface Vector3DLayerConfig extends LayerConfigBase {
-    role: LayerRole.VECTOR3D;
+    role: typeof LayerRoles.VECTOR3D;
 
     /**
      * URL to GeoJSON or other vector data source
@@ -227,21 +234,13 @@ export interface Vector3DLayerConfig extends LayerConfigBase {
 }
 
 /**
- * Union type for all layer configurations discriminated by role
+ * Union type for all layer configurations discriminated by role.
  */
 export type LayerConfig =
     | RasterLayerConfig
     | VectorLayerConfig
     | PointCloudLayerConfig
     | Vector3DLayerConfig;
-
-/**
- * Map role discriminant to its corresponding config type.
- * Derived from LayerConfig union — no manual sync needed.
- */
-export type LayerConfigByRole = {
-    [R in LayerRole]: Extract<LayerConfig, { role: R }>;
-};
 
 /**
  * Partial config update payload — excludes the immutable role discriminator
@@ -256,23 +255,23 @@ export type LayerConfigUpdates<T extends LayerConfig> = Partial<
 export function isRasterConfig(
     config: LayerConfig,
 ): config is RasterLayerConfig {
-    return config.role === LayerRole.RASTER;
+    return config.role === LayerRoles.RASTER;
 }
 
 export function isVectorConfig(
     config: LayerConfig,
 ): config is VectorLayerConfig {
-    return config.role === LayerRole.VECTOR;
+    return config.role === LayerRoles.VECTOR;
 }
 
 export function isPointCloudConfig(
     config: LayerConfig,
 ): config is PointCloudLayerConfig {
-    return config.role === LayerRole.POINT_CLOUD;
+    return config.role === LayerRoles.POINT_CLOUD;
 }
 
 export function isVector3DConfig(
     config: LayerConfig,
 ): config is Vector3DLayerConfig {
-    return config.role === LayerRole.VECTOR3D;
+    return config.role === LayerRoles.VECTOR3D;
 }

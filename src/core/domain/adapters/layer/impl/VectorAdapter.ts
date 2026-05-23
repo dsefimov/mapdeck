@@ -5,16 +5,16 @@ import type {
     RenderUnit,
     VectorLayerConfig,
 } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import { isVectorConfig } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 
 /**
  * Adapter for vector tile layers.
- * Implements LayerAdapter interface for LayerRole.VECTOR.
+ * Implements LayerAdapter interface for LayerRoles.VECTOR.
  */
 export class VectorAdapter implements LayerAdapter {
-    readonly supportedRole = LayerRole.VECTOR;
+    readonly supportedRole = LayerRoles.VECTOR;
 
     addToMap(
         layerId: string,

@@ -13,7 +13,7 @@ import type {
     LayerAdapter,
     SnapshotItem,
 } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import { parseWmsUrl, buildWmsTileUrl, getWmsLayerName } from "./url";
 import { generateGroupId, keysMatch, getWmsGroupKey } from "./grouping";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
@@ -94,7 +94,7 @@ export function applyWmsGrouping(
     if (wmsInputs.length === 0) return;
 
     const groups = groupVisibleWmsNodes(wmsInputs);
-    const rasterAdapter = adapterFactory.get(LayerRole.RASTER);
+    const rasterAdapter = adapterFactory.get(LayerRoles.RASTER);
 
     for (const input of wmsInputs) {
         result.delete(input.id);
@@ -111,7 +111,7 @@ function collectWmsInputs(snapshot: SnapshotItem[]): WmsGroupInput[] {
     for (const item of snapshot) {
         if (!item.visible || !item.config) continue;
         if (
-            item.config.role === LayerRole.RASTER &&
+            item.config.role === LayerRoles.RASTER &&
             (item.config as RasterLayerConfig).type === WMS_TYPE
         ) {
             inputs.push({
@@ -149,9 +149,13 @@ function buildGroupRenderUnit(
 
     const firstInput = wmsInputs.find((i) => i.id === group.nodeIds[0]);
     const groupConfig: RasterLayerConfig = firstInput
-        ? { ...firstInput.config, opacity: group.opacity }
+        ? {
+              ...firstInput.config,
+              role: LayerRoles.RASTER,
+              opacity: group.opacity,
+          }
         : {
-              role: LayerRole.RASTER,
+              role: LayerRoles.RASTER,
               type: WMS_TYPE,
               url: group.baseUrl,
               opacity: group.opacity,

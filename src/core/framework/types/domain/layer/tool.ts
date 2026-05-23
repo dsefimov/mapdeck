@@ -7,8 +7,8 @@ import type {
 
 /**
  * Union type for layer tool role specification.
- * - Single role: `LayerRole.RASTER`
- * - Multiple roles: `[LayerRole.RASTER, LayerRole.VECTOR]`
+ * - Single role: `LayerRoles.RASTER`
+ * - Multiple roles: `[LayerRoles.RASTER, LayerRoles.VECTOR]`
  * - All roles: `"all"`
  */
 export type LayerToolRole = LayerRole | LayerRole[] | "all";

@@ -1,5 +1,10 @@
 import { makeAutoObservable } from "mobx";
-import { LayerRole, type LayerTool, type LayerToolRole } from "@core/framework/types";
+import {
+    type LayerRole,
+    BUILT_IN_ROLES,
+    type LayerTool,
+    type LayerToolRole,
+} from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
 
 export class ToolStore {
@@ -36,7 +41,7 @@ export class ToolStore {
      */
     private resolveRoles(roleSpec: LayerToolRole): LayerRole[] {
         if (roleSpec === "all") {
-            return Object.values(LayerRole) as LayerRole[];
+            return [...BUILT_IN_ROLES];
         }
 
         if (Array.isArray(roleSpec)) {

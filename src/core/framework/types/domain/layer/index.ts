@@ -1,9 +1,9 @@
-export { LayerRole } from "./role";
+export type { LayerRole } from "./role";
+export { LayerRoles, BUILT_IN_ROLES } from "./role";
 export type { LayerAdapter } from "./adapter";
 export type {
     LayerConfig,
     LayerConfigBase,
-    LayerConfigByRole,
     LayerConfigUpdates,
     RasterLayerConfig,
     VectorLayerConfig,

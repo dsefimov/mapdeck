@@ -4,16 +4,16 @@ import type {
     LayerConfig,
     RenderUnit,
 } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import { isRasterConfig } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 
 /**
  * Adapter for raster tile layers.
- * Implements LayerAdapter interface for LayerRole.RASTER.
+ * Implements LayerAdapter interface for LayerRoles.RASTER.
  */
 export class RasterAdapter implements LayerAdapter {
-    readonly supportedRole = LayerRole.RASTER;
+    readonly supportedRole = LayerRoles.RASTER;
 
     /**
      * Add a raster layer to the map.

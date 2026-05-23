@@ -1,7 +1,7 @@
 /**
  * Factory for managing layer adapters by layer role.
  */
-import { type LayerAdapter, LayerRole } from "@core/framework/types";
+import { type LayerAdapter, type LayerRole } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 
 export class LayerAdapterFactory {

@@ -25,7 +25,7 @@ import {
 } from "@core/shared/geo/volume";
 import { layerAdapterFactory } from "@core/domain/adapters";
 import { PointCloudAdapter } from "@core/domain/adapters/layer/impl/PointCloudAdapter";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import {
     getPointFromPickingInfo,
     type PickingInfo,
@@ -160,7 +160,7 @@ function extractPointsFromCloudData(
  * Get all loaded point cloud points from the layer adapter.
  */
 function getAllLoadedCloudPoints(): MeasurementPoint3D[] {
-    const adapter = layerAdapterFactory.get(LayerRole.POINT_CLOUD);
+    const adapter = layerAdapterFactory.get(LayerRoles.POINT_CLOUD);
     if (!adapter) return [];
 
     const pcAdapter = adapter as PointCloudAdapter;

@@ -1,4 +1,4 @@
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import type { RenderUnit, SnapshotItem } from "@core/framework/types";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
 import { applyWmsGrouping } from "@core/shared/protocols/ogc/wms/grouper";
@@ -68,7 +68,7 @@ export function getNativeRenderOrder(
     for (const item of snapshot) {
         if (!item.visible || !item.config) continue;
         const role = item.config.role;
-        if (role !== LayerRole.RASTER && role !== LayerRole.VECTOR) continue;
+        if (role !== LayerRoles.RASTER && role !== LayerRoles.VECTOR) continue;
 
         const renderId = nodeToRenderId.get(item.id);
         if (renderId && !seen.has(renderId)) {

@@ -38,7 +38,8 @@ export type {
 export { isMapTool, isMapActionTool } from "./framework/tools";
 
 // === Domain types ===
-export { LayerRole } from "./domain/layer";
+export type { LayerRole } from "./domain/layer";
+export { LayerRoles, BUILT_IN_ROLES } from "./domain/layer";
 export type {
     LayerConfig,
     LayerConfigBase,

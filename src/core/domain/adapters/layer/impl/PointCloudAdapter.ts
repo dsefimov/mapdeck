@@ -5,7 +5,7 @@ import type {
     PointCloudLayerConfig,
     RenderUnit,
 } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import { isPointCloudConfig, ColorScheme } from "@core/framework/types";
 import { overlayManager } from "@core/domain/overlay";
 import type { Layer } from "@deck.gl/core";
@@ -26,7 +26,7 @@ import { perfTracker } from "@core/shared/diagnostics/PerfTracker";
  * Replaces the old LAS/LAZ adapter with viewport-based streaming.
  */
 export class PointCloudAdapter implements LayerAdapter {
-    readonly supportedRole = LayerRole.POINT_CLOUD;
+    readonly supportedRole = LayerRoles.POINT_CLOUD;
 
     private static readonly DEFAULT_STREAMING_OPTIONS: StreamingLoaderOptions =
         {

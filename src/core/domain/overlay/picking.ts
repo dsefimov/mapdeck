@@ -4,7 +4,7 @@
  */
 import { logger } from "@core/shared/diagnostics/logger";
 import { layerAdapterFactory, PointCloudAdapter } from "@core/domain/adapters";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import type { PointCloudData } from "@core/framework/types";
 import { hasRGB, hasIntensity, hasClassification } from "@core/framework/types";
 
@@ -141,7 +141,7 @@ function extractClassificationFromPoint(
  * Get loaded point cloud data for a layer ID from the PointCloudAdapter.
  */
 function getCloudData(layerId: string): PointCloudData | null {
-    const adapter = layerAdapterFactory.get(LayerRole.POINT_CLOUD) as
+    const adapter = layerAdapterFactory.get(LayerRoles.POINT_CLOUD) as
         | PointCloudAdapter
         | undefined;
     if (!adapter) return null;

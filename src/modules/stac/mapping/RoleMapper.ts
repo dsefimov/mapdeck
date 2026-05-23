@@ -4,7 +4,7 @@
  * This is the ONLY place where STAC knowledge lives.
  * Core types (NodeRoles, LayerRole, LayerConfig) know nothing about STAC.
  */
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles, type LayerRole } from "@core/framework/types";
 import { createDefaultConfig } from "@core/domain/adapters";
 import type {
     DisplayRole,
@@ -25,16 +25,16 @@ const INCOMING_MAPPING: Record<
     string,
     { role: LayerRole; type?: "xyz" | "wms" | "cog" }
 > = {
-    [TileRoles.RASTER_TILE]: { role: LayerRole.RASTER, type: "xyz" },
-    visual: { role: LayerRole.RASTER, type: "cog" },
-    data: { role: LayerRole.RASTER, type: "cog" },
-    cog: { role: LayerRole.RASTER, type: "cog" },
-    geotiff: { role: LayerRole.RASTER, type: "cog" },
-    image: { role: LayerRole.RASTER, type: "cog" },
-    [TileRoles.VECTOR_TILE]: { role: LayerRole.VECTOR },
-    [TileRoles.POINT_CLOUD]: { role: LayerRole.POINT_CLOUD },
-    [TileRoles.VECTOR3D]: { role: LayerRole.VECTOR3D },
-    wms: { role: LayerRole.RASTER, type: "wms" },
+    [TileRoles.RASTER_TILE]: { role: LayerRoles.RASTER, type: "xyz" },
+    visual: { role: LayerRoles.RASTER, type: "cog" },
+    data: { role: LayerRoles.RASTER, type: "cog" },
+    cog: { role: LayerRoles.RASTER, type: "cog" },
+    geotiff: { role: LayerRoles.RASTER, type: "cog" },
+    image: { role: LayerRoles.RASTER, type: "cog" },
+    [TileRoles.VECTOR_TILE]: { role: LayerRoles.VECTOR },
+    [TileRoles.POINT_CLOUD]: { role: LayerRoles.POINT_CLOUD },
+    [TileRoles.VECTOR3D]: { role: LayerRoles.VECTOR3D },
+    wms: { role: LayerRoles.RASTER, type: "wms" },
 };
 
 /**
@@ -136,7 +136,7 @@ function createDisplayRole(
     cfg.url = asset.href;
 
     // Set type for raster
-    if (mapping.role === LayerRole.RASTER && mapping.type) {
+    if (mapping.role === LayerRoles.RASTER && mapping.type) {
         cfg.type = mapping.type;
     }
 

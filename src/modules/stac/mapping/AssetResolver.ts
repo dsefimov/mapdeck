@@ -1,6 +1,6 @@
 import type { STACItem, STACAsset } from "../types";
 import { TileRoles, ReportRoles, getAssetsByRole } from "../types";
-import { LayerRole } from "@core/framework/types";
+import { LayerRoles, type LayerRole } from "@core/framework/types";
 
 /**
  * Extended tile roles for STAC API compatibility
@@ -28,7 +28,7 @@ export function getAssetInfo(item: STACItem): {
         if (rasterAssets.length > 0) {
             return {
                 asset: rasterAssets[0]!,
-                role: LayerRole.RASTER,
+                role: LayerRoles.RASTER,
                 isReport: false,
             };
         }
@@ -38,7 +38,7 @@ export function getAssetInfo(item: STACItem): {
     if (vectorAssets.length > 0) {
         return {
             asset: vectorAssets[0]!,
-            role: LayerRole.VECTOR,
+            role: LayerRoles.VECTOR,
             isReport: false,
         };
     }
@@ -50,7 +50,7 @@ export function getAssetInfo(item: STACItem): {
     if (pointCloudAssets.length > 0) {
         return {
             asset: pointCloudAssets[0]!,
-            role: LayerRole.POINT_CLOUD,
+            role: LayerRoles.POINT_CLOUD,
             isReport: false,
         };
     }

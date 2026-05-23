@@ -1,17 +1,21 @@
 import type maplibregl from "maplibre-gl";
-import type { LayerAdapter, LayerConfig, RenderUnit } from "@core/framework/types";
-import { LayerRole } from "@core/framework/types";
+import type {
+    LayerAdapter,
+    LayerConfig,
+    RenderUnit,
+} from "@core/framework/types";
+import { LayerRoles } from "@core/framework/types";
 import { isVector3DConfig } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 
 /**
  * Adapter for 3D vector layers (lines, paths).
- * Implements LayerAdapter interface for LayerRole.VECTOR3D.
+ * Implements LayerAdapter interface for LayerRoles.VECTOR3D.
  *
  * Stub implementation — renders GeoJSON data from URL using deck.gl LineLayer.
  */
 export class Vector3DAdapter implements LayerAdapter {
-    readonly supportedRole = LayerRole.VECTOR3D;
+    readonly supportedRole = LayerRoles.VECTOR3D;
 
     addToMap(
         layerId: string,
