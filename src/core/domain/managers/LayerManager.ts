@@ -1,5 +1,5 @@
 import type maplibregl from "maplibre-gl";
-import { runInAction, reaction } from "mobx";
+import { comparer, runInAction, reaction } from "mobx";
 
 import { logger } from "@core/shared/diagnostics/logger";
 import type { LayerConfig, RenderUnit } from "@core/framework/types";
@@ -202,7 +202,7 @@ export class LayerManager {
         configA: LayerConfig,
         configB: LayerConfig,
     ): boolean {
-        return JSON.stringify(configA) !== JSON.stringify(configB);
+        return !comparer.structural(configA, configB);
     }
 
     // ==================== Reactive setup ====================
