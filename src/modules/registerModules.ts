@@ -17,12 +17,12 @@ export async function registerModules(rootStore: RootStore): Promise<void> {
                 `Registering module "${module.id}" (${module.name})...`,
             );
 
-            await module.register();
-
             if (module.setRootStore) {
                 module.setRootStore(rootStore);
                 logger.debug(`RootStore provided to module "${module.id}"`);
             }
+
+            await module.register();
 
             logger.info(`Module "${module.id}" registered successfully`);
         }
