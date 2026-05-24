@@ -11,6 +11,8 @@ import {
 
 export const PAGE_SIZE = 50;
 
+type SortParams = { sortBy: string; sortDirection: "asc" | "desc" } | undefined;
+
 export class AttributeTableStore {
     selectedLayerId: string | null = null;
     sortColumn: string | null = null;
@@ -26,9 +28,17 @@ export class AttributeTableStore {
         options: { maxFeaturesPerRequest?: number } = {},
     ) {
         this.maxFeaturesPerRequest = options.maxFeaturesPerRequest ?? 1000;
-        makeAutoObservable(this, {
+        makeAutoObservable<this, "_sortParams">(this, {
             rootStore: false,
+            _sortParams: false,
         });
+    }
+
+    /** Sort params for cache keying. Plain getter (not MobX computed). */
+    private get _sortParams(): SortParams {
+        return this.sortColumn && this.sortDirection
+            ? { sortBy: this.sortColumn, sortDirection: this.sortDirection }
+            : undefined;
     }
 
     get attributeLayers(): AttributeLayerInfo[] {
@@ -43,12 +53,6 @@ export class AttributeTableStore {
         const node = this.rootStore.treeStore.getNode(this.selectedLayerId);
         if (!node || !isLayerNode(node)) return null;
         return node.roles.attribute ?? null;
-    }
-
-    private get _sortParams() {
-        return this.sortColumn && this.sortDirection
-            ? { sortBy: this.sortColumn, sortDirection: this.sortDirection }
-            : undefined;
     }
 
     get cachedData() {
@@ -128,12 +132,15 @@ export class AttributeTableStore {
     };
 
     loadNextPage = async (totalNeeded = PAGE_SIZE): Promise<void> => {
-        if (
-            !this.selectedLayerId ||
-            !this.hasMoreFeatures ||
-            this.fetchingNextPage
-        )
-            return;
+        const id = this.selectedLayerId;
+        if (!id || this.fetchingNextPage) return;
+
+        const cached = this.rootStore.attributeDataStore.getCache(
+            id,
+            this._sortParams,
+        );
+        if (!cached || cached.features.length >= cached.totalFeatures) return;
+
         runInAction(() => {
             this.fetchingNextPage = true;
         });
@@ -147,13 +154,18 @@ export class AttributeTableStore {
     };
 
     private _fetchNextBatch = async (needed: number): Promise<void> => {
-        const cached = this.cachedData;
-        if (!cached || !this.selectedLayerId) return;
+        const layerId = this.selectedLayerId;
+        if (!layerId) return;
+        const cached = this.rootStore.attributeDataStore.getCache(
+            layerId,
+            this._sortParams,
+        );
+        if (!cached) return;
         const batchSize = Math.min(
             Math.max(PAGE_SIZE, needed),
             this.maxFeaturesPerRequest,
         );
-        await this.rootStore.attributeDataStore.fetch(this.selectedLayerId, {
+        await this.rootStore.attributeDataStore.fetch(layerId, {
             startIndex: cached.features.length,
             maxFeatures: batchSize,
             ...this._sortParams,
@@ -195,9 +207,15 @@ export class AttributeTableStore {
     };
 
     selectAllRows = (): void => {
+        const features = this.selectedLayerId
+            ? (this.rootStore.attributeDataStore.getCache(
+                  this.selectedLayerId,
+                  this._sortParams,
+              )?.features ?? [])
+            : [];
         runInAction(() => {
             this.selectedRowIds.clear();
-            this.loadedFeatures.forEach((feature, index) => {
+            features.forEach((feature, index) => {
                 this.selectedRowIds.add(getFeatureId(feature, index));
             });
         });

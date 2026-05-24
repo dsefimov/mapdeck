@@ -22,8 +22,12 @@ export class LocaleStore {
         Partial<Record<SupportedLanguage, TranslationDict>>
     >();
 
+    /** Cached map of namespace → dict for current language. Rebuilt on mutation. */
+    _currentDictMap = new Map<string, TranslationDict>();
+
     constructor() {
         makeAutoObservable(this);
+        this._rebuildCurrentDict();
     }
 
     /**
@@ -43,21 +47,7 @@ export class LocaleStore {
             };
         }
         this._translations.set(namespace, existing);
-    }
-
-    /**
-     * Pre-computed map of namespace → dictionary for the current language.
-     * Recalculated once when currentLang or _translations change,
-     * eliminating repeated per-call lookups in t().
-     */
-    private get _currentDictionaries(): Map<string, TranslationDict> {
-        const result = new Map<string, TranslationDict>();
-        for (const [ns, langs] of this._translations) {
-            const dict = (langs[this.currentLang] ??
-                langs[DEFAULT_LANGUAGE]) as TranslationDict | undefined;
-            if (dict) result.set(ns, dict);
-        }
-        return result;
+        this._rebuildCurrentDict();
     }
 
     /**
@@ -66,7 +56,7 @@ export class LocaleStore {
      * Returns an empty object if the namespace is not registered.
      */
     t(namespace: string): TranslationDict {
-        return this._currentDictionaries.get(namespace) ?? {};
+        return this._currentDictMap.get(namespace) ?? {};
     }
 
     /**
@@ -75,5 +65,16 @@ export class LocaleStore {
      */
     setLanguage(lang: SupportedLanguage): void {
         this.currentLang = lang;
+        this._rebuildCurrentDict();
+    }
+
+    private _rebuildCurrentDict(): void {
+        const result = new Map<string, TranslationDict>();
+        for (const [ns, langs] of this._translations) {
+            const dict = (langs[this.currentLang] ??
+                langs[DEFAULT_LANGUAGE]) as TranslationDict | undefined;
+            if (dict) result.set(ns, dict);
+        }
+        this._currentDictMap = result;
     }
 }

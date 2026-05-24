@@ -7,15 +7,16 @@
 - MobX stores for: state shared by ≥2 unrelated components, survives navigation, contains business logic (async, validation, `@computed`), drives imperative APIs (map, WebGL, WebSocket)
 - **Start with `useState`. Extract to MobX when pain appears** (prop drilling, desync, complex async, need for `@computed`)
 - **Strict actions** — `enforceActions: "always"`
-- **Safe computed access** — (planned) `computedRequiresReaction: true`, `observableRequiresReaction: true`.  
-  *Not yet enabled — pending migration. Development currently proceeds without these guards.*
+- **Safe computed access** — Computed values must not be read outside a reactive context
+  (`observer`, `autorun`, `reaction`, or another computed). Reading plain observables in actions
+  is unrestricted — only computed access is guarded to prevent stale reads.
 
 ### Checklist (3 steps)
 1. **Needs other components?** → Yes → MobX
 2. **Survives navigation?** → Yes → MobX
 3. **Temporary UI flag or form value?** → Yes → `useState`
 
-See: [`src/core/framework/store/root/mobx-config.ts`](../../../src/core/framework/store/root/mobx-config.ts)
+See: [`src/core/framework/store/root/mobxConfig.ts`](../../../src/core/framework/store/root/mobxConfig.ts)
 
 ---
 
