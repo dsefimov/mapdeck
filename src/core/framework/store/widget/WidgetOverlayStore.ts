@@ -165,6 +165,24 @@ export class WidgetOverlayStore {
         return maxZ + 1;
     }
 
+    /**
+     * Sync layout from UI changes (to be called from react-grid-layout onLayoutChange)
+     */
+    syncLayout(layoutItems: LayoutItem[]): void {
+        layoutItems.forEach((item) => {
+            const widget = this.getOpenWidget(item.i);
+            if (widget) {
+                this.updateLayout(item.i, {
+                    ...widget.layout,
+                    x: item.x,
+                    y: item.y,
+                    w: item.w,
+                    h: item.h,
+                });
+            }
+        });
+    }
+
     // =================== COMPUTED PROPERTIES ===================
 
     get openWidgets(): OpenWidget[] {

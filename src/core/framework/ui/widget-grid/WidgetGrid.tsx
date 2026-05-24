@@ -309,7 +309,7 @@ const applyDragSnap = (
 
     if (snappedLayout) {
         setTimeout(() => {
-            store.updateWidgetLayout(newItem.i, snappedLayout!);
+            store.overlayStore.updateLayout(newItem.i, snappedLayout!);
         }, 0);
     }
 };
@@ -410,7 +410,7 @@ const WidgetGrid: () => React.ReactNode = observer(() => {
         layout: Layout,
         _layouts: ResponsiveLayouts<string>,
     ) => {
-        rootStore.syncLayout(
+        rootStore.overlayStore.syncLayout(
             layout.map((item) => ({
                 i: item.i,
                 x: item.x,
@@ -437,7 +437,7 @@ const WidgetGrid: () => React.ReactNode = observer(() => {
 
         if (snappedLayout) {
             setTimeout(() => {
-                rootStore.updateWidgetLayout(newItem.i, snappedLayout);
+                rootStore.overlayStore.updateLayout(newItem.i, snappedLayout);
             }, 0);
         }
         setActiveEdgeZones(new Set());
