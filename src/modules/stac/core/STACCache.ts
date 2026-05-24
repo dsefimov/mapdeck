@@ -1,109 +1,68 @@
-import { makeAutoObservable, runInAction } from "mobx";
 import type { STACEntity, STACFeatureCollection } from "../types";
 
+type StorableEntity = Exclude<STACEntity, STACFeatureCollection>;
+
 interface CacheEntry {
-    entity: STACEntity;
+    entity: StorableEntity;
     timestamp: number;
     ttl: number;
 }
 
+const DEFAULT_TTL = 5 * 60 * 1000;
+const DEFAULT_MAX_SIZE = 100;
+
+function isExpired(entry: CacheEntry): boolean {
+    return Date.now() - entry.timestamp > entry.ttl;
+}
+
+function getEntityKey(entity: StorableEntity): string {
+    return `${entity.type}:${entity.id}`;
+}
+
 export class STACCache {
     private entries = new Map<string, CacheEntry>();
-    private maxSize: number;
 
-    constructor(config?: { maxSize?: number; defaultTtl?: number }) {
-        this.maxSize = config?.maxSize ?? 100;
-        makeAutoObservable(this);
-    }
+    constructor(
+        private readonly maxSize = DEFAULT_MAX_SIZE,
+        private readonly defaultTtl = DEFAULT_TTL,
+    ) {}
 
-    store(entity: STACEntity, ttl?: number): void {
-        const key = this.getEntityKey(entity);
-        const entry: CacheEntry = {
-            entity,
-            timestamp: Date.now(),
-            ttl: ttl ?? 5 * 60 * 1000, // Default 5 minutes
-        };
-
-        runInAction(() => {
-            if (this.entries.size >= this.maxSize && !this.entries.has(key)) {
-                this.evictOldest();
-            }
-
-            this.entries.set(key, entry);
-        });
+    store(entity: StorableEntity, ttl = this.defaultTtl): void {
+        const key = getEntityKey(entity);
+        if (this.entries.size >= this.maxSize && !this.entries.has(key)) {
+            this.evictOldest();
+        }
+        this.entries.set(key, { entity, timestamp: Date.now(), ttl });
     }
 
     get<T extends STACEntity>(type: string, id: string): T | undefined {
         const key = `${type}:${id}`;
         const entry = this.entries.get(key);
+        if (!entry) return undefined;
 
-        if (!entry) {
-            return undefined;
-        }
-
-        if (Date.now() - entry.timestamp > entry.ttl) {
-            runInAction(() => {
-                this.entries.delete(key);
-            });
+        if (isExpired(entry)) {
+            this.entries.delete(key);
             return undefined;
         }
 
         return entry.entity as T;
     }
 
-    has(entity: STACEntity): boolean {
-        const key = this.getEntityKey(entity);
-        const entry = this.entries.get(key);
-
-        if (!entry) return false;
-
-        if (Date.now() - entry.timestamp > entry.ttl) {
-            runInAction(() => {
-                this.entries.delete(key);
-            });
-            return false;
-        }
-
-        return true;
-    }
-
     clear(): void {
-        runInAction(() => {
-            this.entries.clear();
-        });
-    }
-
-    getStats(): { size: number; maxSize: number } {
-        return {
-            size: this.entries.size,
-            maxSize: this.maxSize,
-        };
-    }
-
-    private getEntityKey(entity: STACEntity): string {
-        if (entity.type === "FeatureCollection") {
-            const fc = entity as STACFeatureCollection;
-            const featuresCount = fc.features.length;
-            const firstFeatureId =
-                featuresCount > 0 ? fc.features[0]!.id : "empty";
-            return `FeatureCollection:${firstFeatureId}:${featuresCount}`;
-        }
-        return `${entity.type}:${entity.id}`;
+        this.entries.clear();
     }
 
     private evictOldest(): void {
-        let oldestKey: string | null = null;
+        let oldestKey: string | undefined;
         let oldestTime = Infinity;
 
-        for (const [key, entry] of this.entries.entries()) {
+        for (const [key, entry] of this.entries) {
             if (entry.timestamp < oldestTime) {
                 oldestTime = entry.timestamp;
                 oldestKey = key;
             }
         }
 
-        if (oldestKey) {
-            this.entries.delete(oldestKey);
-        }
+        if (oldestKey) this.entries.delete(oldestKey);
     }
 }

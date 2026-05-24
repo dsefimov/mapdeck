@@ -1,4 +1,4 @@
-import { observable } from "mobx";
+import type { IObservableArray } from "mobx";
 import { logger } from "@core/shared/diagnostics/logger";
 import {
     type TreeNode,
@@ -7,24 +7,25 @@ import {
     type GroupNode,
     type NodeRoles,
     type LayerNodeRoles,
+    type PointCloudLayerConfig,
 } from "@core/framework/types";
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
 import { mapAssetsToNodeRoles } from "./RoleMapper";
 import { Bbox, flattenTo2D } from "@core/shared/geo";
 import type { STACCache } from "../core/STACCache";
-import type { PointCloudLayerConfig } from "@core/framework/types";
 
 export class STACEntityMapper {
     constructor(private cache: STACCache) {}
 
-    mapCollectionToGroupNode(collection: STACCollection): TreeNode {
-        // Flatten bbox for zoom functionality - bbox is always required
+    mapCollectionToGroupNode(
+        collection: STACCollection,
+        childrenIds: IObservableArray<string>,
+    ): TreeNode {
         const flattenedBbox = flattenTo2D(
             new Bbox(collection.extent.spatial.bbox[0]!),
         );
 
-        // Map collection-level assets to roles (e.g., reports)
         const roles: NodeRoles = collection.assets
             ? mapAssetsToNodeRoles(collection.assets)
             : { reports: [] };
@@ -38,10 +39,9 @@ export class STACEntityMapper {
             metadata: {
                 stacEntityRef: `Collection:${collection.id}`,
                 stacEntity: JSON.stringify(collection),
-                extent: collection.extent,
             },
             parentId: null,
-            childrenIds: observable.array<string>([]),
+            childrenIds,
             bbox: flattenedBbox,
             roles,
             isExtended: false,
@@ -57,8 +57,7 @@ export class STACEntityMapper {
             return null;
         }
 
-        // Resolve conflicts: keep only one display role and one attribute role
-        const layerRoles = this._resolveRoleConflicts(roles);
+        const layerRoles = this.resolveRoleConflicts(roles);
         if (!layerRoles) {
             logger.warn(
                 `Item ${item.id} has no display roles, skipping as layer`,
@@ -66,7 +65,7 @@ export class STACEntityMapper {
             return null;
         }
 
-        this._augmentPointCloudRoles(layerRoles, item);
+        this.augmentPointCloudRoles(layerRoles, item);
 
         const flattenedBbox = flattenTo2D(new Bbox(item.bbox));
 
@@ -79,7 +78,6 @@ export class STACEntityMapper {
             metadata: {
                 stacEntityRef: `Feature:${item.id}`,
                 stacEntity: JSON.stringify(item),
-                itemBbox: [...item.bbox],
             },
             parentId: null,
             bbox: flattenedBbox,
@@ -90,26 +88,22 @@ export class STACEntityMapper {
         return layerNode;
     }
 
-    /**
-     * Create a node from a STAC item.
-     * Returns a LayerNode if the item has display roles, or a GroupNode stub
-     * if it only has report/attribute roles (for future use).
-     */
-    createNodeFromItem(item: STACItem): TreeNode | null {
-        return this.mapItemToLayerNode(item);
-    }
-
     getSTACEntityFromNode(node: TreeNode): STACEntity | null {
-        const stacEntityRef = node.metadata?.stacEntityRef as string;
-        if (stacEntityRef) {
-            const [type, id] = stacEntityRef.split(":");
-            if (type && id) {
+        const ref = node.metadata?.stacEntityRef as string | undefined;
+        if (ref) {
+            const colonIndex = ref.indexOf(":");
+            if (colonIndex !== -1) {
+                const type = ref.slice(0, colonIndex);
+                const id = ref.slice(colonIndex + 1);
                 const entity = this.cache.get<STACEntity>(type, id);
                 if (entity) return entity;
             }
         }
 
-        const stacEntityString = node.metadata?.stacEntity as string;
+        // Fallback: parse from serialized metadata on cache miss
+        const stacEntityString = node.metadata?.stacEntity as
+            | string
+            | undefined;
         if (stacEntityString) {
             try {
                 return JSON.parse(stacEntityString) as STACEntity;
@@ -138,7 +132,7 @@ export class STACEntityMapper {
      *
      * Returns null if no display role is present (item cannot be a layer).
      */
-    private _resolveRoleConflicts(roles: NodeRoles): LayerNodeRoles | null {
+    private resolveRoleConflicts(roles: NodeRoles): LayerNodeRoles | null {
         if (!roles.display) return null;
 
         const result: LayerNodeRoles = {
@@ -152,7 +146,7 @@ export class STACEntityMapper {
     /**
      * Augment point cloud layer configs with bounds and coordinate origin.
      */
-    private _augmentPointCloudRoles(
+    private augmentPointCloudRoles(
         roles: LayerNodeRoles,
         item: STACItem,
     ): void {

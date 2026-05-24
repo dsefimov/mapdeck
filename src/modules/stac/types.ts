@@ -128,7 +128,7 @@ export interface STACItem {
  */
 export interface STACFeatureCollection {
     readonly type: STACFeatureCollectionType;
-    readonly stac_version: STACVersion;
+    readonly stac_version?: STACVersion;
     readonly features: STACItem[];
     readonly links?: readonly STACLink[];
 }

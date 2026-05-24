@@ -11,10 +11,3 @@ export interface STACConfig {
     /** Additional HTTP headers (optional) */
     headers?: Record<string, string>;
 }
-
-export const DEFAULT_STAC_CONFIG: STACConfig = {
-    url: "./catalog.json",
-    baseUrl: "",
-    timeout: 10000,
-    headers: {},
-};

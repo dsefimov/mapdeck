@@ -5,13 +5,11 @@
 
 // Core components
 export type { STACConfig } from "./core/STACConfig";
-export { DEFAULT_STAC_CONFIG } from "./core/STACConfig";
 export { STACClient } from "./core/STACClient";
 export { STACCache } from "./core/STACCache";
 
 // Mapping components
 export { STACEntityMapper } from "./mapping/STACEntityMapper";
-export { getAssetInfo } from "./mapping/AssetResolver";
 
 // Adapter
 export { STACTreeAdapter } from "./adapter/STACTreeAdapter";

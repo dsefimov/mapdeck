@@ -2,7 +2,6 @@
  * STAC HTTP client
  * Replaces api.ts with a class-based approach
  */
-/* global fetch */
 
 import { logger } from "@core/shared/diagnostics/logger";
 import type { STACConfig } from "./STACConfig";
@@ -15,54 +14,26 @@ import type {
 import { isSTACCatalog, isSTACItem, isSTACFeatureCollection } from "../types";
 
 export class STACClient {
-    constructor(private config: STACConfig) {}
+    constructor(private readonly config: STACConfig) {}
 
     async fetchEntity(
         url: string,
         baseUrlOverride?: string,
     ): Promise<STACEntity> {
-        const absoluteUrl = this.resolveUrl(url, baseUrlOverride);
-        const timeout = this.config.timeout ?? 10000;
+        const data: unknown = await this.request(url, baseUrlOverride);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-        try {
-            const response = await fetch(absoluteUrl, {
-                headers: {
-                    "Content-Type": "application/json",
-                    ...this.config.headers,
-                },
-                signal: controller.signal,
-            });
-
-            if (!response.ok) {
-                throw new Error(
-                    `HTTP error ${response.status}: ${response.statusText}`,
-                );
-            }
-
-            const data = await response.json();
-
-            if (!data.stac_version || !data.type) {
-                throw new Error(
-                    "Response does not appear to be a valid STAC entity",
-                );
-            }
-
-            return data as STACEntity;
-        } catch (error) {
-            if (error instanceof Error) {
-                throw new Error(
-                    `Failed to fetch STAC entity from ${url}: ${error.message}`,
-                );
-            }
+        if (
+            !data ||
+            typeof data !== "object" ||
+            !("stac_version" in data) ||
+            !("type" in data)
+        ) {
             throw new Error(
-                `Failed to fetch STAC entity from ${url}: Unknown error`,
+                "Response does not appear to be a valid STAC entity",
             );
-        } finally {
-            clearTimeout(timeoutId);
         }
+
+        return data as STACEntity;
     }
 
     async fetchCatalog(
@@ -92,7 +63,8 @@ export class STACClient {
 
         if (isSTACItem(entity)) {
             return [entity];
-        } else if (isSTACFeatureCollection(entity)) {
+        }
+        if (isSTACFeatureCollection(entity)) {
             return entity.features;
         }
 
@@ -102,71 +74,76 @@ export class STACClient {
     }
 
     /**
-     * Fetch items from STAC API /items endpoint
-     * This is a special endpoint that returns a FeatureCollection
-     * without root-level stac_version field (only in features)
+     * Fetch items from STAC API /items endpoint.
+     * This endpoint returns a FeatureCollection that may lack root-level stac_version,
+     * so we bypass fetchEntity validation.
      */
     async fetchItemsFromCollection(
         itemsUrl: string,
         baseUrlOverride?: string,
     ): Promise<STACItem[]> {
-        const absoluteUrl = this.resolveUrl(itemsUrl, baseUrlOverride);
-        const timeout = this.config.timeout ?? 10000;
+        logger.info(`Fetching STAC items from: ${itemsUrl}`);
+
+        const data: unknown = await this.request(itemsUrl, baseUrlOverride);
+
+        if (
+            !data ||
+            typeof data !== "object" ||
+            !("features" in data) ||
+            !Array.isArray((data as Record<string, unknown>).features)
+        ) {
+            throw new Error(
+                "Response does not appear to be a valid STAC API items response",
+            );
+        }
+
+        const fc = data as STACFeatureCollection;
+        logger.info(`Loaded ${fc.features.length} items from: ${itemsUrl}`);
+        return fc.features;
+    }
+
+    // ---- private ----
+
+    private async request(
+        url: string,
+        baseUrlOverride?: string,
+    ): Promise<unknown> {
+        const absoluteUrl = this.resolveUrl(url, baseUrlOverride);
+        const timeout = this.config.timeout ?? 10_000;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeout);
 
         try {
-            logger.info(`Fetching STAC items from: ${absoluteUrl}`);
-
             const response = await fetch(absoluteUrl, {
-                headers: {
-                    "Content-Type": "application/json",
-                    ...this.config.headers,
-                },
+                headers: { Accept: "application/json", ...this.config.headers },
                 signal: controller.signal,
             });
 
             if (!response.ok) {
                 throw new Error(
-                    `HTTP error ${response.status}: ${response.statusText}`,
+                    `HTTP ${response.status}: ${response.statusText}`,
                 );
             }
 
-            const data = (await response.json()) as STACFeatureCollection;
-
-            if (!data.features || !Array.isArray(data.features)) {
-                throw new Error(
-                    "Response does not appear to be a valid STAC API items response",
-                );
-            }
-
-            logger.info(
-                `Loaded ${data.features.length} items from: ${absoluteUrl}`,
-            );
-            return data.features;
+            return await response.json();
         } catch (error) {
-            if (error instanceof Error) {
-                throw new Error(
-                    `Failed to fetch STAC items from ${itemsUrl}: ${error.message}`,
-                );
-            }
-            throw new Error(
-                `Failed to fetch STAC items from ${itemsUrl}: Unknown error`,
-            );
+            const message =
+                error instanceof Error ? error.message : "Unknown error";
+            throw new Error(`Failed to fetch from ${url}: ${message}`);
         } finally {
             clearTimeout(timeoutId);
         }
     }
 
     private resolveUrl(url: string, baseUrlOverride?: string): string {
-        const baseUrl = baseUrlOverride ?? this.config.baseUrl;
-        if (!baseUrl) {
+        const base = baseUrlOverride ?? this.config.baseUrl;
+        if (!base) {
             return url;
         }
 
         try {
-            return new URL(url, baseUrl).href;
+            return new URL(url, base).href;
         } catch {
             return url;
         }
