@@ -4,7 +4,9 @@ export type { LayerAdapter } from "./adapter";
 export type {
     LayerConfig,
     LayerConfigBase,
+    LayerConfigFor,
     LayerConfigUpdates,
+    LayerConfigRegistry,
     RasterLayerConfig,
     VectorLayerConfig,
     PointCloudLayerConfig,
@@ -18,3 +20,9 @@ export {
 } from "./config";
 export type { LayerTool, LayerToolRole } from "./tool";
 export type { RenderUnit, SnapshotItem } from "./renderUnit";
+export type { RenderDescriptor } from "./descriptor";
+export {
+    makeRenderDescriptor,
+    updateDescriptorConfig,
+    isDescriptorRole,
+} from "./descriptor";

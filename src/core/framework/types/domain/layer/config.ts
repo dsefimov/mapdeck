@@ -243,6 +243,30 @@ export type LayerConfig =
     | Vector3DLayerConfig;
 
 /**
+ * Open registry: role string → config type.
+ * Core defines built-in entries. Modules augment via declaration merging
+ */
+export interface LayerConfigRegistry {
+    [LayerRoles.RASTER]: RasterLayerConfig;
+    [LayerRoles.VECTOR]: VectorLayerConfig;
+    [LayerRoles.POINT_CLOUD]: PointCloudLayerConfig;
+    [LayerRoles.VECTOR3D]: Vector3DLayerConfig;
+}
+
+/**
+ * Map a role string to its corresponding config type via LayerConfigRegistry.
+ *
+ * ```ts
+ * LayerConfigFor<typeof LayerRoles.RASTER>  // → RasterLayerConfig
+ * LayerConfigFor<LayerRole>                 // → LayerConfigBase (fallback)
+ * ```
+ */
+export type LayerConfigFor<R extends LayerRole> =
+    R extends keyof LayerConfigRegistry
+        ? LayerConfigRegistry[R]
+        : LayerConfigBase;
+
+/**
  * Partial config update payload — excludes the immutable role discriminator
  */
 export type LayerConfigUpdates<T extends LayerConfig> = Partial<
