@@ -121,12 +121,7 @@ export class LayerManager {
         if (!this.map || !this.isMapLoaded) return;
 
         try {
-            unit.adapter.addToMap(
-                unit.id,
-                unit.descriptor.config,
-                unit.descriptor.sourceUrl,
-                this.map,
-            );
+            unit.adapter.addToMap(unit.id, unit.descriptor, this.map);
             this.renderUnits.set(unit.id, unit);
         } catch (error) {
             logger.error(`Failed to add render unit "${unit.id}":`, error);

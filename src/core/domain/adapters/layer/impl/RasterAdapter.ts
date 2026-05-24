@@ -1,8 +1,8 @@
 import type maplibregl from "maplibre-gl";
 import type {
     LayerAdapter,
-    LayerConfig,
     RenderUnit,
+    RenderDescriptor,
 } from "@core/framework/types";
 import { LayerRoles } from "@core/framework/types";
 import { isRasterConfig } from "@core/framework/types";
@@ -12,28 +12,28 @@ import { logger } from "@core/shared/diagnostics/logger";
  * Adapter for raster tile layers.
  * Implements LayerAdapter interface for LayerRoles.RASTER.
  */
-export class RasterAdapter implements LayerAdapter {
-    readonly supportedRole = LayerRoles.RASTER;
+export class RasterAdapter implements LayerAdapter<typeof LayerRoles.RASTER> {
+    readonly role = LayerRoles.RASTER;
 
     /**
      * Add a raster layer to the map.
      * @param layerId - Unique identifier for the layer
-     * @param config - Raster layer configuration
-     * @param sourceRef - Tile URL template (e.g., "https://.../{z}/{x}/{y}.png")
+     * @param descriptor - Render descriptor with config and source URL
      * @param map - Map instance to add the layer to
      */
     addToMap(
         layerId: string,
-        config: LayerConfig,
-        sourceRef: string,
+        descriptor: RenderDescriptor<typeof LayerRoles.RASTER>,
         map: maplibregl.Map,
     ): void {
         try {
-            if (!isRasterConfig(config)) {
+            if (!isRasterConfig(descriptor.config)) {
                 throw new Error(
-                    `Config is not for raster role: ${config.role}`,
+                    `Config is not for raster role: ${descriptor.config.role}`,
                 );
             }
+
+            const { config, sourceUrl } = descriptor;
 
             if (map.getLayer(layerId)) {
                 map.removeLayer(layerId);
@@ -42,10 +42,10 @@ export class RasterAdapter implements LayerAdapter {
                 map.removeSource(layerId);
             }
 
-            // Assume sourceRef is an XYZ tile URL template
+            // sourceUrl is an XYZ tile URL template
             map.addSource(layerId, {
                 type: "raster",
-                tiles: [sourceRef],
+                tiles: [sourceUrl],
                 tileSize: 256,
             });
 
@@ -71,11 +71,6 @@ export class RasterAdapter implements LayerAdapter {
         }
     }
 
-    /**
-     * Remove a raster layer from the map.
-     * @param layerId - Unique identifier for the layer
-     * @param map - Map instance to remove the layer from
-     */
     removeFromMap(layerId: string, map: maplibregl.Map): void {
         try {
             if (map.getLayer(layerId)) {
@@ -93,12 +88,6 @@ export class RasterAdapter implements LayerAdapter {
         }
     }
 
-    /**
-     * Update raster layer visibility.
-     * @param layerId - Unique identifier for the layer
-     * @param visible - Whether the layer should be visible
-     * @param map - Map instance containing the layer
-     */
     updateVisibility(
         layerId: string,
         visible: boolean,
@@ -121,13 +110,11 @@ export class RasterAdapter implements LayerAdapter {
         }
     }
 
-    updateConfig(renderUnit: RenderUnit, map: maplibregl.Map): void {
+    updateConfig(
+        renderUnit: RenderUnit<typeof LayerRoles.RASTER>,
+        map: maplibregl.Map,
+    ): void {
         this.removeFromMap(renderUnit.id, map);
-        this.addToMap(
-            renderUnit.id,
-            renderUnit.descriptor.config,
-            renderUnit.descriptor.sourceUrl,
-            map,
-        );
+        this.addToMap(renderUnit.id, renderUnit.descriptor, map);
     }
 }

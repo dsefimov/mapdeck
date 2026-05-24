@@ -1,7 +1,6 @@
 import type maplibregl from "maplibre-gl";
 import type {
     LayerAdapter,
-    LayerConfig,
     PointCloudLayerConfig,
     RenderUnit,
 } from "@core/framework/types";
@@ -25,8 +24,10 @@ import { perfTracker } from "@core/shared/diagnostics/PerfTracker";
  * Streaming point cloud adapter for COPC.LAZ format.
  * Replaces the old LAS/LAZ adapter with viewport-based streaming.
  */
-export class PointCloudAdapter implements LayerAdapter {
-    readonly supportedRole = LayerRoles.POINT_CLOUD;
+export class PointCloudAdapter implements LayerAdapter<
+    typeof LayerRoles.POINT_CLOUD
+> {
+    readonly role = LayerRoles.POINT_CLOUD;
 
     private static readonly DEFAULT_STREAMING_OPTIONS: StreamingLoaderOptions =
         {
@@ -46,14 +47,15 @@ export class PointCloudAdapter implements LayerAdapter {
 
     addToMap(
         layerId: string,
-        config: LayerConfig,
-        sourceRef: string,
+        descriptor: import("@core/framework/types").RenderDescriptor<
+            typeof LayerRoles.POINT_CLOUD
+        >,
         map: maplibregl.Map,
     ): void {
         try {
-            if (!isPointCloudConfig(config)) {
+            if (!isPointCloudConfig(descriptor.config)) {
                 throw new Error(
-                    `Config is not for point cloud role: ${config.role}`,
+                    `Config is not for point cloud role: ${descriptor.config.role}`,
                 );
             }
 
@@ -63,14 +65,12 @@ export class PointCloudAdapter implements LayerAdapter {
                 overlayManager.attachToMap(map);
             }
 
-            const pointCloudConfig = config as PointCloudLayerConfig;
+            const pointCloudConfig = descriptor.config as PointCloudLayerConfig;
             this._layerConfigs.set(layerId, pointCloudConfig);
 
-            if (
-                !sourceRef ||
-                typeof sourceRef !== "string" ||
-                !sourceRef.trim()
-            ) {
+            const sourceRef = descriptor.sourceUrl;
+
+            if (typeof sourceRef !== "string" || !sourceRef.trim()) {
                 throw new Error(
                     `PointCloudAdapter: Invalid source URL for layer "${layerId}": ${sourceRef}`,
                 );
@@ -229,11 +229,12 @@ export class PointCloudAdapter implements LayerAdapter {
      * updates the deck.gl layer in-place without reloading point data.
      * Otherwise falls back to full recreate.
      */
-    updateConfig(renderUnit: RenderUnit, map: maplibregl.Map): void {
-        const {
-            id: layerId,
-            descriptor: { config },
-        } = renderUnit;
+    updateConfig(
+        renderUnit: RenderUnit<typeof LayerRoles.POINT_CLOUD>,
+        map: maplibregl.Map,
+    ): void {
+        const { id: layerId, descriptor } = renderUnit;
+        const { config } = descriptor;
 
         if (!isPointCloudConfig(config)) {
             logger.warn(
@@ -248,7 +249,6 @@ export class PointCloudAdapter implements LayerAdapter {
         if (prevConfig && this._canUpdateInPlace(prevConfig, config)) {
             const loader = this.loaders.get(layerId);
             if (loader && prevConfig.colorScheme !== config.colorScheme) {
-                // Color scheme changed — recompute via worker (triggers layer update via _onPointsLoaded)
                 loader
                     .recomputeColors(config.colorScheme ?? ColorScheme.RGB)
                     .catch((err) => {
@@ -258,17 +258,11 @@ export class PointCloudAdapter implements LayerAdapter {
                         );
                     });
             } else {
-                // Other visual-only change (pointSize, opacity) — recreate layer immediately
                 this._updateDeckLayer(layerId, config);
             }
         } else {
             this.removeFromMap(layerId, map);
-            this.addToMap(
-                layerId,
-                config,
-                renderUnit.descriptor.sourceUrl,
-                map,
-            );
+            this.addToMap(layerId, descriptor, map);
         }
     }
 

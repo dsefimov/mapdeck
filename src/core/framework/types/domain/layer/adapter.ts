@@ -1,33 +1,29 @@
 /**
  * Layer adapter interface for role-based rendering.
- * Replaces ILayerProvider in the new architecture.
- *
  * Each adapter is responsible for managing layers of a specific role
  * on the map, including creation, removal, and visibility control.
  */
 import type { LayerRole } from "./role";
-import type { LayerConfig } from "./config";
+import type { RenderDescriptor } from "./descriptor";
 import type { RenderUnit } from "./renderUnit";
 import type maplibregl from "maplibre-gl";
 
-export interface LayerAdapter {
+export interface LayerAdapter<TRole extends LayerRole = LayerRole> {
     /**
      * The layer role this adapter supports.
      * Used by factories to route layer operations to the appropriate adapter.
      */
-    readonly supportedRole: LayerRole;
+    readonly role: TRole;
 
     /**
      * Add a layer to the map.
      * @param layerId - Unique identifier for the layer
-     * @param config - Layer configuration for rendering
-     * @param sourceRef - Reference to source data (URL)
+     * @param descriptor - Render descriptor with config and source URL
      * @param map - Map instance to add the layer to
      */
     addToMap(
         layerId: string,
-        config: LayerConfig,
-        sourceRef: string,
+        descriptor: RenderDescriptor<TRole>,
         map: maplibregl.Map,
     ): void;
 
@@ -58,8 +54,8 @@ export interface LayerAdapter {
      * - May update visual properties in-place (e.g. point cloud color scheme).
      * - Otherwise falls back to removeFromMap + addToMap.
      *
-     * @param renderUnit - The render unit with new config and source reference
+     * @param renderUnit - The render unit with new descriptor
      * @param map - Map instance containing the layer
      */
-    updateConfig(renderUnit: RenderUnit, map: maplibregl.Map): void;
+    updateConfig(renderUnit: RenderUnit<TRole>, map: maplibregl.Map): void;
 }

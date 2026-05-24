@@ -18,9 +18,9 @@ export class LayerAdapterFactory {
      */
     async register(role: LayerRole, adapter: LayerAdapter): Promise<void> {
         try {
-            if (adapter.supportedRole !== role) {
+            if (adapter.role !== role) {
                 throw new Error(
-                    `Adapter claims to support role "${adapter.supportedRole}" but was registered for role "${role}"`,
+                    `Adapter claims to support role "${adapter.role}" but was registered for role "${role}"`,
                 );
             }
 

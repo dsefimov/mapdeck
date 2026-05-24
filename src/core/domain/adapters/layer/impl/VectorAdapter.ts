@@ -1,9 +1,9 @@
 import type maplibregl from "maplibre-gl";
 import type {
     LayerAdapter,
-    LayerConfig,
-    RenderUnit,
     VectorLayerConfig,
+    RenderUnit,
+    RenderDescriptor,
 } from "@core/framework/types";
 import { LayerRoles } from "@core/framework/types";
 import { isVectorConfig } from "@core/framework/types";
@@ -13,21 +13,22 @@ import { logger } from "@core/shared/diagnostics/logger";
  * Adapter for vector tile layers.
  * Implements LayerAdapter interface for LayerRoles.VECTOR.
  */
-export class VectorAdapter implements LayerAdapter {
-    readonly supportedRole = LayerRoles.VECTOR;
+export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
+    readonly role = LayerRoles.VECTOR;
 
     addToMap(
         layerId: string,
-        config: LayerConfig,
-        sourceRef: string,
+        descriptor: RenderDescriptor<typeof LayerRoles.VECTOR>,
         map: maplibregl.Map,
     ): void {
         try {
-            if (!isVectorConfig(config)) {
+            if (!isVectorConfig(descriptor.config)) {
                 throw new Error(
-                    `Config is not for vector role: ${config.role}`,
+                    `Config is not for vector role: ${descriptor.config.role}`,
                 );
             }
+
+            const { config, sourceUrl } = descriptor;
 
             if (map.getLayer(layerId)) {
                 map.removeLayer(layerId);
@@ -38,7 +39,7 @@ export class VectorAdapter implements LayerAdapter {
 
             map.addSource(layerId, {
                 type: "vector",
-                tiles: [sourceRef],
+                tiles: [sourceUrl],
             });
 
             const layerSpec = this._createLayerSpec(
@@ -102,14 +103,12 @@ export class VectorAdapter implements LayerAdapter {
         }
     }
 
-    updateConfig(renderUnit: RenderUnit, map: maplibregl.Map): void {
+    updateConfig(
+        renderUnit: RenderUnit<typeof LayerRoles.VECTOR>,
+        map: maplibregl.Map,
+    ): void {
         this.removeFromMap(renderUnit.id, map);
-        this.addToMap(
-            renderUnit.id,
-            renderUnit.descriptor.config,
-            renderUnit.descriptor.sourceUrl,
-            map,
-        );
+        this.addToMap(renderUnit.id, renderUnit.descriptor, map);
     }
 
     private _createLayerSpec(
