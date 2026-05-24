@@ -14,17 +14,16 @@ export function buildDesiredRenderUnits(
     const desired = new Map<string, RenderUnit>();
 
     for (const item of snapshot) {
-        if (!item.visible || !item.config) continue;
+        if (!item.visible || !item.descriptor) continue;
 
-        const role = item.config.role;
+        const role = item.descriptor.config.role;
         if (!adapterFactory.has(role)) continue;
 
         desired.set(item.id, {
             id: item.id,
             nodeIds: [item.id],
             adapter: adapterFactory.get(role),
-            config: item.config,
-            sourceUrl: item.sourceUrl ?? "",
+            descriptor: item.descriptor,
         });
     }
 
@@ -66,8 +65,8 @@ export function getNativeRenderOrder(
     const seen = new Set<string>();
 
     for (const item of snapshot) {
-        if (!item.visible || !item.config) continue;
-        const role = item.config.role;
+        if (!item.visible || !item.descriptor) continue;
+        const role = item.descriptor.config.role;
         if (role !== LayerRoles.RASTER && role !== LayerRoles.VECTOR) continue;
 
         const renderId = nodeToRenderId.get(item.id);

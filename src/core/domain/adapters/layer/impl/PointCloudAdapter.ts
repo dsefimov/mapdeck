@@ -230,7 +230,10 @@ export class PointCloudAdapter implements LayerAdapter {
      * Otherwise falls back to full recreate.
      */
     updateConfig(renderUnit: RenderUnit, map: maplibregl.Map): void {
-        const { id: layerId, config } = renderUnit;
+        const {
+            id: layerId,
+            descriptor: { config },
+        } = renderUnit;
 
         if (!isPointCloudConfig(config)) {
             logger.warn(
@@ -260,7 +263,12 @@ export class PointCloudAdapter implements LayerAdapter {
             }
         } else {
             this.removeFromMap(layerId, map);
-            this.addToMap(layerId, config, renderUnit.sourceUrl, map);
+            this.addToMap(
+                layerId,
+                config,
+                renderUnit.descriptor.sourceUrl,
+                map,
+            );
         }
     }
 

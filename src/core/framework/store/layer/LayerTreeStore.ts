@@ -307,10 +307,10 @@ export class LayerTreeStore {
 
         const { display: displayRole } = node.roles;
 
-        const validKeys = new Set(Object.keys(displayRole.layerConfig));
+        const validKeys = new Set(Object.keys(displayRole.render.config));
         for (const [key, value] of Object.entries(updates)) {
             if (value !== undefined && key !== "role" && validKeys.has(key)) {
-                Object.assign(displayRole.layerConfig, { [key]: value });
+                Object.assign(displayRole.render.config, { [key]: value });
             }
         }
 
@@ -437,8 +437,7 @@ export class LayerTreeStore {
                 return {
                     id: node.id,
                     visible: node.isVisible,
-                    config: toJS(display.layerConfig),
-                    sourceUrl: display.sourceUrl ?? null,
+                    descriptor: toJS(display.render),
                 };
             });
         },

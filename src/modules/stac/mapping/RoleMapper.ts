@@ -4,7 +4,11 @@
  * This is the ONLY place where STAC knowledge lives.
  * Core types (NodeRoles, LayerRole, LayerConfig) know nothing about STAC.
  */
-import { LayerRoles, type LayerRole } from "@core/framework/types";
+import {
+    LayerRoles,
+    type LayerRole,
+    makeRenderDescriptor,
+} from "@core/framework/types";
 import { createDefaultConfig } from "@core/domain/adapters";
 import type {
     DisplayRole,
@@ -149,8 +153,7 @@ function createDisplayRole(
         id: assetKey,
         category: "display",
         label: asset.title || assetKey,
-        sourceUrl: asset.href,
-        layerConfig,
+        render: makeRenderDescriptor(mapping.role, asset.href, layerConfig),
     };
 
     if (asset.type) {

@@ -5,7 +5,7 @@
  *
  * Core does NOT know about STAC. STAC module maps its data into NodeRoles.
  */
-import { type LayerConfig } from "../layer/config";
+import type { RenderDescriptor } from "../layer/descriptor";
 
 export type NodeRoleCategory = "display" | "attribute" | "report";
 
@@ -30,11 +30,15 @@ interface NodeRoleBase {
 }
 
 /**
- * Display role - for rendering layers on the map.
+ * Display role — for rendering layers on the map.
+ * Replaces layerConfig + sourceUrl with a unified render descriptor.
  */
-export interface DisplayRole extends NodeRoleBase {
+export interface DisplayRole {
     category: "display";
-    layerConfig: LayerConfig;
+    id: string;
+    label: string;
+    mimeType?: string;
+    render: RenderDescriptor;
 }
 
 /**
@@ -65,11 +69,13 @@ export type NodeRole = DisplayRole | AttributeRole | ReportRole;
  * - display: at most one (optional for GroupNode, required for LayerNode)
  * - attribute: zero or one
  * - reports: any number (including zero)
+ * - extensions: slot for module-defined roles
  */
 export interface NodeRoles {
     display?: DisplayRole;
     attribute?: AttributeRole;
     reports: ReportRole[];
+    extensions?: Record<string, unknown>;
 }
 
 /**

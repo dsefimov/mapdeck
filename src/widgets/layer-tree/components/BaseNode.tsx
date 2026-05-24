@@ -154,9 +154,9 @@ interface NodeFlags {
 function getLayerTypeIconForNode(node: TreeNode): IconName {
     if (isLayerNode(node)) {
         const displayRole = node.roles.display;
-        if (displayRole.layerConfig) {
+        if (displayRole.render.config) {
             return (
-                LAYER_ROLE_ICON[displayRole.layerConfig.role as LayerRole] ??
+                LAYER_ROLE_ICON[displayRole.render.config.role as LayerRole] ??
                 "raster"
             );
         }

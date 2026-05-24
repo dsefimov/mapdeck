@@ -46,7 +46,7 @@ export class VectorFeatureProvider implements FeatureProvider {
     private getNativeLayerIds(visibleLayers: LayerNode[]): string[] {
         const ids: string[] = [];
         for (const node of visibleLayers) {
-            const config = node.roles.display.layerConfig;
+            const config = node.roles.display.render.config;
 
             if (
                 isVectorConfig(config) ||

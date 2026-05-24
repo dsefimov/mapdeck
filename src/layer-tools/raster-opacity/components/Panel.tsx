@@ -25,14 +25,14 @@ export const RasterOpacityComponent: (
     }
 
     const displayRole = node.roles.display;
-    if (!isRasterConfig(displayRole.layerConfig)) {
+    if (!isRasterConfig(displayRole.render.config)) {
         logger.warn(
             `RasterOpacitySlider: node ${nodeId} is not a raster layer`,
         );
         return null;
     }
 
-    const currentOpacity = displayRole.layerConfig.opacity ?? 1.0;
+    const currentOpacity = displayRole.render.config.opacity ?? 1.0;
 
     const handleOpacityChange = (
         event: React.ChangeEvent<HTMLInputElement>,

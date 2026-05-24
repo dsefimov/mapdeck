@@ -97,8 +97,12 @@ export class LayerManager {
                     const current = this.renderUnits.get(id);
                     if (
                         current &&
-                        (this._configsDiffer(current.config, unit.config) ||
-                            current.sourceUrl !== unit.sourceUrl)
+                        (this._configsDiffer(
+                            current.descriptor.config,
+                            unit.descriptor.config,
+                        ) ||
+                            current.descriptor.sourceUrl !==
+                                unit.descriptor.sourceUrl)
                     ) {
                         this._updateExistingUnit(current, unit);
                     }
@@ -119,8 +123,8 @@ export class LayerManager {
         try {
             unit.adapter.addToMap(
                 unit.id,
-                unit.config,
-                unit.sourceUrl,
+                unit.descriptor.config,
+                unit.descriptor.sourceUrl,
                 this.map,
             );
             this.renderUnits.set(unit.id, unit);

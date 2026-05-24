@@ -106,8 +106,8 @@ export class VectorAdapter implements LayerAdapter {
         this.removeFromMap(renderUnit.id, map);
         this.addToMap(
             renderUnit.id,
-            renderUnit.config,
-            renderUnit.sourceUrl,
+            renderUnit.descriptor.config,
+            renderUnit.descriptor.sourceUrl,
             map,
         );
     }

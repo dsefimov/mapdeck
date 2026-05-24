@@ -158,14 +158,14 @@ export class STACEntityMapper {
     ): void {
         const displayRole = roles.display;
         if (
-            !displayRole.layerConfig ||
-            displayRole.layerConfig.role !== "point-cloud"
+            !displayRole.render.config ||
+            displayRole.render.config.role !== "point-cloud"
         ) {
             return;
         }
 
         const bbox = new Bbox(item.bbox);
-        const pcConfig = displayRole.layerConfig as PointCloudLayerConfig;
+        const pcConfig = displayRole.render.config as PointCloudLayerConfig;
 
         pcConfig.coordinateOrigin = bbox.center;
 

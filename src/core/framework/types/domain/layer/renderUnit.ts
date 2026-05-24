@@ -1,5 +1,6 @@
 import type { LayerAdapter } from "./adapter";
-import type { LayerConfig } from "./config";
+import type { RenderDescriptor } from "./descriptor";
+import type { LayerRole } from "./role";
 
 /**
  * A render unit represents either a single layer or a group of layers
@@ -8,12 +9,11 @@ import type { LayerConfig } from "./config";
  * - Single layer: nodeIds = [nodeId], id = nodeId
  * - WMS group: nodeIds = [nodeId1, nodeId2, ...], id = groupId
  */
-export interface RenderUnit {
+export interface RenderUnit<TRole extends LayerRole = LayerRole> {
     id: string;
     nodeIds: string[];
     adapter: LayerAdapter;
-    config: LayerConfig;
-    sourceUrl: string;
+    descriptor: RenderDescriptor<TRole>;
 }
 
 /**
@@ -23,6 +23,5 @@ export interface RenderUnit {
 export interface SnapshotItem {
     id: string;
     visible: boolean;
-    config: LayerConfig | null;
-    sourceUrl: string | null;
+    descriptor: RenderDescriptor | null;
 }
