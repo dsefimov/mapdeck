@@ -19,7 +19,10 @@ export { PointCloudAdapter } from "./layer/impl/PointCloudAdapter";
 
 // Layer adapter registration
 export { registerLayerAdapters } from "./layer/registerLayerAdapters";
-export { createDefaultConfig } from "./layer/createDefaultLayerConfig";
+export {
+    createDefaultConfig,
+    registerDefaultConfig,
+} from "./layer/createDefaultLayerConfig";
 
 // Attribute adapter registration
 export { registerAttributeAdapters } from "./attribute/registerAttributeAdapters";

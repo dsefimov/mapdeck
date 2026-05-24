@@ -9,4 +9,7 @@ export { VectorAdapter } from "./impl/VectorAdapter";
 export { Vector3DAdapter } from "./impl/Vector3DAdapter";
 export { PointCloudAdapter } from "./impl/PointCloudAdapter";
 
-export { createDefaultConfig } from "./createDefaultLayerConfig";
+export {
+    createDefaultConfig,
+    registerDefaultConfig,
+} from "./createDefaultLayerConfig";
