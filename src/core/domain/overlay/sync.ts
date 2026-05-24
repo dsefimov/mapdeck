@@ -16,7 +16,7 @@ export function buildDesiredRenderUnits(
     for (const item of snapshot) {
         if (!item.visible || !item.descriptor) continue;
 
-        const role = item.descriptor.config.role;
+        const role = item.descriptor.role;
         if (!adapterFactory.has(role)) continue;
 
         desired.set(item.id, {
@@ -66,7 +66,7 @@ export function getNativeRenderOrder(
 
     for (const item of snapshot) {
         if (!item.visible || !item.descriptor) continue;
-        const role = item.descriptor.config.role;
+        const role = item.descriptor.role;
         if (role !== LayerRoles.RASTER && role !== LayerRoles.VECTOR) continue;
 
         const renderId = nodeToRenderId.get(item.id);
