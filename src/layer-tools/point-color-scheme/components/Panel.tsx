@@ -5,8 +5,8 @@ import {
     isLayerNode,
     isPointCloudConfig,
     ColorScheme,
+    LayerRoles,
 } from "@core/framework/types";
-import type { PointCloudLayerConfig } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 import { POINT_COLOR_SCHEME_SELECTOR_ID } from "./Tool";
 import styles from "./Panel.module.css";
@@ -42,9 +42,12 @@ export const PointColorSchemeComponent: (
         event: React.ChangeEvent<HTMLSelectElement>,
     ) => {
         const newScheme = event.target.value as ColorScheme;
-        rootStore.treeStore.updateLayerConfig<PointCloudLayerConfig>(nodeId, {
-            colorScheme: newScheme,
-        });
+        rootStore.treeStore.updateLayerConfig<typeof LayerRoles.POINT_CLOUD>(
+            nodeId,
+            {
+                colorScheme: newScheme,
+            },
+        );
         logger.debug(
             `Changed color scheme for layer ${nodeId} to ${newScheme}`,
         );

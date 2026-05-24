@@ -12,11 +12,14 @@ import {
 import {
     type TreeNode,
     type LayerNode,
-    type LayerConfig,
+    type LayerRole,
+    type LayerConfigFor,
+    type RenderDescriptor,
     type SourceAdapter,
     type SnapshotItem,
     isGroupNode,
     isLayerNode,
+    updateDescriptorConfig,
 } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 import { createCancellableReaction } from "@core/shared/async";
@@ -295,25 +298,20 @@ export class LayerTreeStore {
         }
     }
 
-    updateLayerConfig<T extends LayerConfig>(
+    updateLayerConfig<TRole extends LayerRole>(
         nodeId: string,
-        updates: Partial<Omit<T, "role">>,
+        updates: Partial<LayerConfigFor<TRole>>,
     ): void {
         const node = this.getNode(nodeId);
         if (!node || !isLayerNode(node)) {
             logger.error(`Layer node ${nodeId} not found`);
             return;
         }
-
-        const { display: displayRole } = node.roles;
-
-        const validKeys = new Set(Object.keys(displayRole.render.config));
-        for (const [key, value] of Object.entries(updates)) {
-            if (value !== undefined && key !== "role" && validKeys.has(key)) {
-                Object.assign(displayRole.render.config, { [key]: value });
-            }
-        }
-
+        const { display } = node.roles;
+        display.render = updateDescriptorConfig(
+            display.render as RenderDescriptor<TRole>,
+            updates,
+        );
         this.visibility.clearExtentCache(nodeId);
     }
 
@@ -437,7 +435,7 @@ export class LayerTreeStore {
                 return {
                     id: node.id,
                     visible: node.isVisible,
-                    descriptor: toJS(display.render),
+                    descriptor: display.render ? toJS(display.render) : null,
                 };
             });
         },

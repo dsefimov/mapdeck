@@ -1,8 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/framework/store";
-import { isLayerNode, isRasterConfig } from "@core/framework/types";
-import type { RasterLayerConfig } from "@core/framework/types";
+import { isLayerNode, isRasterConfig, LayerRoles } from "@core/framework/types";
 import { formatDict } from "@core/framework/i18n";
 import { logger } from "@core/shared/diagnostics/logger";
 import { RASTER_OPACITY_SLIDER_ID } from "./Tool";
@@ -39,9 +38,12 @@ export const RasterOpacityComponent: (
     ) => {
         const newOpacity = parseFloat(event.target.value);
         if (!isNaN(newOpacity)) {
-            rootStore.treeStore.updateLayerConfig<RasterLayerConfig>(nodeId, {
-                opacity: newOpacity,
-            });
+            rootStore.treeStore.updateLayerConfig<typeof LayerRoles.RASTER>(
+                nodeId,
+                {
+                    opacity: newOpacity,
+                },
+            );
             logger.debug(
                 `Changed opacity for layer ${nodeId} to ${newOpacity}`,
             );
