@@ -1,5 +1,5 @@
 import type maplibregl from "maplibre-gl";
-import { makeAutoObservable, runInAction, reaction } from "mobx";
+import { runInAction, reaction } from "mobx";
 
 import { logger } from "@core/shared/diagnostics/logger";
 import type { LayerConfig, RenderUnit } from "@core/framework/types";
@@ -30,7 +30,6 @@ export class LayerManager {
 
     constructor(rootStore: RootStore) {
         this.rootStore = rootStore;
-        makeAutoObservable(this);
     }
 
     // ==================== Lifecycle ====================
