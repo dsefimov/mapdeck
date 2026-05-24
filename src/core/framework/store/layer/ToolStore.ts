@@ -7,10 +7,7 @@ import {
     type LayerTool,
     type LayerToolRole,
 } from "@core/framework/types";
-import {
-    registerDefaultConfig,
-    layerAdapterFactory,
-} from "@core/domain/adapters";
+import { registerDefaultConfig } from "@core/domain/adapters";
 import type { RootStore } from "@core/framework/store";
 
 export class ToolStore {
@@ -40,7 +37,7 @@ export class ToolStore {
     ): Promise<void> {
         this._knownRoles.add(role);
         registerDefaultConfig(role, defaultConfig);
-        await layerAdapterFactory.register(role, adapter);
+        await this.rootStore.layerAdapterFactory.register(role, adapter);
     }
 
     /**

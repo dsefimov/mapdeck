@@ -7,7 +7,6 @@ import type {
     AttributeCacheEntry,
 } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
-import { attributeAdapterFactory } from "@core/domain/adapters";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const ERROR_CACHE_TTL_MS = 30 * 1000; // Retry failed fetches after 30 seconds
@@ -142,7 +141,7 @@ export class AttributeDataStore {
     ): Promise<void> {
         const role = this._getAttributeRole(nodeId);
         const config = this._extractSourceConfig(role);
-        const adapter = attributeAdapterFactory.get(role);
+        const adapter = this.rootStore.attributeAdapterFactory.get(role);
 
         const result = await adapter.fetchPage(
             config,

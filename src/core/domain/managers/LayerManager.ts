@@ -1,10 +1,9 @@
 import type maplibregl from "maplibre-gl";
 import { makeAutoObservable, runInAction, reaction } from "mobx";
 
-import { layerAdapterFactory } from "@core/domain/adapters";
+import { logger } from "@core/shared/diagnostics/logger";
 import type { LayerConfig, RenderUnit } from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
-import { logger } from "@core/shared/diagnostics/logger";
 import {
     buildGroupedRenderUnits,
     getNativeRenderOrder,
@@ -76,7 +75,7 @@ export class LayerManager {
                 const snapshot = this.rootStore.treeStore.layerSnapshot;
                 const desired = buildGroupedRenderUnits(
                     snapshot,
-                    layerAdapterFactory,
+                    this.rootStore.layerAdapterFactory,
                 );
 
                 // Remove units no longer desired

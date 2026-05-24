@@ -1,6 +1,5 @@
 import maplibregl from "maplibre-gl";
 import { makeAutoObservable } from "mobx";
-import { overlayManager } from "@core/domain/overlay";
 import { LayerManager } from "@core/domain/managers/LayerManager";
 import { logger } from "@core/shared/diagnostics/logger";
 import { validateBbox, flattenTo2D, type Bbox } from "@core/shared/geo";
@@ -56,7 +55,7 @@ export class MapStore {
         this.map = map;
 
         // Attach deck.gl overlay for point cloud rendering
-        overlayManager.attachToMap(map);
+        this.rootStore.overlayManager.attachToMap(map);
 
         this.layerManager = new LayerManager(this.rootStore);
         this.layerManager.initialize(map);
@@ -95,7 +94,7 @@ export class MapStore {
 
     dispose(): void {
         // Detach deck.gl overlay
-        overlayManager.detachFromMap();
+        this.rootStore.overlayManager.detachFromMap();
 
         if (this.layerManager) {
             this.layerManager.dispose();

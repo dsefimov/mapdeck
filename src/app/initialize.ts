@@ -13,8 +13,8 @@ export async function initializeApp(rootStore: RootStore): Promise<void> {
     rootStore.clearInitError();
 
     try {
-        await registerLayerAdapters();
-        await registerAttributeAdapters();
+        await registerLayerAdapters(rootStore);
+        await registerAttributeAdapters(rootStore);
         await registerBuiltInWidgets(rootStore);
         await registerTools(rootStore);
         await registerMapTools(rootStore);

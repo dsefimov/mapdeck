@@ -18,7 +18,6 @@ import {
     isGroupNode,
     isLayerNode,
 } from "@core/framework/types";
-import { sourceAdapterFactory } from "@core/domain/adapters";
 import { logger } from "@core/shared/diagnostics/logger";
 import { createCancellableReaction } from "@core/shared/async";
 import { traverseTreeAsync } from "@core/shared/async/treeTraversal";
@@ -127,11 +126,11 @@ export class LayerTreeStore {
     }
 
     private async _initAdapter(url: string): Promise<void> {
-        if (!sourceAdapterFactory.hasDefault()) {
+        if (!this.rootStore.sourceAdapterFactory.hasDefault()) {
             return;
         }
 
-        const adapter = sourceAdapterFactory.getDefault();
+        const adapter = this.rootStore.sourceAdapterFactory.getDefault();
 
         // Dispose the previous adapter BEFORE initializing the new one.
         this._adapter?.dispose?.();
