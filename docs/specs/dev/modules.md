@@ -8,19 +8,76 @@ See: [`src/core/framework/types/framework/module.ts`](../../../src/core/framewor
 
 A module can contain **anything**: data sources, widgets, tools, map tools. There are no restrictions beyond the `Module` interface.
 
-For data source modules, register a `SourceAdapter` with the `sourceAdapterFactory` singleton:
+For data source modules, register a `SourceAdapter` with the `rootStore.sourceAdapterFactory`:
 
 ```ts
-import { sourceAdapterFactory } from "@core/domain/adapters";
+import type { RootStore } from "@core/framework/store";
+import { type Module } from "@core/framework/types";
 import { MyTreeAdapter } from "./adapter/MyTreeAdapter";
 
 class MyModule implements Module {
     readonly id = "my-module";
     readonly name = "My Data Module";
 
+    private rootStore: RootStore | null = null;
+
+    setRootStore(rootStore: RootStore): void {
+        this.rootStore = rootStore;
+    }
+
     async register(): Promise<void> {
         const adapter = new MyTreeAdapter();
-        await sourceAdapterFactory.register("my-module", adapter);
+        await this.rootStore!.sourceAdapterFactory.register("my-module", adapter);
+    }
+}
+```
+
+For modules that add a **custom layer role**:
+
+```ts
+// my-role/types.ts
+import type { LayerConfigBase } from "@core/framework/types";
+
+export interface MyRoleLayerConfig extends LayerConfigBase {
+    customParam: string;
+}
+
+// Extend the type registry so LayerConfigFor works for your role
+declare module "@core/framework/types" {
+    interface LayerConfigRegistry {
+        "my-role": MyRoleLayerConfig;
+    }
+}
+```
+
+```ts
+// adapter/MyRoleAdapter.ts
+// Implement LayerAdapter<typeof LayerRoles.RASTER> — the generic
+// parameter narrows addToMap's descriptor.config to your config type.
+```
+
+```ts
+// my-module/module/MyModule.ts
+import { type Module, LayerRoles } from "@core/framework/types";
+import type { RootStore } from "@core/framework/store";
+
+class MyModule implements Module {
+    readonly id = "my-module";
+    readonly name = "My Module";
+
+    private rootStore: RootStore | null = null;
+
+    setRootStore(rootStore: RootStore): void {
+        this.rootStore = rootStore;
+    }
+
+    async register(): Promise<void> {
+        const role = LayerRoles.of("my-custom-role");
+        await this.rootStore!.layerToolStore.registerRole(
+            role,
+            new MyRoleAdapter(),
+            () => ({ role, url: "", customParam: "default" }),
+        );
     }
 }
 ```
@@ -51,9 +108,7 @@ src/modules/<module-name>/
 Module is a **class if it has state**, an **object if stateless** (see [extending.md](./extending.md) — Objects vs Classes).
 
 ```ts
-import { type Module } from "@core/types";
-import { sourceAdapterFactory } from "@core/domain/adapters";
-import type { RootStore } from "@store";
+import { type Module, type RootStore } from "@core/types";
 import type { MyModuleConfig } from "./core/MyModuleConfig";
 import { MyTreeAdapter } from "./adapter/MyTreeAdapter";
 
@@ -64,16 +119,16 @@ export class MyModule implements Module<MyModuleConfig> {
     private config: MyModuleConfig | null = null;
     private rootStore: RootStore | null = null;
 
+    setRootStore(rootStore: RootStore): void {
+        this.rootStore = rootStore;
+    }
+
     async register(config?: MyModuleConfig): Promise<void> {
         this.config = config ?? { /* defaults */ };
         const adapter = new MyTreeAdapter(config);
-        await sourceAdapterFactory.register("my-module-source", adapter);
-    }
-
-    setRootStore(rootStore: RootStore): void {
-        this.rootStore = rootStore;
+        await this.rootStore!.sourceAdapterFactory.register("my-module-source", adapter);
         // Optionally register widgets or tools
-        this.rootStore.catalogStore.registerWidget(MyWidget);
+        this.rootStore!.catalogStore.registerWidget(MyWidget);
     }
 }
 
@@ -97,16 +152,21 @@ Add to the modules array in [`src/modules/registerModules.ts`](../../../src/modu
 Modules are registered **last**, right before `fetchLayerTree()`:
 
 ```
-1. registerLayerAdapters()     ← Core layer adapters (Raster, Vector, etc.)
-2. registerBuiltInWidgets()    ← Built-in widgets
-3. registerTools()             ← Built-in layer tools
-4. registerMapTools()          ← Built-in map tools
-5. registerModules()           ← Modules (may register widgets/tools/sources)
-6. fetchLayerTree()            ← Load tree (needs all sources registered)
-7. markInitialized()           ← UI renders
+1. registerLayerAdapters()        ← Core layer adapters (Raster, Vector, etc.)
+2. registerAttributeAdapters()    ← Attribute adapters (WFS, etc.)
+3. registerBuiltInWidgets()       ← Built-in widgets
+4. registerTools()                ← Built-in layer tools
+5. registerMapTools()             ← Built-in map tools
+6. registerModules()              ← Modules (modules receive rootStore via setRootStore() before register())
+7. fetchLayerTree()               ← Load tree (needs all sources registered)
+8. markInitialized()              ← UI renders
 ```
 
-This ensures all built-in components are ready before modules add their own.
+**Important lifecycle order**:
+1. `module.setRootStore(rootStore)` is called **first** — synchronously
+2. `module.register()` is called **second** — asynchronously
+
+This guarantees modules have access to `rootStore` during `register()`.
 
 ---
 
@@ -116,7 +176,7 @@ Every `SourceAdapter` returns `TreeNode[]` where each node has `roles: NodeRoles
 
 | Category | Purpose |
 |----------|---------|
-| `display` | Layer config for rendering on map |
+| `display` | Render descriptor for rendering on map |
 | `attribute` | Endpoint for attribute data |
 | `report` | Download link for reports |
 

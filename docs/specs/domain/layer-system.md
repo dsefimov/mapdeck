@@ -34,24 +34,33 @@ See: [`src/core/framework/types/domain/layer/config.ts`](../../../src/core/frame
 
 ## LayerAdapter
 
-Each adapter implements `addToMap`, `removeFromMap`, `updateVisibility`. The factory routes operations by role.
+Each adapter implements `addToMap`, `removeFromMap`, `updateVisibility`, `updateConfig`. The factory routes operations by role.
 
 ```ts
-interface LayerAdapter {
-    readonly supportedRole: LayerRole;
-    addToMap(layerId: string, config: LayerConfig, sourceRef: string, map: Map): void;
+interface LayerAdapter<TRole extends LayerRole = LayerRole> {
+    readonly role: TRole;
+    addToMap(layerId: string, descriptor: RenderDescriptor<TRole>, map: Map): void;
     removeFromMap(layerId: string, map: Map): void;
     updateVisibility(layerId: string, visible: boolean, map: Map): void;
-    /** Optional: incremental style update without full recreation */
-    tryUpdateStyle?(layerId: string, updates: Partial<LayerConfig>, map: Map): boolean;
+    updateConfig(renderUnit: RenderUnit<TRole>, map: Map): void;
 }
 ```
 
-`tryUpdateStyle` returns `true` if the update was applied incrementally, `false` if the adapter cannot handle the update and the layer must be recreated.
-
-> **TODO**: Implement `tryUpdateStyle` in RasterAdapter (opacity) and PointCloudAdapter (pointSize, colorScheme). See [PLAN.md](../../PLAN.md).
+Adapters receive a `RenderDescriptor` (role + sourceUrl + config) instead of separate arguments.
 
 See: [`src/core/framework/types/domain/layer/adapter.ts`](../../../src/core/framework/types/domain/layer/adapter.ts)
+
+---
+
+## Adding a Custom Layer Role
+
+Modules can extend the layer system with new roles. The steps:
+
+1. **Define config type** + extend `LayerConfigRegistry` via declaration merging
+2. **Implement `LayerAdapter<"your-role">`** 
+3. **Register** via `rootStore.layerToolStore.registerRole()` in the module's `register()`
+
+Example: see [`docs/specs/dev/modules.md`](../dev/modules.md).
 
 ---
 

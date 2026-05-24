@@ -110,11 +110,18 @@ export class ResetOrientationTool implements MapTool {
 > **No state, no lifecycle → object.**
 > **Has state or lifecycle → class.**
 
-### Global services (singletons)
+### Global services (via RootStore)
 
-Global services (factories, managers) use module-level singleton: `export const x = new X()`. No `getInstance()`, no DI containers.
+Global services (factories, managers) live in `RootStore` and are accessed through it:
 
-Examples: `layerAdapterFactory`, `sourceAdapterFactory`, `attributeAdapterFactory`, `overlayManager`.
+```ts
+rootStore.layerAdapterFactory       // LayerAdapter registry
+rootStore.sourceAdapterFactory      // SourceAdapter registry
+rootStore.attributeAdapterFactory   // AttributeAdapter registry
+rootStore.overlayManager            // Deck.gl overlay manager
+```
+
+See [modules.md](./modules.md) for an example of registering a custom layer role.
 
 ---
 
