@@ -28,9 +28,14 @@ interface SettingsGroupProps {
 export const SettingsGroupComponent: (
     props: SettingsGroupProps,
 ) => React.ReactNode = observer(({ group, onChange }) => {
+    const rootStore = useRootStore();
+    const ownerName =
+        rootStore.localeStore.t(group.ownerId)["widget.name"] ??
+        rootStore.localeStore.t(group.ownerId)["tool.name"] ??
+        group.ownerName;
     return (
         <div className={styles.settings__group}>
-            <h3 className={styles.settings__group_title}>{group.ownerName}</h3>
+            <h3 className={styles.settings__group_title}>{ownerName}</h3>
             <div className={styles.settings__group_content}>
                 {group.settings.map((setting) => (
                     <SettingItem
@@ -65,13 +70,17 @@ const SettingItem: (props: SettingItemProps) => React.ReactNode = observer(
             onChange(setting.id, value);
         };
 
+        const settingLabel =
+            rootStore.localeStore.t(setting.ownerId)[setting.id] ??
+            setting.label;
+
         return (
             <div className={styles.settings__item}>
                 <label
                     htmlFor={setting.id}
                     className={styles.settings__item_label}
                 >
-                    {setting.label}
+                    {settingLabel}
                 </label>
                 <SettingInput
                     setting={setting}
