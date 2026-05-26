@@ -8,6 +8,7 @@ import {
     type LayerToolRole,
 } from "@core/framework/types";
 import { registerDefaultConfig } from "@core/domain/adapters";
+import { logger } from "@core/shared/diagnostics/logger";
 import type { RootStore } from "@core/framework/store";
 
 export class ToolStore {
@@ -35,6 +36,11 @@ export class ToolStore {
         adapter: LayerAdapter,
         defaultConfig: () => LayerConfig,
     ): Promise<void> {
+        if (this._knownRoles.has(role)) {
+            logger.warn(`Layer role "${role}" is already registered`);
+            return;
+        }
+
         this._knownRoles.add(role);
         registerDefaultConfig(role, defaultConfig);
         await this.rootStore.layerAdapterFactory.register(role, adapter);
