@@ -5,6 +5,7 @@ import { overlayManager } from "@core/domain/overlay";
 import {
     convertPointToDegrees,
     formatDistance,
+    pickPointFromCloud,
 } from "@core/domain/overlay/measurements";
 import {
     getThemeColor,
@@ -23,13 +24,9 @@ import {
     calculateGridTrapezoidVolume,
     formatVolume,
 } from "@core/shared/geo/volume";
-import { layerAdapterFactory } from "@core/domain/adapters";
+import type { LayerAdapterFactory } from "@core/domain/adapters";
 import { PointCloudAdapter } from "@core/domain/adapters/layer/impl/PointCloudAdapter";
 import { LayerRoles } from "@core/framework/types";
-import {
-    getPointFromPickingInfo,
-    type PickingInfo,
-} from "@core/domain/overlay/picking";
 
 import type {
     MapToolComponentProps,
@@ -59,53 +56,6 @@ const VOLUME_MEASURE_TIN_LAYER_ID = "volume-measure-tin";
 
 // Max points for Delaunay (performance limit)
 const MAX_DELAUNAY_POINTS = 5000;
-
-/**
- * Pick a point from point cloud at screen coordinates
- */
-function pickPointFromCloud(
-    screenX: number,
-    screenY: number,
-    _map: maplibregl.Map,
-): MeasurementPoint3D | null {
-    if (typeof overlayManager.pickObject !== "function") {
-        return null;
-    }
-
-    const pickingInfo = overlayManager.pickObject(screenX, screenY, 20);
-
-    if (!pickingInfo) {
-        return null;
-    }
-
-    const layer = pickingInfo.layer;
-    if (!layer || !layer.id) {
-        return null;
-    }
-
-    // Ignore tool's own layers
-    if (layer.id.startsWith(VOLUME_MEASURE_LAYER_PREFIX)) {
-        return null;
-    }
-
-    if (pickingInfo.index == null) {
-        return null;
-    }
-
-    const result = getPointFromPickingInfo(pickingInfo as PickingInfo);
-    if (!result) {
-        return null;
-    }
-
-    return {
-        lng: result.lng,
-        lat: result.lat,
-        z: result.z,
-        layerId: result.layerId,
-        pointIndex: result.pointIndex,
-        coordinateOrigin: result.coordinateOrigin,
-    };
-}
 
 /**
  * Filter point cloud points inside a polygon boundary.
@@ -159,8 +109,10 @@ function extractPointsFromCloudData(
 /**
  * Get all loaded point cloud points from the layer adapter.
  */
-function getAllLoadedCloudPoints(): MeasurementPoint3D[] {
-    const adapter = layerAdapterFactory.get(LayerRoles.POINT_CLOUD);
+function getAllLoadedCloudPoints(
+    adapterFactory: LayerAdapterFactory,
+): MeasurementPoint3D[] {
+    const adapter = adapterFactory.get(LayerRoles.POINT_CLOUD);
     if (!adapter) return [];
 
     const pcAdapter = adapter as PointCloudAdapter;
@@ -291,6 +243,7 @@ export const VolumeMeasureComponent: (
     props: MapToolComponentProps,
 ) => React.ReactNode = observer(({ map, deactivate, rootStore }) => {
     const dict = rootStore.localeStore.t("volume-measure");
+    const adapterFactory = rootStore.layerAdapterFactory;
     const [boundary, setBoundary] = useState<MeasurementPoint3D[]>([]);
     const [previewPoint, setPreviewPoint] = useState<MeasurementPoint3D | null>(
         null,
@@ -305,7 +258,7 @@ export const VolumeMeasureComponent: (
             return;
         }
 
-        const allCloudPoints = getAllLoadedCloudPoints();
+        const allCloudPoints = getAllLoadedCloudPoints(adapterFactory);
         const filtered = filterPointsInsidePolygon(boundary, allCloudPoints);
 
         if (filtered.length > MAX_DELAUNAY_POINTS) {
@@ -315,34 +268,40 @@ export const VolumeMeasureComponent: (
         } else {
             setInsidePoints(filtered);
         }
-    }, [boundary, isComplete]);
+    }, [boundary, isComplete, adapterFactory]);
 
     // Event handlers
     const handleMapClick = useCallback(
         (event: maplibregl.MapMouseEvent) => {
             if (isComplete) return;
 
-            const point = pickPointFromCloud(event.point.x, event.point.y, map);
+            const point = pickPointFromCloud({
+                screenX: event.point.x,
+                screenY: event.point.y,
+                adapterFactory,
+                excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
+            });
 
             if (point) {
                 setBoundary((prev) => [...prev, point]);
             }
         },
-        [isComplete, map],
+        [isComplete, adapterFactory],
     );
 
     const handleMapMouseMove = useCallback(
         (event: maplibregl.MapMouseEvent) => {
             if (!isComplete) {
-                const point = pickPointFromCloud(
-                    event.point.x,
-                    event.point.y,
-                    map,
-                );
+                const point = pickPointFromCloud({
+                    screenX: event.point.x,
+                    screenY: event.point.y,
+                    adapterFactory,
+                    excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
+                });
                 setPreviewPoint(point);
             }
         },
-        [isComplete, map],
+        [isComplete, adapterFactory],
     );
 
     const handleMiddleClick = useCallback(

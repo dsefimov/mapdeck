@@ -1,16 +1,7 @@
 // Adapter factories for the modular architecture
-export {
-    LayerAdapterFactory,
-    layerAdapterFactory,
-} from "./layer/LayerAdapterFactory";
-export {
-    SourceAdapterFactory,
-    sourceAdapterFactory,
-} from "./source/SourceAdapterFactory";
-export {
-    AttributeAdapterFactory,
-    attributeAdapterFactory,
-} from "./attribute/AttributeAdapterFactory";
+export { LayerAdapterFactory } from "./layer/LayerAdapterFactory";
+export { SourceAdapterFactory } from "./source/SourceAdapterFactory";
+export { AttributeAdapterFactory } from "./attribute/AttributeAdapterFactory";
 
 // Layer adapter implementations
 export { RasterAdapter } from "./layer/impl/RasterAdapter";

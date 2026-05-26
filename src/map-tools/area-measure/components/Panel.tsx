@@ -116,6 +116,7 @@ export const AreaMeasureComponent: (
     props: MapToolComponentProps,
 ) => React.ReactNode = observer(({ map, deactivate, rootStore }) => {
     const dict = rootStore.localeStore.t("area-measure");
+    const adapterFactory = rootStore.layerAdapterFactory;
     const [points, setPoints] = useState<MeasurementPoint3D[]>([]);
     const [previewPoint, setPreviewPoint] = useState<MeasurementPoint3D | null>(
         null,
@@ -145,8 +146,8 @@ export const AreaMeasureComponent: (
             const point = getPointWithFallback({
                 screenX: event.point.x,
                 screenY: event.point.y,
-                map,
                 eventLngLat: event.lngLat,
+                adapterFactory,
                 excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
             });
 
@@ -154,7 +155,7 @@ export const AreaMeasureComponent: (
                 setPoints((prev) => [...prev, point]);
             }
         },
-        [editMode, map],
+        [editMode, adapterFactory],
     );
 
     const handleMapMouseMove = useCallback(
@@ -163,8 +164,8 @@ export const AreaMeasureComponent: (
                 const point = getPointWithFallback({
                     screenX: event.point.x,
                     screenY: event.point.y,
-                    map,
                     eventLngLat: event.lngLat,
+                    adapterFactory,
                     excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
                 });
 
@@ -191,15 +192,15 @@ export const AreaMeasureComponent: (
                 const point = getPointWithFallback({
                     screenX: event.point.x,
                     screenY: event.point.y,
-                    map,
                     eventLngLat: event.lngLat,
+                    adapterFactory,
                     excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
                 });
 
                 setPreviewPoint(point);
             }
         },
-        [draggingIndex, editMode, map],
+        [draggingIndex, editMode, adapterFactory],
     );
 
     const handleMapMouseDown = useCallback(

@@ -2,27 +2,32 @@
  * Shared measurement utilities for map tools.
  * Used by ruler-3d, area-measure, and other measurement tools.
  */
-import maplibregl from "maplibre-gl";
 import { overlayManager } from "@core/domain/overlay";
 import { logger } from "@core/shared/diagnostics/logger";
 import {
     getPointFromPickingInfo as getPointFromPickingInfoCore,
     type PickingInfo as PickingInfoCore,
 } from "@core/domain/overlay/picking";
+import type { LayerAdapterFactory } from "@core/domain/adapters";
 import type { MeasurementPoint3D } from "@core/framework/types";
 
 // Prefix for tool-generated layer IDs (used for filtering during picking)
 const TOOL_LAYER_PREFIX = "ruler-3d-";
 
+interface PickPointFromCloudOptions {
+    screenX: number;
+    screenY: number;
+    adapterFactory: LayerAdapterFactory;
+    excludeLayerPrefix: string;
+}
+
 /**
  * Pick a point from point cloud at screen coordinates
  */
 export function pickPointFromCloud(
-    screenX: number,
-    screenY: number,
-    _map: maplibregl.Map,
-    excludeLayerPrefix: string = TOOL_LAYER_PREFIX,
+    options: PickPointFromCloudOptions,
 ): MeasurementPoint3D | null {
+    const { screenX, screenY, adapterFactory, excludeLayerPrefix } = options;
     if (typeof overlayManager.pickObject !== "function") {
         logger.warn(
             "measurements: pickObject method not available on overlayManager",
@@ -50,7 +55,10 @@ export function pickPointFromCloud(
         return null;
     }
 
-    const result = getPointFromPickingInfoCore(pickingInfo as PickingInfoCore);
+    const result = getPointFromPickingInfoCore(
+        pickingInfo as PickingInfoCore,
+        adapterFactory,
+    );
     if (!result) {
         return null;
     }
@@ -68,8 +76,8 @@ export function pickPointFromCloud(
 interface GetPointWithFallbackOptions {
     screenX: number;
     screenY: number;
-    map: maplibregl.Map;
     eventLngLat: { lng: number; lat: number };
+    adapterFactory: LayerAdapterFactory;
     excludeLayerPrefix?: string;
 }
 
@@ -79,9 +87,20 @@ interface GetPointWithFallbackOptions {
 export function getPointWithFallback(
     options: GetPointWithFallbackOptions,
 ): MeasurementPoint3D | null {
-    const { screenX, screenY, map, eventLngLat, excludeLayerPrefix } = options;
+    const {
+        screenX,
+        screenY,
+        eventLngLat,
+        adapterFactory,
+        excludeLayerPrefix,
+    } = options;
 
-    const point = pickPointFromCloud(screenX, screenY, map, excludeLayerPrefix);
+    const point = pickPointFromCloud({
+        screenX,
+        screenY,
+        adapterFactory,
+        excludeLayerPrefix: excludeLayerPrefix ?? TOOL_LAYER_PREFIX,
+    });
 
     if (point) {
         return point;

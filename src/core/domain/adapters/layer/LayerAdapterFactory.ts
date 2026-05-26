@@ -59,5 +59,3 @@ export class LayerAdapterFactory {
         return this.adapters.has(role);
     }
 }
-
-export const layerAdapterFactory = new LayerAdapterFactory();

@@ -1,4 +1,3 @@
-import { layerAdapterFactory } from "./LayerAdapterFactory";
 import {
     type LayerAdapter,
     LayerRoles,
@@ -19,12 +18,11 @@ const ADAPTERS: [LayerRole, LayerAdapter][] = [
 ];
 
 export async function registerLayerAdapters(
-    rootStore?: RootStore,
+    rootStore: RootStore,
 ): Promise<void> {
-    const target = rootStore?.layerAdapterFactory ?? layerAdapterFactory;
     try {
         for (const [role, adapter] of ADAPTERS) {
-            await target.register(role, adapter);
+            await rootStore.layerAdapterFactory.register(role, adapter);
         }
     } catch (error) {
         logger.error("Failed to register layer adapters:", error);

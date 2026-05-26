@@ -26,5 +26,3 @@ export class AttributeAdapterFactory {
         return this.adapters.has(type);
     }
 }
-
-export const attributeAdapterFactory = new AttributeAdapterFactory();

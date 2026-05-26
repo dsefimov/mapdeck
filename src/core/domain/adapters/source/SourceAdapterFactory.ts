@@ -100,5 +100,3 @@ export class SourceAdapterFactory {
         return this._defaultType !== null;
     }
 }
-
-export const sourceAdapterFactory = new SourceAdapterFactory();

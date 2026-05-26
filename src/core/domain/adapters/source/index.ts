@@ -1,1 +1,1 @@
-export { SourceAdapterFactory, sourceAdapterFactory } from "./SourceAdapterFactory";
+export { SourceAdapterFactory } from "./SourceAdapterFactory";

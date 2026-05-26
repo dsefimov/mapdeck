@@ -3,7 +3,8 @@
  * Extracted from ruler-3d/coordinates.ts for reuse across map tools.
  */
 import { logger } from "@core/shared/diagnostics/logger";
-import { layerAdapterFactory, PointCloudAdapter } from "@core/domain/adapters";
+import { PointCloudAdapter } from "@core/domain/adapters";
+import type { LayerAdapterFactory } from "@core/domain/adapters";
 import { LayerRoles } from "@core/framework/types";
 import type { PointCloudData } from "@core/framework/types";
 import { hasRGB, hasIntensity, hasClassification } from "@core/framework/types";
@@ -140,8 +141,11 @@ function extractClassificationFromPoint(
 /**
  * Get loaded point cloud data for a layer ID from the PointCloudAdapter.
  */
-function getCloudData(layerId: string): PointCloudData | null {
-    const adapter = layerAdapterFactory.get(LayerRoles.POINT_CLOUD) as
+function getCloudData(
+    layerId: string,
+    adapterFactory: LayerAdapterFactory,
+): PointCloudData | null {
+    const adapter = adapterFactory.get(LayerRoles.POINT_CLOUD) as
         | PointCloudAdapter
         | undefined;
     if (!adapter) return null;
@@ -204,15 +208,13 @@ function extractPointAttributes(
 /**
  * Extract a point with coordinates and attributes from Deck.gl PickingInfo.
  *
- * This is a pure function that depends only on:
- * - The picking info from Deck.gl
- * - The loaded point cloud data via layerAdapterFactory
- *
  * @param pickingInfo - Deck.gl picking result
+ * @param adapterFactory - Layer adapter factory (from rootStore)
  * @returns Extracted point with coordinates and attributes, or null if extraction failed
  */
 export function getPointFromPickingInfo(
     pickingInfo: PickingInfo,
+    adapterFactory: LayerAdapterFactory,
 ): PickingResult | null {
     const validInfo = extractValidPickingInfo(pickingInfo);
     if (!validInfo) {
@@ -221,7 +223,7 @@ export function getPointFromPickingInfo(
     const { mainLayerId, chunkIndex, pointIndex } = validInfo;
 
     try {
-        const cloudData = getCloudData(mainLayerId);
+        const cloudData = getCloudData(mainLayerId, adapterFactory);
         if (!cloudData) {
             logger.warn(`picking: No loaded data for layer: ${mainLayerId}`);
             return null;

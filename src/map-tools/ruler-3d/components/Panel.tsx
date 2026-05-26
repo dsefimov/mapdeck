@@ -62,6 +62,7 @@ export const Ruler3DComponent: (
     props: MapToolComponentProps,
 ) => React.ReactNode = observer(({ map, deactivate, rootStore }) => {
     const dict = rootStore.localeStore.t("ruler-3d");
+    const adapterFactory = rootStore.layerAdapterFactory;
     const [points, setPoints] = useState<Point3D[]>([]);
     const [previewPoint, setPreviewPoint] = useState<Point3D | null>(null);
     const [editMode, setEditMode] = useState(false);
@@ -89,8 +90,8 @@ export const Ruler3DComponent: (
             const point = getPointWithFallback({
                 screenX: event.point.x,
                 screenY: event.point.y,
-                map,
                 eventLngLat: event.lngLat,
+                adapterFactory,
                 excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
             });
 
@@ -98,7 +99,7 @@ export const Ruler3DComponent: (
                 setPoints((prev) => [...prev, point]);
             }
         },
-        [editMode, map],
+        [editMode, adapterFactory],
     );
 
     const handleMapMouseMove = useCallback(
@@ -108,8 +109,8 @@ export const Ruler3DComponent: (
                 const point = getPointWithFallback({
                     screenX: event.point.x,
                     screenY: event.point.y,
-                    map,
                     eventLngLat: event.lngLat,
+                    adapterFactory,
                     excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
                 });
 
@@ -138,15 +139,15 @@ export const Ruler3DComponent: (
                 const point = getPointWithFallback({
                     screenX: event.point.x,
                     screenY: event.point.y,
-                    map,
                     eventLngLat: event.lngLat,
+                    adapterFactory,
                     excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
                 });
 
                 setPreviewPoint(point);
             }
         },
-        [draggingIndex, editMode, map],
+        [draggingIndex, editMode, adapterFactory],
     );
 
     const handleMapMouseDown = useCallback(
