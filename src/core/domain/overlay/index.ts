@@ -24,12 +24,12 @@ export type { MapboxOverlay } from "@deck.gl/mapbox";
 export {
     parseChunkInfo,
     getPointFromPickingInfo,
+    pickPointFromCloud,
+    getPointWithFallback,
     type PickingInfo,
     type PickingResult,
 } from "./picking";
 export {
-    pickPointFromCloud,
-    getPointWithFallback,
     formatDistance,
     formatArea,
     convertPointToDegrees,

@@ -3,10 +3,11 @@ import { observer } from "mobx-react-lite";
 import maplibregl from "maplibre-gl";
 import { overlayManager } from "@core/domain/overlay";
 import {
+    geodesicDistance,
     getPointWithFallback,
     formatDistance,
     convertPointToDegrees,
-} from "@core/domain/overlay/measurements";
+} from "../utils/coordinates";
 import {
     getThemeColor,
     THEME_PRIMARY,
@@ -23,7 +24,6 @@ import { ToolPanel, SegmentsList } from "@core/ui/composites";
 import type { Segment } from "@core/ui/composites";
 import { PathLayer, ScatterplotLayer, LineLayer } from "@deck.gl/layers";
 import { COORDINATE_SYSTEM } from "@deck.gl/core";
-import { geodesicDistance } from "../utils/coordinates";
 import type { Point3D, SegmentDistance3D } from "../types";
 
 import styles from "@core/ui/composites/measurement-panel/MeasurementPanel.module.css";
@@ -92,6 +92,7 @@ export const Ruler3DComponent: (
                 screenY: event.point.y,
                 eventLngLat: event.lngLat,
                 adapterFactory,
+                overlayManager,
                 excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
             });
 
@@ -111,6 +112,7 @@ export const Ruler3DComponent: (
                     screenY: event.point.y,
                     eventLngLat: event.lngLat,
                     adapterFactory,
+                    overlayManager,
                     excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
                 });
 
@@ -141,6 +143,7 @@ export const Ruler3DComponent: (
                     screenY: event.point.y,
                     eventLngLat: event.lngLat,
                     adapterFactory,
+                    overlayManager,
                     excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
                 });
 

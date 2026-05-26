@@ -2,10 +2,10 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { observer } from "mobx-react-lite";
 import maplibregl from "maplibre-gl";
 import { overlayManager } from "@core/domain/overlay";
+import { pickPointFromCloud } from "@core/domain/overlay/picking";
 import {
     convertPointToDegrees,
     formatDistance,
-    pickPointFromCloud,
 } from "@core/domain/overlay/measurements";
 import {
     getThemeColor,
@@ -279,6 +279,7 @@ export const VolumeMeasureComponent: (
                 screenX: event.point.x,
                 screenY: event.point.y,
                 adapterFactory,
+                overlayManager,
                 excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
             });
 
@@ -296,6 +297,7 @@ export const VolumeMeasureComponent: (
                     screenX: event.point.x,
                     screenY: event.point.y,
                     adapterFactory,
+                    overlayManager,
                     excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
                 });
                 setPreviewPoint(point);

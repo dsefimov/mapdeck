@@ -6,10 +6,124 @@ import { logger } from "@core/shared/diagnostics/logger";
 import { PointCloudAdapter } from "@core/domain/adapters";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
 import { LayerRoles } from "@core/framework/types";
-import type { PointCloudData } from "@core/framework/types";
+import type { MeasurementPoint3D, PointCloudData } from "@core/framework/types";
 import { hasRGB, hasIntensity, hasClassification } from "@core/framework/types";
 
 const CHUNK_MULTIPLIER = 1_000_000;
+
+/**
+ * Minimal overlay manager interface for point picking.
+ * Only exposes the pickObject method needed by pickPointFromCloud.
+ */
+interface PointPickingOverlay {
+    pickObject(x: number, y: number, radius?: number): PickingInfo | null;
+}
+
+export interface PickPointFromCloudOptions {
+    screenX: number;
+    screenY: number;
+    overlayManager: PointPickingOverlay;
+    adapterFactory: LayerAdapterFactory;
+    excludeLayerPrefix: string;
+}
+
+export interface GetPointWithFallbackOptions {
+    screenX: number;
+    screenY: number;
+    eventLngLat: { lng: number; lat: number };
+    overlayManager: PointPickingOverlay;
+    adapterFactory: LayerAdapterFactory;
+    excludeLayerPrefix: string;
+}
+
+/**
+ * Pick a point from point cloud at screen coordinates
+ */
+export function pickPointFromCloud(
+    options: PickPointFromCloudOptions,
+): MeasurementPoint3D | null {
+    const {
+        screenX,
+        screenY,
+        overlayManager,
+        adapterFactory,
+        excludeLayerPrefix,
+    } = options;
+    if (typeof overlayManager.pickObject !== "function") {
+        logger.warn(
+            "picking: pickObject method not available on overlayManager",
+        );
+        return null;
+    }
+
+    const pickingInfo = overlayManager.pickObject(screenX, screenY, 20);
+
+    if (!pickingInfo) {
+        return null;
+    }
+
+    const layer = pickingInfo.layer;
+    if (!layer || !layer.id) {
+        return null;
+    }
+
+    // Ignore tool's own layers
+    if (layer.id.startsWith(excludeLayerPrefix)) {
+        return null;
+    }
+
+    if (pickingInfo.index == null) {
+        return null;
+    }
+
+    const result = getPointFromPickingInfo(pickingInfo, adapterFactory);
+    if (!result) {
+        return null;
+    }
+
+    return {
+        lng: result.lng,
+        lat: result.lat,
+        z: result.z,
+        layerId: result.layerId,
+        pointIndex: result.pointIndex,
+        coordinateOrigin: result.coordinateOrigin,
+    };
+}
+
+/**
+ * Get point from point cloud with fallback to surface coordinates
+ */
+export function getPointWithFallback(
+    options: GetPointWithFallbackOptions,
+): MeasurementPoint3D | null {
+    const {
+        screenX,
+        screenY,
+        eventLngLat,
+        overlayManager,
+        adapterFactory,
+        excludeLayerPrefix,
+    } = options;
+
+    const point = pickPointFromCloud({
+        screenX,
+        screenY,
+        overlayManager,
+        adapterFactory,
+        excludeLayerPrefix,
+    });
+
+    if (point) {
+        return point;
+    }
+
+    return {
+        lng: eventLngLat.lng,
+        lat: eventLngLat.lat,
+        z: 0,
+    };
+}
 
 /**
  * Minimal picking info interface compatible with Deck.gl PickingInfo.
@@ -18,7 +132,7 @@ const CHUNK_MULTIPLIER = 1_000_000;
  */
 export interface PickingInfo {
     layer: { id: string } | null | undefined;
-    coordinate: number[] | [number, number, number] | null | undefined;
+    coordinate?: number[] | [number, number, number] | null | undefined;
     index: number | null | undefined;
 }
 

@@ -8,8 +8,8 @@ import React, {
 import { observer } from "mobx-react-lite";
 import maplibregl from "maplibre-gl";
 import { overlayManager } from "@core/domain/overlay";
+import { getPointWithFallback } from "@core/domain/overlay/picking";
 import {
-    getPointWithFallback,
     formatDistance,
     formatArea,
     convertPointToDegrees,
@@ -148,6 +148,7 @@ export const AreaMeasureComponent: (
                 screenY: event.point.y,
                 eventLngLat: event.lngLat,
                 adapterFactory,
+                overlayManager,
                 excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
             });
 
@@ -166,6 +167,7 @@ export const AreaMeasureComponent: (
                     screenY: event.point.y,
                     eventLngLat: event.lngLat,
                     adapterFactory,
+                    overlayManager,
                     excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
                 });
 
@@ -194,6 +196,7 @@ export const AreaMeasureComponent: (
                     screenY: event.point.y,
                     eventLngLat: event.lngLat,
                     adapterFactory,
+                    overlayManager,
                     excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
                 });
 

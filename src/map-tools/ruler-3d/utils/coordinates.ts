@@ -1,6 +1,6 @@
 /**
  * Ruler-3d specific coordinate utilities.
- * Delegates to shared utilities in core/utils/measurements.ts
+ * Delegates to shared utilities in core/utils/picking.ts and measurements.ts
  */
 import distance from "@turf/distance";
 import { point } from "@turf/helpers";
@@ -9,6 +9,8 @@ import { point } from "@turf/helpers";
 export {
     pickPointFromCloud,
     getPointWithFallback,
+} from "@core/domain/overlay/picking";
+export {
     formatDistance,
     convertPointToDegrees,
 } from "@core/domain/overlay/measurements";
