@@ -1,4 +1,4 @@
-import { comparer, runInAction, reaction } from "mobx";
+import { comparer, reaction } from "mobx";
 
 import { logger } from "@core/shared/diagnostics/logger";
 import type {
@@ -71,49 +71,52 @@ export class LayerManager {
     private syncAllLayers(): void {
         if (!this.isInitialized || !this.isMapLoaded) return;
 
-        runInAction(() => {
-            try {
-                const snapshot = this.rootStore.treeStore.layerSnapshot;
-                const desired = buildGroupedRenderUnits(
-                    snapshot,
-                    this.rootStore.layerAdapterFactory,
-                );
+        try {
+            const snapshot = this.rootStore.treeStore.layerSnapshot;
+            const desired = buildGroupedRenderUnits(
+                snapshot,
+                this.rootStore.layerAdapterFactory,
+            );
 
-                // Remove units no longer desired
-                for (const [id, unit] of this.renderUnits) {
-                    if (!desired.has(id)) {
-                        this._removeRenderUnit(unit);
-                    }
-                }
+            this._removeStaleUnits(desired);
+            this._addNewUnits(desired);
+            this._updateChangedUnits(desired);
+            this._reorderMapNativeLayers();
+        } catch (error) {
+            logger.error("Failed to sync layers:", error);
+        }
+    }
 
-                // Add new units
-                for (const [id, unit] of desired) {
-                    if (!this.renderUnits.has(id)) {
-                        this._addRenderUnit(unit);
-                    }
-                }
-
-                // Update existing units whose config or sourceUrl changed
-                for (const [id, unit] of desired) {
-                    const current = this.renderUnits.get(id);
-                    if (
-                        current &&
-                        (this._configsDiffer(
-                            current.descriptor.config,
-                            unit.descriptor.config,
-                        ) ||
-                            current.descriptor.sourceUrl !==
-                                unit.descriptor.sourceUrl)
-                    ) {
-                        this._updateExistingUnit(current, unit);
-                    }
-                }
-
-                this._reorderMapNativeLayers();
-            } catch (error) {
-                logger.error("Failed to sync layers:", error);
+    private _removeStaleUnits(desired: Map<string, RenderUnit>): void {
+        for (const [id, unit] of this.renderUnits) {
+            if (!desired.has(id)) {
+                this._removeRenderUnit(unit);
             }
-        });
+        }
+    }
+
+    private _addNewUnits(desired: Map<string, RenderUnit>): void {
+        for (const [id, unit] of desired) {
+            if (!this.renderUnits.has(id)) {
+                this._addRenderUnit(unit);
+            }
+        }
+    }
+
+    private _updateChangedUnits(desired: Map<string, RenderUnit>): void {
+        for (const [id, unit] of desired) {
+            const current = this.renderUnits.get(id);
+            if (
+                current &&
+                (this._configsDiffer(
+                    current.descriptor.config,
+                    unit.descriptor.config,
+                ) ||
+                    current.descriptor.sourceUrl !== unit.descriptor.sourceUrl)
+            ) {
+                this._updateExistingUnit(current, unit);
+            }
+        }
     }
 
     // ==================== Render unit operations ====================
@@ -221,17 +224,13 @@ export class LayerManager {
 
     private setupMapLoadListener(): void {
         const onLoad = () => {
-            runInAction(() => {
-                this.isMapLoaded = true;
-            });
+            this.isMapLoaded = true;
             this.mapContext.map.off("load", onLoad);
             this.syncAllLayers();
         };
 
         if (this.mapContext.map.loaded()) {
-            runInAction(() => {
-                this.isMapLoaded = true;
-            });
+            this.isMapLoaded = true;
             this.syncAllLayers();
         } else {
             this.mapContext.map.on("load", onLoad);
