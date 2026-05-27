@@ -1,26 +1,22 @@
 import { observer } from "mobx-react-lite";
 import { StoreProvider, useRootStore, RootStore } from "@core/framework/store";
-import { initializeApp } from "./initialize";
-import { useAsyncEffect } from "@core/framework/hooks";
 import { LoadingScreen, ErrorScreen } from "@core/ui/components";
 import MapWorkspace from "./workspace";
 
 // Singleton: intentional, persists across HMR cycles
 const rootStore = new RootStore();
 
+rootStore.initialize();
+
 const AppContent = observer(() => {
     const rootStore = useRootStore();
-
-    useAsyncEffect(async () => {
-        await initializeApp(rootStore);
-    }, [rootStore]);
 
     if (rootStore.initError) {
         const dict = rootStore.localeStore.t("core");
         return (
             <ErrorScreen
                 message={rootStore.initError}
-                onRetry={() => initializeApp(rootStore)}
+                onRetry={() => rootStore.initialize()}
                 dict={dict}
             />
         );
