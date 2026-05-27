@@ -27,6 +27,14 @@ export class WidgetCatalogStore {
             await this._invokeDestroy(existing);
         }
 
+        // Auto-register translations
+        if (widget.localeTranslations) {
+            this.rootStore.localeStore.registerTranslations(
+                widget.id,
+                widget.localeTranslations,
+            );
+        }
+
         // Auto-register widget settings before initialization
         this._registerWidgetSettings(widget as Widget<unknown>);
 
