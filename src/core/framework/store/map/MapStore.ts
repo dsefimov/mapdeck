@@ -1,16 +1,27 @@
 import maplibregl from "maplibre-gl";
 import { makeAutoObservable } from "mobx";
+import { DeckOverlayManager } from "@core/domain/overlay";
 import { LayerManager } from "@core/domain/managers/LayerManager";
 import { logger } from "@core/shared/diagnostics/logger";
 import { validateBbox, flattenTo2D, type Bbox } from "@core/shared/geo";
 import { type RootStore } from "@core/framework/store";
+import type { MapContext } from "@core/framework/types";
 
 export class MapStore {
     private map: maplibregl.Map | null = null;
+    readonly overlayManager: DeckOverlayManager;
     private layerManager: LayerManager | null = null;
 
     constructor(readonly rootStore: RootStore) {
+        this.overlayManager = new DeckOverlayManager();
         makeAutoObservable(this, { rootStore: false });
+    }
+
+    /** Atomically returns map + overlayManager when the map is initialized */
+    get context(): MapContext | null {
+        return this.map
+            ? { map: this.map, overlayManager: this.overlayManager }
+            : null;
     }
 
     /** Get the current map instance */
@@ -55,10 +66,13 @@ export class MapStore {
         this.map = map;
 
         // Attach deck.gl overlay for point cloud rendering
-        this.rootStore.overlayManager.attachToMap(map);
+        this.overlayManager.attachToMap(map);
 
-        this.layerManager = new LayerManager(this.rootStore);
-        this.layerManager.initialize(map);
+        this.layerManager = new LayerManager(this.rootStore, {
+            map,
+            overlayManager: this.overlayManager,
+        });
+        this.layerManager.initialize();
 
         // Notify MapToolStore about the map change
         this.rootStore.mapToolStore.onMapChanged(map);
@@ -94,7 +108,7 @@ export class MapStore {
 
     dispose(): void {
         // Detach deck.gl overlay
-        this.rootStore.overlayManager.detachFromMap();
+        this.overlayManager.detachFromMap();
 
         if (this.layerManager) {
             this.layerManager.dispose();

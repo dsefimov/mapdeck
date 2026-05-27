@@ -6,7 +6,7 @@
 import type { LayerRole } from "./role";
 import type { RenderDescriptor } from "./descriptor";
 import type { RenderUnit } from "./renderUnit";
-import type maplibregl from "maplibre-gl";
+import type { MapContext } from "./mapContext";
 
 export interface LayerAdapter<TRole extends LayerRole = LayerRole> {
     /**
@@ -19,32 +19,28 @@ export interface LayerAdapter<TRole extends LayerRole = LayerRole> {
      * Add a layer to the map.
      * @param layerId - Unique identifier for the layer
      * @param descriptor - Render descriptor with config and source URL
-     * @param map - Map instance to add the layer to
+     * @param ctx - Map context with map instance and related services
      */
     addToMap(
         layerId: string,
         descriptor: RenderDescriptor<TRole>,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void;
 
     /**
      * Remove a layer from the map.
      * @param layerId - Unique identifier for the layer
-     * @param map - Map instance to remove the layer from
+     * @param ctx - Map context with map instance and related services
      */
-    removeFromMap(layerId: string, map: maplibregl.Map): void;
+    removeFromMap(layerId: string, ctx: MapContext): void;
 
     /**
      * Update layer visibility.
      * @param layerId - Unique identifier for the layer
      * @param visible - Whether the layer should be visible
-     * @param map - Map instance containing the layer
+     * @param ctx - Map context with map instance and related services
      */
-    updateVisibility(
-        layerId: string,
-        visible: boolean,
-        map: maplibregl.Map,
-    ): void;
+    updateVisibility(layerId: string, visible: boolean, ctx: MapContext): void;
 
     /**
      * Apply a new render unit configuration to the map.
@@ -55,7 +51,7 @@ export interface LayerAdapter<TRole extends LayerRole = LayerRole> {
      * - Otherwise falls back to removeFromMap + addToMap.
      *
      * @param renderUnit - The render unit with new descriptor
-     * @param map - Map instance containing the layer
+     * @param ctx - Map context with map instance and related services
      */
-    updateConfig(renderUnit: RenderUnit<TRole>, map: maplibregl.Map): void;
+    updateConfig(renderUnit: RenderUnit<TRole>, ctx: MapContext): void;
 }

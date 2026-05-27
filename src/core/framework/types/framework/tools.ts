@@ -6,6 +6,7 @@
 
 import type React from "react";
 import type maplibregl from "maplibre-gl";
+import type { DeckOverlayManager } from "@core/domain/overlay";
 import type { RootStore } from "@core/framework/store";
 import type { IconName } from "@core/ui/components";
 import type { SettingMetadata } from "./settings";
@@ -20,6 +21,7 @@ export type MapToolPlacement =
 export interface MapToolComponentProps {
     rootStore: RootStore;
     map: maplibregl.Map;
+    overlayManager: DeckOverlayManager;
     deactivate: () => void;
 }
 

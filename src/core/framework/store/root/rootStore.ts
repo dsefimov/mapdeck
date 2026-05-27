@@ -13,14 +13,12 @@ import { coreTranslations } from "@core/framework/i18n";
 import { LayerAdapterFactory } from "@core/domain/adapters/layer/LayerAdapterFactory";
 import { AttributeAdapterFactory } from "@core/domain/adapters/attribute/AttributeAdapterFactory";
 import { SourceAdapterFactory } from "@core/domain/adapters/source/SourceAdapterFactory";
-import { DeckOverlayManager } from "@core/domain/overlay";
 
 export class RootStore {
     // Adapter factories — available before any store
     readonly layerAdapterFactory: LayerAdapterFactory;
     readonly attributeAdapterFactory: AttributeAdapterFactory;
     readonly sourceAdapterFactory: SourceAdapterFactory;
-    readonly overlayManager: DeckOverlayManager;
 
     readonly treeStore: LayerTreeStore;
     readonly visibilityStore: LayerVisibilityStore;
@@ -44,7 +42,6 @@ export class RootStore {
         this.layerAdapterFactory = new LayerAdapterFactory();
         this.attributeAdapterFactory = new AttributeAdapterFactory();
         this.sourceAdapterFactory = new SourceAdapterFactory();
-        this.overlayManager = new DeckOverlayManager();
 
         // LocaleStore must be created early so other stores can use it
         this.localeStore = new LocaleStore();

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { observer } from "mobx-react-lite";
 import maplibregl from "maplibre-gl";
-import { overlayManager } from "@core/domain/overlay";
 import { pickPointFromCloud } from "@core/domain/overlay/picking";
 import {
     convertPointToDegrees,
@@ -241,58 +240,45 @@ function interpolateSurfaceZForVis(
  */
 export const VolumeMeasureComponent: (
     props: MapToolComponentProps,
-) => React.ReactNode = observer(({ map, deactivate, rootStore }) => {
-    const dict = rootStore.localeStore.t("volume-measure");
-    const adapterFactory = rootStore.layerAdapterFactory;
-    const [boundary, setBoundary] = useState<MeasurementPoint3D[]>([]);
-    const [previewPoint, setPreviewPoint] = useState<MeasurementPoint3D | null>(
-        null,
-    );
-    const [isComplete, setIsComplete] = useState(false);
-    const [insidePoints, setInsidePoints] = useState<MeasurementPoint3D[]>([]);
+) => React.ReactNode = observer(
+    ({ map, deactivate, rootStore, overlayManager }) => {
+        const dict = rootStore.localeStore.t("volume-measure");
+        const adapterFactory = rootStore.layerAdapterFactory;
+        const [boundary, setBoundary] = useState<MeasurementPoint3D[]>([]);
+        const [previewPoint, setPreviewPoint] =
+            useState<MeasurementPoint3D | null>(null);
+        const [isComplete, setIsComplete] = useState(false);
+        const [insidePoints, setInsidePoints] = useState<MeasurementPoint3D[]>(
+            [],
+        );
 
-    // When boundary is completed, find points inside
-    useEffect(() => {
-        if (!isComplete || boundary.length < 3) {
-            setInsidePoints([]);
-            return;
-        }
-
-        const allCloudPoints = getAllLoadedCloudPoints(adapterFactory);
-        const filtered = filterPointsInsidePolygon(boundary, allCloudPoints);
-
-        if (filtered.length > MAX_DELAUNAY_POINTS) {
-            const step = Math.ceil(filtered.length / MAX_DELAUNAY_POINTS);
-            const subsampled = filtered.filter((_, i) => i % step === 0);
-            setInsidePoints(subsampled);
-        } else {
-            setInsidePoints(filtered);
-        }
-    }, [boundary, isComplete, adapterFactory]);
-
-    // Event handlers
-    const handleMapClick = useCallback(
-        (event: maplibregl.MapMouseEvent) => {
-            if (isComplete) return;
-
-            const point = pickPointFromCloud({
-                screenX: event.point.x,
-                screenY: event.point.y,
-                adapterFactory,
-                overlayManager,
-                excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
-            });
-
-            if (point) {
-                setBoundary((prev) => [...prev, point]);
+        // When boundary is completed, find points inside
+        useEffect(() => {
+            if (!isComplete || boundary.length < 3) {
+                setInsidePoints([]);
+                return;
             }
-        },
-        [isComplete, adapterFactory],
-    );
 
-    const handleMapMouseMove = useCallback(
-        (event: maplibregl.MapMouseEvent) => {
-            if (!isComplete) {
+            const allCloudPoints = getAllLoadedCloudPoints(adapterFactory);
+            const filtered = filterPointsInsidePolygon(
+                boundary,
+                allCloudPoints,
+            );
+
+            if (filtered.length > MAX_DELAUNAY_POINTS) {
+                const step = Math.ceil(filtered.length / MAX_DELAUNAY_POINTS);
+                const subsampled = filtered.filter((_, i) => i % step === 0);
+                setInsidePoints(subsampled);
+            } else {
+                setInsidePoints(filtered);
+            }
+        }, [boundary, isComplete, adapterFactory]);
+
+        // Event handlers
+        const handleMapClick = useCallback(
+            (event: maplibregl.MapMouseEvent) => {
+                if (isComplete) return;
+
                 const point = pickPointFromCloud({
                     screenX: event.point.x,
                     screenY: event.point.y,
@@ -300,388 +286,423 @@ export const VolumeMeasureComponent: (
                     overlayManager,
                     excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
                 });
-                setPreviewPoint(point);
-            }
-        },
-        [isComplete, adapterFactory],
-    );
 
-    const handleMiddleClick = useCallback(
-        (event: maplibregl.MapMouseEvent) => {
-            if (
-                event.originalEvent instanceof MouseEvent &&
-                event.originalEvent.button === 1
-            ) {
-                event.preventDefault();
-                if (!isComplete && boundary.length >= 3) {
+                if (point) {
+                    setBoundary((prev) => [...prev, point]);
+                }
+            },
+            [adapterFactory, isComplete, overlayManager],
+        );
+
+        const handleMapMouseMove = useCallback(
+            (event: maplibregl.MapMouseEvent) => {
+                if (!isComplete) {
+                    const point = pickPointFromCloud({
+                        screenX: event.point.x,
+                        screenY: event.point.y,
+                        adapterFactory,
+                        overlayManager,
+                        excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
+                    });
+                    setPreviewPoint(point);
+                }
+            },
+            [adapterFactory, isComplete, overlayManager],
+        );
+
+        const handleMiddleClick = useCallback(
+            (event: maplibregl.MapMouseEvent) => {
+                if (
+                    event.originalEvent instanceof MouseEvent &&
+                    event.originalEvent.button === 1
+                ) {
+                    event.preventDefault();
+                    if (!isComplete && boundary.length >= 3) {
+                        setIsComplete(true);
+                    }
+                    setPreviewPoint(null);
+                }
+            },
+            [isComplete, boundary.length],
+        );
+
+        const handleKeyDown = useCallback(
+            (event: KeyboardEvent) => {
+                if (event.key === "Escape") {
+                    if (isComplete) {
+                        setIsComplete(false);
+                        setInsidePoints([]);
+                    } else {
+                        deactivate();
+                    }
+                } else if (event.key === "Enter" && !isComplete) {
+                    event.preventDefault();
                     setIsComplete(true);
                 }
-                setPreviewPoint(null);
-            }
-        },
-        [isComplete, boundary.length],
-    );
+            },
+            [isComplete, deactivate],
+        );
 
-    const handleKeyDown = useCallback(
-        (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                if (isComplete) {
-                    setIsComplete(false);
-                    setInsidePoints([]);
-                } else {
-                    deactivate();
-                }
-            } else if (event.key === "Enter" && !isComplete) {
-                event.preventDefault();
-                setIsComplete(true);
-            }
-        },
-        [isComplete, deactivate],
-    );
+        // Subscribe to map events
+        useEffect(() => {
+            map.on("click", handleMapClick);
+            map.on("mousemove", handleMapMouseMove);
+            map.on("mousedown", handleMiddleClick);
 
-    // Subscribe to map events
-    useEffect(() => {
-        map.on("click", handleMapClick);
-        map.on("mousemove", handleMapMouseMove);
-        map.on("mousedown", handleMiddleClick);
+            window.addEventListener("keydown", handleKeyDown);
 
-        window.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            map.off("click", handleMapClick);
-            map.off("mousemove", handleMapMouseMove);
-            map.off("mousedown", handleMiddleClick);
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [
-        map,
-        handleMapClick,
-        handleMapMouseMove,
-        handleMiddleClick,
-        handleKeyDown,
-    ]);
-
-    // Update cursor
-    useEffect(() => {
-        const canvas = map.getCanvas();
-        if (!canvas) return;
-
-        canvas.style.cursor = isComplete ? "" : "crosshair";
-
-        return () => {
-            canvas.style.cursor = "";
-        };
-    }, [map, isComplete]);
-
-    // Compute volume measurements using Grid + Trapezoid method
-    const volumeMeasurements = useMemo(() => {
-        if (insidePoints.length < 3 || boundary.length < 3) {
-            return {
-                volumeCubicMeters: 0,
-                surfaceAreaSquareMeters: 0,
-                baseZMin: 0,
-                baseZMax: 0,
-                surfaceZMin: 0,
-                surfaceZMax: 0,
-                cloudPointCount: insidePoints.length,
-                gridCellCount: 0,
-                totalGridCells: 0,
-                gridResolution: 0,
+            return () => {
+                map.off("click", handleMapClick);
+                map.off("mousemove", handleMapMouseMove);
+                map.off("mousedown", handleMiddleClick);
+                window.removeEventListener("keydown", handleKeyDown);
             };
-        }
+        }, [
+            map,
+            handleMapClick,
+            handleMapMouseMove,
+            handleMiddleClick,
+            handleKeyDown,
+        ]);
 
-        const result = calculateGridTrapezoidVolume(boundary, insidePoints, {
-            cellSizeMeters: 2.0,
-            searchRadiusMeters: 6.0,
-            surfaceNeighborCount: 4,
-        });
+        // Update cursor
+        useEffect(() => {
+            const canvas = map.getCanvas();
+            if (!canvas) return;
 
-        return {
-            ...result,
-            cloudPointCount: insidePoints.length,
-        };
-    }, [boundary, insidePoints]);
+            canvas.style.cursor = isComplete ? "" : "crosshair";
 
-    // Data for polygon
-    const polygonData = useMemo(() => {
-        if (boundary.length < 2) return null;
+            return () => {
+                canvas.style.cursor = "";
+            };
+        }, [map, isComplete]);
 
-        const coords = boundary.map((p) => convertPointToDegrees(p));
-        if (isComplete) {
-            coords.push(convertPointToDegrees(boundary[0]!));
-        }
-        return [coords];
-    }, [boundary, isComplete]);
+        // Compute volume measurements using Grid + Trapezoid method
+        const volumeMeasurements = useMemo(() => {
+            if (insidePoints.length < 3 || boundary.length < 3) {
+                return {
+                    volumeCubicMeters: 0,
+                    surfaceAreaSquareMeters: 0,
+                    baseZMin: 0,
+                    baseZMax: 0,
+                    surfaceZMin: 0,
+                    surfaceZMax: 0,
+                    cloudPointCount: insidePoints.length,
+                    gridCellCount: 0,
+                    totalGridCells: 0,
+                    gridResolution: 0,
+                };
+            }
 
-    // Data for boundary points
-    const boundaryPointsData = useMemo(() => {
-        return boundary.map((point, index) => ({
-            position: convertPointToDegrees(point),
-            index,
-        }));
-    }, [boundary]);
+            const result = calculateGridTrapezoidVolume(
+                boundary,
+                insidePoints,
+                {
+                    cellSizeMeters: 2.0,
+                    searchRadiusMeters: 6.0,
+                    surfaceNeighborCount: 4,
+                },
+            );
 
-    // Data for preview point
-    const previewPointData = useMemo(() => {
-        if (!previewPoint) return null;
-        return {
-            position: convertPointToDegrees(previewPoint),
-        };
-    }, [previewPoint]);
+            return {
+                ...result,
+                cloudPointCount: insidePoints.length,
+            };
+        }, [boundary, insidePoints]);
 
-    // Data for preview line
-    const previewLineData = useMemo(() => {
-        if (!previewPoint || boundary.length === 0) return null;
-        const lastPoint = boundary[boundary.length - 1]!;
-        return [
-            convertPointToDegrees(lastPoint),
-            convertPointToDegrees(previewPoint),
-        ];
-    }, [previewPoint, boundary]);
+        // Data for polygon
+        const polygonData = useMemo(() => {
+            if (boundary.length < 2) return null;
 
-    // Top surface polygons
-    const topSurfaceData = useMemo(() => {
-        if (insidePoints.length < 3 || !isComplete) return [];
-        return buildTopSurfacePolygons(insidePoints, boundary);
-    }, [insidePoints, isComplete, boundary]);
+            const coords = boundary.map((p) => convertPointToDegrees(p));
+            if (isComplete) {
+                coords.push(convertPointToDegrees(boundary[0]!));
+            }
+            return [coords];
+        }, [boundary, isComplete]);
 
-    // Deck.gl layers
-    const polygonLayer = useMemo(() => {
-        if (!polygonData) return null;
+        // Data for boundary points
+        const boundaryPointsData = useMemo(() => {
+            return boundary.map((point, index) => ({
+                position: convertPointToDegrees(point),
+                index,
+            }));
+        }, [boundary]);
 
-        const fillColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_FILL);
-        const lineColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE);
+        // Data for preview point
+        const previewPointData = useMemo(() => {
+            if (!previewPoint) return null;
+            return {
+                position: convertPointToDegrees(previewPoint),
+            };
+        }, [previewPoint]);
 
-        return new PolygonLayer({
-            id: VOLUME_MEASURE_POLYGON_LAYER_ID,
-            data: polygonData,
-            getPolygon: (d: [number, number, number][]) => d,
-            getFillColor: isComplete ? fillColor : [0, 0, 0, 0],
-            getLineColor: lineColor,
-            getLineWidth: 3,
-            lineWidthUnits: "pixels",
-            coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
-            pickable: false,
-            lineJointRounded: true,
-        });
-    }, [polygonData, isComplete]);
+        // Data for preview line
+        const previewLineData = useMemo(() => {
+            if (!previewPoint || boundary.length === 0) return null;
+            const lastPoint = boundary[boundary.length - 1]!;
+            return [
+                convertPointToDegrees(lastPoint),
+                convertPointToDegrees(previewPoint),
+            ];
+        }, [previewPoint, boundary]);
 
-    const boundaryPointsLayer = useMemo(() => {
-        if (boundaryPointsData.length === 0) return null;
+        // Top surface polygons
+        const topSurfaceData = useMemo(() => {
+            if (insidePoints.length < 3 || !isComplete) return [];
+            return buildTopSurfacePolygons(insidePoints, boundary);
+        }, [insidePoints, isComplete, boundary]);
 
-        const primaryColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE);
+        // Deck.gl layers
+        const polygonLayer = useMemo(() => {
+            if (!polygonData) return null;
 
-        return new ScatterplotLayer({
-            id: VOLUME_MEASURE_POINTS_LAYER_ID,
-            data: boundaryPointsData,
-            getPosition: (d: { position: [number, number, number] }) =>
-                d.position,
-            getRadius: 6,
-            getFillColor: primaryColor,
-            radiusUnits: "pixels",
-            pickable: true,
-            coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
-            radiusMinPixels: 4,
-            radiusMaxPixels: 10,
-        });
-    }, [boundaryPointsData]);
+            const fillColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_FILL);
+            const lineColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE);
 
-    const previewPointLayer = useMemo(() => {
-        if (!previewPointData) return null;
+            return new PolygonLayer({
+                id: VOLUME_MEASURE_POLYGON_LAYER_ID,
+                data: polygonData,
+                getPolygon: (d: [number, number, number][]) => d,
+                getFillColor: isComplete ? fillColor : [0, 0, 0, 0],
+                getLineColor: lineColor,
+                getLineWidth: 3,
+                lineWidthUnits: "pixels",
+                coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
+                pickable: false,
+                lineJointRounded: true,
+            });
+        }, [polygonData, isComplete]);
 
-        const previewColor = getThemeColor(THEME_SUCCESS, COLOR_ALPHA_PREVIEW);
+        const boundaryPointsLayer = useMemo(() => {
+            if (boundaryPointsData.length === 0) return null;
 
-        return new ScatterplotLayer({
-            id: VOLUME_MEASURE_PREVIEW_POINT_LAYER_ID,
-            data: [previewPointData],
-            getPosition: (d: { position: [number, number, number] }) =>
-                d.position,
-            getRadius: 6,
-            getFillColor: previewColor,
-            radiusUnits: "pixels",
-            pickable: false,
-            coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
-        });
-    }, [previewPointData]);
+            const primaryColor = getThemeColor(
+                THEME_PRIMARY,
+                COLOR_ALPHA_STROKE,
+            );
 
-    const previewLineLayer = useMemo(() => {
-        if (!previewLineData) return null;
-
-        const previewColor = getThemeColor(THEME_SUCCESS, COLOR_ALPHA_PREVIEW);
-
-        return new LineLayer({
-            id: VOLUME_MEASURE_PREVIEW_LINE_LAYER_ID,
-            data: [previewLineData],
-            getPath: (d: unknown) => d as [number, number, number][],
-            getColor: previewColor,
-            getWidth: 2,
-            widthUnits: "pixels",
-            pickable: false,
-            coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
-        });
-    }, [previewLineData]);
-
-    // Top surface layer - nearly opaque to show height clearly
-    const topSurfaceLayer = useMemo(() => {
-        if (topSurfaceData.length === 0) return null;
-
-        const fillColor = getThemeColor(THEME_PRIMARY, 220);
-        const edgeColor = getThemeColor(THEME_PRIMARY, 255);
-
-        return new SolidPolygonLayer({
-            id: VOLUME_MEASURE_TIN_LAYER_ID,
-            data: topSurfaceData,
-            getPolygon: (d: [number, number, number][]) => d,
-            getFillColor: fillColor,
-            getLineColor: edgeColor,
-            getLineWidth: 2,
-            lineWidthUnits: "pixels",
-            coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
-            pickable: false,
-        });
-    }, [topSurfaceData]);
-
-    // Manage deck.gl layers
-    useEffect(() => {
-        if (!overlayManager.isAttached()) return;
-
-        const layers = [
-            { id: VOLUME_MEASURE_POLYGON_LAYER_ID, layer: polygonLayer },
-            {
+            return new ScatterplotLayer({
                 id: VOLUME_MEASURE_POINTS_LAYER_ID,
-                layer: boundaryPointsLayer,
-            },
-            {
+                data: boundaryPointsData,
+                getPosition: (d: { position: [number, number, number] }) =>
+                    d.position,
+                getRadius: 6,
+                getFillColor: primaryColor,
+                radiusUnits: "pixels",
+                pickable: true,
+                coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
+                radiusMinPixels: 4,
+                radiusMaxPixels: 10,
+            });
+        }, [boundaryPointsData]);
+
+        const previewPointLayer = useMemo(() => {
+            if (!previewPointData) return null;
+
+            const previewColor = getThemeColor(
+                THEME_SUCCESS,
+                COLOR_ALPHA_PREVIEW,
+            );
+
+            return new ScatterplotLayer({
                 id: VOLUME_MEASURE_PREVIEW_POINT_LAYER_ID,
-                layer: previewPointLayer,
-            },
-            {
+                data: [previewPointData],
+                getPosition: (d: { position: [number, number, number] }) =>
+                    d.position,
+                getRadius: 6,
+                getFillColor: previewColor,
+                radiusUnits: "pixels",
+                pickable: false,
+                coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
+            });
+        }, [previewPointData]);
+
+        const previewLineLayer = useMemo(() => {
+            if (!previewLineData) return null;
+
+            const previewColor = getThemeColor(
+                THEME_SUCCESS,
+                COLOR_ALPHA_PREVIEW,
+            );
+
+            return new LineLayer({
                 id: VOLUME_MEASURE_PREVIEW_LINE_LAYER_ID,
-                layer: previewLineLayer,
-            },
-            {
+                data: [previewLineData],
+                getPath: (d: unknown) => d as [number, number, number][],
+                getColor: previewColor,
+                getWidth: 2,
+                widthUnits: "pixels",
+                pickable: false,
+                coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
+            });
+        }, [previewLineData]);
+
+        // Top surface layer - nearly opaque to show height clearly
+        const topSurfaceLayer = useMemo(() => {
+            if (topSurfaceData.length === 0) return null;
+
+            const fillColor = getThemeColor(THEME_PRIMARY, 220);
+            const edgeColor = getThemeColor(THEME_PRIMARY, 255);
+
+            return new SolidPolygonLayer({
                 id: VOLUME_MEASURE_TIN_LAYER_ID,
-                layer: topSurfaceLayer,
-            },
-        ];
+                data: topSurfaceData,
+                getPolygon: (d: [number, number, number][]) => d,
+                getFillColor: fillColor,
+                getLineColor: edgeColor,
+                getLineWidth: 2,
+                lineWidthUnits: "pixels",
+                coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
+                pickable: false,
+            });
+        }, [topSurfaceData]);
 
-        layers.forEach(({ id, layer }) => {
-            if (layer) {
-                overlayManager.addLayer(id, layer);
-            } else {
-                overlayManager.removeLayer(id);
-            }
-        });
+        // Manage deck.gl layers
+        useEffect(() => {
+            if (!overlayManager) return;
 
-        return () => {
-            layers.forEach(({ id }) => overlayManager.removeLayer(id));
-        };
-    }, [
-        polygonLayer,
-        boundaryPointsLayer,
-        previewPointLayer,
-        previewLineLayer,
-        topSurfaceLayer,
-    ]);
+            const layers = [
+                { id: VOLUME_MEASURE_POLYGON_LAYER_ID, layer: polygonLayer },
+                {
+                    id: VOLUME_MEASURE_POINTS_LAYER_ID,
+                    layer: boundaryPointsLayer,
+                },
+                {
+                    id: VOLUME_MEASURE_PREVIEW_POINT_LAYER_ID,
+                    layer: previewPointLayer,
+                },
+                {
+                    id: VOLUME_MEASURE_PREVIEW_LINE_LAYER_ID,
+                    layer: previewLineLayer,
+                },
+                {
+                    id: VOLUME_MEASURE_TIN_LAYER_ID,
+                    layer: topSurfaceLayer,
+                },
+            ];
 
-    // Render UI
-    return (
-        <ToolPanel
-            title={dict["eyebrow"]}
-            hint={isComplete ? dict["hint.complete"] : dict["hint.normal"]}
-            actions={
-                <>
-                    <button
-                        type="button"
-                        className={toolStyles.button}
-                        disabled={boundary.length === 0}
-                        onClick={() => {
-                            setBoundary([]);
-                            setIsComplete(false);
-                            setInsidePoints([]);
-                        }}
-                    >
-                        {dict["button.resetAll"]}
-                    </button>
-                    <button
-                        type="button"
-                        className={toolStyles.button}
-                        onClick={deactivate}
-                    >
-                        {dict["button.closeTool"]}
-                    </button>
-                </>
-            }
-        >
-            {isComplete && (
-                <div className={styles.measurementSummary}>
-                    <div className={styles.summaryItem}>
-                        <span className={styles.summaryLabel}>
-                            {dict["summary.volume"]}
-                        </span>
-                        <span className={styles.summaryValue}>
-                            {formatVolume(volumeMeasurements.volumeCubicMeters)}
-                        </span>
+            layers.forEach(({ id, layer }) => {
+                if (layer) {
+                    overlayManager.addLayer(id, layer);
+                } else {
+                    overlayManager.removeLayer(id);
+                }
+            });
+
+            return () => {
+                layers.forEach(({ id }) => overlayManager.removeLayer(id));
+            };
+        }, [
+            boundaryPointsLayer,
+            polygonLayer,
+            previewLineLayer,
+            previewPointLayer,
+            overlayManager,
+            topSurfaceLayer,
+        ]);
+
+        // Render UI
+        return (
+            <ToolPanel
+                title={dict["eyebrow"]}
+                hint={isComplete ? dict["hint.complete"] : dict["hint.normal"]}
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            className={toolStyles.button}
+                            disabled={boundary.length === 0}
+                            onClick={() => {
+                                setBoundary([]);
+                                setIsComplete(false);
+                                setInsidePoints([]);
+                            }}
+                        >
+                            {dict["button.resetAll"]}
+                        </button>
+                        <button
+                            type="button"
+                            className={toolStyles.button}
+                            onClick={deactivate}
+                        >
+                            {dict["button.closeTool"]}
+                        </button>
+                    </>
+                }
+            >
+                {isComplete && (
+                    <div className={styles.measurementSummary}>
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryLabel}>
+                                {dict["summary.volume"]}
+                            </span>
+                            <span className={styles.summaryValue}>
+                                {formatVolume(
+                                    volumeMeasurements.volumeCubicMeters,
+                                )}
+                            </span>
+                        </div>
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryLabel}>
+                                {dict["summary.surfaceArea"]}
+                            </span>
+                            <span className={styles.summaryValue}>
+                                {formatDistance(
+                                    Math.sqrt(
+                                        volumeMeasurements.surfaceAreaSquareMeters,
+                                    ),
+                                )}
+                            </span>
+                        </div>
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryLabel}>
+                                {dict["summary.baseZ"]}
+                            </span>
+                            <span className={styles.summaryValue}>
+                                {volumeMeasurements.baseZMin.toFixed(1)} —{" "}
+                                {volumeMeasurements.baseZMax.toFixed(1)} m
+                            </span>
+                        </div>
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryLabel}>
+                                {dict["summary.surfaceZ"]}
+                            </span>
+                            <span className={styles.summaryValue}>
+                                {volumeMeasurements.surfaceZMin.toFixed(1)} —{" "}
+                                {volumeMeasurements.surfaceZMax.toFixed(1)} m
+                            </span>
+                        </div>
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryLabel}>
+                                {dict["summary.cloudPoints"]}
+                            </span>
+                            <span className={styles.summaryValue}>
+                                {volumeMeasurements.cloudPointCount}
+                            </span>
+                        </div>
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryLabel}>
+                                {dict["summary.gridCells"]}
+                            </span>
+                            <span className={styles.summaryValue}>
+                                {volumeMeasurements.gridCellCount} /{" "}
+                                {volumeMeasurements.totalGridCells}
+                            </span>
+                        </div>
+                        <div className={styles.summaryItem}>
+                            <span className={styles.summaryLabel}>
+                                {dict["summary.cellSize"]}
+                            </span>
+                            <span className={styles.summaryValue}>
+                                {volumeMeasurements.gridResolution.toFixed(1)} m
+                            </span>
+                        </div>
                     </div>
-                    <div className={styles.summaryItem}>
-                        <span className={styles.summaryLabel}>
-                            {dict["summary.surfaceArea"]}
-                        </span>
-                        <span className={styles.summaryValue}>
-                            {formatDistance(
-                                Math.sqrt(
-                                    volumeMeasurements.surfaceAreaSquareMeters,
-                                ),
-                            )}
-                        </span>
-                    </div>
-                    <div className={styles.summaryItem}>
-                        <span className={styles.summaryLabel}>
-                            {dict["summary.baseZ"]}
-                        </span>
-                        <span className={styles.summaryValue}>
-                            {volumeMeasurements.baseZMin.toFixed(1)} —{" "}
-                            {volumeMeasurements.baseZMax.toFixed(1)} m
-                        </span>
-                    </div>
-                    <div className={styles.summaryItem}>
-                        <span className={styles.summaryLabel}>
-                            {dict["summary.surfaceZ"]}
-                        </span>
-                        <span className={styles.summaryValue}>
-                            {volumeMeasurements.surfaceZMin.toFixed(1)} —{" "}
-                            {volumeMeasurements.surfaceZMax.toFixed(1)} m
-                        </span>
-                    </div>
-                    <div className={styles.summaryItem}>
-                        <span className={styles.summaryLabel}>
-                            {dict["summary.cloudPoints"]}
-                        </span>
-                        <span className={styles.summaryValue}>
-                            {volumeMeasurements.cloudPointCount}
-                        </span>
-                    </div>
-                    <div className={styles.summaryItem}>
-                        <span className={styles.summaryLabel}>
-                            {dict["summary.gridCells"]}
-                        </span>
-                        <span className={styles.summaryValue}>
-                            {volumeMeasurements.gridCellCount} /{" "}
-                            {volumeMeasurements.totalGridCells}
-                        </span>
-                    </div>
-                    <div className={styles.summaryItem}>
-                        <span className={styles.summaryLabel}>
-                            {dict["summary.cellSize"]}
-                        </span>
-                        <span className={styles.summaryValue}>
-                            {volumeMeasurements.gridResolution.toFixed(1)} m
-                        </span>
-                    </div>
-                </div>
-            )}
-        </ToolPanel>
-    );
-});
+                )}
+            </ToolPanel>
+        );
+    },
+);
 
 export default VolumeMeasureComponent;

@@ -1,5 +1,5 @@
-import { overlayManager } from "@core/domain/overlay";
 import { getPointFromPickingInfo } from "@core/domain/overlay/picking";
+import type { MapStore } from "@core/framework/store";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
 import type { FeatureProvider, Feature, CollectParams } from "../types";
 
@@ -11,14 +11,17 @@ const FEATURE_INFO_LAYER_PREFIX = "feature-info-";
  * Uses overlayManager.pickObject to pick points from overlay renderers.
  */
 export class OverlayFeatureProvider implements FeatureProvider {
-    constructor(private readonly adapterFactory: LayerAdapterFactory) {}
+    constructor(
+        private readonly mapStore: MapStore,
+        private readonly layerAdapterFactory: LayerAdapterFactory,
+    ) {}
 
     collect(params: CollectParams): Feature[] {
         const { screenX, screenY, visibleLayers } = params;
+        const ctx = this.mapStore.context;
+        if (!ctx) return [];
 
-        if (typeof overlayManager.pickObject !== "function") {
-            return [];
-        }
+        const overlayManager = ctx.overlayManager;
 
         const pickingInfo = overlayManager.pickObject(screenX, screenY, 5);
         if (!pickingInfo || !pickingInfo.layer?.id) {
@@ -53,7 +56,7 @@ export class OverlayFeatureProvider implements FeatureProvider {
                 coordinate: pickingInfo.coordinate,
                 index: pickingInfo.index,
             },
-            this.adapterFactory,
+            this.layerAdapterFactory,
         );
         if (!pointResult) return [];
 

@@ -1,6 +1,6 @@
 import { ScatterplotLayer } from "@deck.gl/layers";
 import { COORDINATE_SYSTEM } from "@deck.gl/core";
-import { overlayManager } from "@core/domain/overlay";
+import type { DeckOverlayManager } from "@core/domain/overlay";
 import type { ClickPosition } from "../types";
 
 const CLICK_MARKER_LAYER_ID = "feature-info-click-marker";
@@ -11,11 +11,12 @@ const CLICK_MARKER_LAYER_ID = "feature-info-click-marker";
  */
 export function showClickMarker(
     position: ClickPosition,
+    overlayManager: DeckOverlayManager,
     timeoutMs: number = 2000,
 ): void {
     if (!overlayManager.isAttached()) return;
 
-    removeClickMarker();
+    removeClickMarker(overlayManager);
 
     const layer = new ScatterplotLayer({
         id: CLICK_MARKER_LAYER_ID,
@@ -34,13 +35,13 @@ export function showClickMarker(
     overlayManager.addLayer(CLICK_MARKER_LAYER_ID, layer);
 
     setTimeout(() => {
-        removeClickMarker();
+        removeClickMarker(overlayManager);
     }, timeoutMs);
 }
 
 /**
  * Remove the click marker from the map.
  */
-export function removeClickMarker(): void {
+export function removeClickMarker(overlayManager: DeckOverlayManager): void {
     overlayManager.removeLayer(CLICK_MARKER_LAYER_ID);
 }

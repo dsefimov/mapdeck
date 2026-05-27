@@ -1,13 +1,14 @@
-import type maplibregl from "maplibre-gl";
 import type {
     LayerAdapter,
     VectorLayerConfig,
     RenderUnit,
     RenderDescriptor,
+    MapContext,
 } from "@core/framework/types";
 import { LayerRoles } from "@core/framework/types";
 import { isVectorConfig } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
+import type { LayerSpecification } from "maplibre-gl";
 
 /**
  * Adapter for vector tile layers.
@@ -19,9 +20,11 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
     addToMap(
         layerId: string,
         descriptor: RenderDescriptor<typeof LayerRoles.VECTOR>,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void {
         try {
+            const { map } = ctx;
+
             if (!isVectorConfig(descriptor.config)) {
                 throw new Error(
                     `Config is not for vector role: ${descriptor.config.role}`,
@@ -53,7 +56,7 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
 
             const visible = config.visible ?? true;
             if (!visible) {
-                this.updateVisibility(layerId, false, map);
+                this.updateVisibility(layerId, false, ctx);
             }
         } catch (error) {
             logger.error(
@@ -64,8 +67,10 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
         }
     }
 
-    removeFromMap(layerId: string, map: maplibregl.Map): void {
+    removeFromMap(layerId: string, ctx: MapContext): void {
         try {
+            const map = ctx.map;
+
             if (map.getLayer(layerId)) {
                 map.removeLayer(layerId);
             }
@@ -81,12 +86,10 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
         }
     }
 
-    updateVisibility(
-        layerId: string,
-        visible: boolean,
-        map: maplibregl.Map,
-    ): void {
+    updateVisibility(layerId: string, visible: boolean, ctx: MapContext): void {
         try {
+            const map = ctx.map;
+
             if (map.getLayer(layerId)) {
                 map.setLayoutProperty(
                     layerId,
@@ -105,10 +108,10 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
 
     updateConfig(
         renderUnit: RenderUnit<typeof LayerRoles.VECTOR>,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void {
-        this.removeFromMap(renderUnit.id, map);
-        this.addToMap(renderUnit.id, renderUnit.descriptor, map);
+        this.removeFromMap(renderUnit.id, ctx);
+        this.addToMap(renderUnit.id, renderUnit.descriptor, ctx);
     }
 
     private _createLayerSpec(
@@ -116,7 +119,7 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
         sourceId: string,
         layerType: "fill" | "line" | "circle" | "symbol",
         config: VectorLayerConfig,
-    ): maplibregl.LayerSpecification {
+    ): LayerSpecification {
         const opacity = config.opacity ?? 1.0;
 
         switch (layerType) {

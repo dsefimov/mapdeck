@@ -1,6 +1,7 @@
 export type { LayerRole } from "./role";
 export { LayerRoles, BUILT_IN_ROLES } from "./role";
 export type { LayerAdapter } from "./adapter";
+export type { MapContext } from "./mapContext";
 export type {
     LayerConfig,
     LayerConfigBase,

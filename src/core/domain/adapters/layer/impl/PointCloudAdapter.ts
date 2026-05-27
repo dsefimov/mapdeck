@@ -1,13 +1,12 @@
-import type maplibregl from "maplibre-gl";
 import type {
     LayerAdapter,
+    MapContext,
     PointCloudLayerConfig,
     RenderUnit,
 } from "@core/framework/types";
 import { LayerRoles } from "@core/framework/types";
 import { isPointCloudConfig, ColorScheme } from "@core/framework/types";
-import { overlayManager } from "@core/domain/overlay";
-import type { Layer } from "@deck.gl/core";
+import type { DeckOverlayManager } from "@core/domain/overlay";
 import {
     type PointCloudData,
     type StreamingLoaderOptions,
@@ -50,7 +49,7 @@ export class PointCloudAdapter implements LayerAdapter<
         descriptor: import("@core/framework/types").RenderDescriptor<
             typeof LayerRoles.POINT_CLOUD
         >,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void {
         try {
             if (!isPointCloudConfig(descriptor.config)) {
@@ -59,11 +58,7 @@ export class PointCloudAdapter implements LayerAdapter<
                 );
             }
 
-            this.removeFromMap(layerId, map);
-
-            if (!overlayManager.isAttached()) {
-                overlayManager.attachToMap(map);
-            }
+            this.removeFromMap(layerId, ctx);
 
             const pointCloudConfig = descriptor.config as PointCloudLayerConfig;
             this._layerConfigs.set(layerId, pointCloudConfig);
@@ -90,7 +85,7 @@ export class PointCloudAdapter implements LayerAdapter<
                 layerId,
                 config: pointCloudConfig,
                 loader,
-                map,
+                ctx,
             });
         } catch (error) {
             logger.error(
@@ -101,14 +96,15 @@ export class PointCloudAdapter implements LayerAdapter<
         }
     }
 
-    private _initializeLayer(ctx: {
+    private _initializeLayer(params: {
         task: ReturnType<typeof createCancellable>;
         layerId: string;
         config: PointCloudLayerConfig;
         loader: CopcStreamingLoader;
-        map: maplibregl.Map;
+        ctx: MapContext;
     }): void {
-        const { task, layerId, loader, map } = ctx;
+        const { task, layerId, loader, ctx } = params;
+        const { map, overlayManager } = ctx;
         const opts = PointCloudAdapter.DEFAULT_STREAMING_OPTIONS;
 
         task.run(async (signal) => {
@@ -131,7 +127,11 @@ export class PointCloudAdapter implements LayerAdapter<
                 this.currentData.set(layerId, data);
                 const currentConfig = this._layerConfigs.get(layerId);
                 if (currentConfig) {
-                    this._updateDeckLayer(layerId, currentConfig);
+                    this._updateDeckLayer(
+                        layerId,
+                        currentConfig,
+                        overlayManager,
+                    );
                 }
             });
 
@@ -168,7 +168,8 @@ export class PointCloudAdapter implements LayerAdapter<
         });
     }
 
-    removeFromMap(layerId: string, _map: maplibregl.Map): void {
+    removeFromMap(layerId: string, ctx: MapContext): void {
+        const { overlayManager } = ctx;
         try {
             const initTask = this.initTasks.get(layerId);
             if (initTask) {
@@ -201,12 +202,8 @@ export class PointCloudAdapter implements LayerAdapter<
         }
     }
 
-    updateVisibility(
-        layerId: string,
-        visible: boolean,
-        _map: maplibregl.Map,
-    ): void {
-        overlayManager.setLayerVisibility(layerId, visible);
+    updateVisibility(layerId: string, visible: boolean, ctx: MapContext): void {
+        ctx.overlayManager.setLayerVisibility(layerId, visible);
     }
 
     /**
@@ -231,7 +228,7 @@ export class PointCloudAdapter implements LayerAdapter<
      */
     updateConfig(
         renderUnit: RenderUnit<typeof LayerRoles.POINT_CLOUD>,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void {
         const { id: layerId, descriptor } = renderUnit;
         const { config } = descriptor;
@@ -258,11 +255,11 @@ export class PointCloudAdapter implements LayerAdapter<
                         );
                     });
             } else {
-                this._updateDeckLayer(layerId, config);
+                this._updateDeckLayer(layerId, config, ctx.overlayManager);
             }
         } else {
-            this.removeFromMap(layerId, map);
-            this.addToMap(layerId, descriptor, map);
+            this.removeFromMap(layerId, ctx);
+            this.addToMap(layerId, descriptor, ctx);
         }
     }
 
@@ -296,6 +293,7 @@ export class PointCloudAdapter implements LayerAdapter<
     private _updateDeckLayer(
         layerId: string,
         config: PointCloudLayerConfig,
+        overlayManager: DeckOverlayManager,
     ): void {
         const data = this.currentData.get(layerId);
 
@@ -318,16 +316,8 @@ export class PointCloudAdapter implements LayerAdapter<
                 version,
             );
 
-            // Use updateLayer if already exists (avoids full GPU re-upload),
-            // fall back to addLayer for first render
-            if (
-                !overlayManager.updateLayer(
-                    layerId,
-                    layer.props as Partial<Layer>,
-                )
-            ) {
-                overlayManager.addLayer(layerId, layer);
-            }
+            // Force full layer replacement to ensure deck.gl picks up new data
+            overlayManager.addLayer(layerId, layer);
         } catch (error) {
             logger.error(
                 `PointCloudAdapter: Failed to update deck.gl layer for "${layerId}"`,

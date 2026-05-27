@@ -1,4 +1,4 @@
-export { DeckOverlayManager, overlayManager } from "./DeckOverlayManager";
+export { DeckOverlayManager } from "./DeckOverlayManager";
 
 // Point cloud loader exports
 export { CopcStreamingLoader } from "./loaders/CopcStreamingLoader";

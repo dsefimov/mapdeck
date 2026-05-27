@@ -12,9 +12,9 @@ import styles from "./MapToolsOverlay.module.css";
 
 export const MapToolsOverlay: () => React.ReactNode = observer(() => {
     const rootStore = useRootStore();
-    const map = rootStore.mapStore.getMap();
+    const ctx = rootStore.mapStore.context;
 
-    if (!map) {
+    if (!ctx) {
         return null;
     }
 
@@ -82,7 +82,8 @@ export const MapToolsOverlay: () => React.ReactNode = observer(() => {
                 >
                     <activeToolWithComponent.component
                         rootStore={rootStore}
-                        map={map}
+                        map={ctx.map}
+                        overlayManager={ctx.overlayManager}
                         deactivate={() =>
                             rootStore.mapToolStore.deactivateTool()
                         }

@@ -157,5 +157,3 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
         this.layers.clear();
     }
 }
-
-export const overlayManager = new DeckOverlayManager();

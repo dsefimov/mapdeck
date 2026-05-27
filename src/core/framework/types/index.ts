@@ -50,6 +50,7 @@ export type {
     PointCloudLayerConfig,
     Vector3DLayerConfig,
     LayerAdapter,
+    MapContext,
     LayerTool,
     LayerToolRole,
     RenderUnit,

@@ -1,6 +1,6 @@
-import type maplibregl from "maplibre-gl";
 import type {
     LayerAdapter,
+    MapContext,
     RenderUnit,
     RenderDescriptor,
 } from "@core/framework/types";
@@ -19,12 +19,12 @@ export class RasterAdapter implements LayerAdapter<typeof LayerRoles.RASTER> {
      * Add a raster layer to the map.
      * @param layerId - Unique identifier for the layer
      * @param descriptor - Render descriptor with config and source URL
-     * @param map - Map instance to add the layer to
+     * @param ctx - Map context with map instance and related services
      */
     addToMap(
         layerId: string,
         descriptor: RenderDescriptor<typeof LayerRoles.RASTER>,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void {
         try {
             if (!isRasterConfig(descriptor.config)) {
@@ -33,6 +33,7 @@ export class RasterAdapter implements LayerAdapter<typeof LayerRoles.RASTER> {
                 );
             }
 
+            const { map } = ctx;
             const { config, sourceUrl } = descriptor;
 
             if (map.getLayer(layerId)) {
@@ -60,7 +61,7 @@ export class RasterAdapter implements LayerAdapter<typeof LayerRoles.RASTER> {
 
             const visible = config.visible ?? true;
             if (!visible) {
-                this.updateVisibility(layerId, false, map);
+                this.updateVisibility(layerId, false, ctx);
             }
         } catch (error) {
             logger.error(
@@ -71,7 +72,8 @@ export class RasterAdapter implements LayerAdapter<typeof LayerRoles.RASTER> {
         }
     }
 
-    removeFromMap(layerId: string, map: maplibregl.Map): void {
+    removeFromMap(layerId: string, ctx: MapContext): void {
+        const map = ctx.map;
         try {
             if (map.getLayer(layerId)) {
                 map.removeLayer(layerId);
@@ -88,11 +90,8 @@ export class RasterAdapter implements LayerAdapter<typeof LayerRoles.RASTER> {
         }
     }
 
-    updateVisibility(
-        layerId: string,
-        visible: boolean,
-        map: maplibregl.Map,
-    ): void {
+    updateVisibility(layerId: string, visible: boolean, ctx: MapContext): void {
+        const map = ctx.map;
         try {
             if (map.getLayer(layerId)) {
                 map.setLayoutProperty(
@@ -112,9 +111,9 @@ export class RasterAdapter implements LayerAdapter<typeof LayerRoles.RASTER> {
 
     updateConfig(
         renderUnit: RenderUnit<typeof LayerRoles.RASTER>,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void {
-        this.removeFromMap(renderUnit.id, map);
-        this.addToMap(renderUnit.id, renderUnit.descriptor, map);
+        this.removeFromMap(renderUnit.id, ctx);
+        this.addToMap(renderUnit.id, renderUnit.descriptor, ctx);
     }
 }

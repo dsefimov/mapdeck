@@ -30,7 +30,10 @@ const BUILT_IN_TOOLS = [
 export async function registerMapTools(rootStore: RootStore): Promise<void> {
     featureProviderRegistry.register(
         "overlay",
-        new OverlayFeatureProvider(rootStore.layerAdapterFactory),
+        new OverlayFeatureProvider(
+            rootStore.mapStore,
+            rootStore.layerAdapterFactory,
+        ),
     );
     featureProviderRegistry.register("vector", new VectorFeatureProvider());
     featureProviderRegistry.register("wms", new WmsFeatureProvider());

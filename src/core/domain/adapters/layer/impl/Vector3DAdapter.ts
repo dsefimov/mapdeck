@@ -1,8 +1,9 @@
-import type maplibregl from "maplibre-gl";
+import type { Map } from "maplibre-gl";
 import type {
     LayerAdapter,
     RenderUnit,
     RenderDescriptor,
+    MapContext,
 } from "@core/framework/types";
 import { LayerRoles } from "@core/framework/types";
 import { isVector3DConfig } from "@core/framework/types";
@@ -22,9 +23,10 @@ export class Vector3DAdapter implements LayerAdapter<
     addToMap(
         layerId: string,
         descriptor: RenderDescriptor<typeof LayerRoles.VECTOR3D>,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void {
         try {
+            const { map } = ctx;
             if (!isVector3DConfig(descriptor.config)) {
                 throw new Error(
                     `Config is not for vector3d role: ${descriptor.config.role}`,
@@ -38,7 +40,7 @@ export class Vector3DAdapter implements LayerAdapter<
 
             const visible = config.visible ?? true;
             if (!visible) {
-                this.updateVisibility(layerId, false, map);
+                this.updateVisibility(layerId, false, ctx);
             }
         } catch (error) {
             logger.error(
@@ -49,7 +51,7 @@ export class Vector3DAdapter implements LayerAdapter<
         }
     }
 
-    private _cleanupExisting(layerId: string, map: maplibregl.Map): void {
+    private _cleanupExisting(layerId: string, map: Map): void {
         if (map.getLayer(layerId)) {
             map.removeLayer(layerId);
         }
@@ -62,7 +64,7 @@ export class Vector3DAdapter implements LayerAdapter<
         layerId: string,
         sourceRef: string,
         config: import("@core/framework/types").Vector3DLayerConfig,
-        map: maplibregl.Map,
+        map: Map,
     ): void {
         map.addSource(layerId, {
             type: "geojson",
@@ -81,7 +83,8 @@ export class Vector3DAdapter implements LayerAdapter<
         });
     }
 
-    removeFromMap(layerId: string, map: maplibregl.Map): void {
+    removeFromMap(layerId: string, ctx: MapContext): void {
+        const map = ctx.map;
         try {
             if (map.getLayer(layerId)) {
                 map.removeLayer(layerId);
@@ -98,11 +101,8 @@ export class Vector3DAdapter implements LayerAdapter<
         }
     }
 
-    updateVisibility(
-        layerId: string,
-        visible: boolean,
-        map: maplibregl.Map,
-    ): void {
+    updateVisibility(layerId: string, visible: boolean, ctx: MapContext): void {
+        const map = ctx.map;
         try {
             if (map.getLayer(layerId)) {
                 map.setLayoutProperty(
@@ -122,9 +122,9 @@ export class Vector3DAdapter implements LayerAdapter<
 
     updateConfig(
         renderUnit: RenderUnit<typeof LayerRoles.VECTOR3D>,
-        map: maplibregl.Map,
+        ctx: MapContext,
     ): void {
-        this.removeFromMap(renderUnit.id, map);
-        this.addToMap(renderUnit.id, renderUnit.descriptor, map);
+        this.removeFromMap(renderUnit.id, ctx);
+        this.addToMap(renderUnit.id, renderUnit.descriptor, ctx);
     }
 }
