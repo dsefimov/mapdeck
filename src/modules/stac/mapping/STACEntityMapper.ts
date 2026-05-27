@@ -12,11 +12,15 @@ import {
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
 import { mapAssetsToNodeRoles } from "./RoleMapper";
+import type { LayerConfigRegistry } from "@core/domain/adapters";
 import { Bbox, flattenTo2D } from "@core/shared/geo";
 import type { STACCache } from "../core/STACCache";
 
 export class STACEntityMapper {
-    constructor(private cache: STACCache) {}
+    constructor(
+        private cache: STACCache,
+        private layerConfigRegistry: LayerConfigRegistry,
+    ) {}
 
     mapCollectionToGroupNode(
         collection: STACCollection,
@@ -27,7 +31,7 @@ export class STACEntityMapper {
         );
 
         const roles: NodeRoles = collection.assets
-            ? mapAssetsToNodeRoles(collection.assets)
+            ? mapAssetsToNodeRoles(collection.assets, this.layerConfigRegistry)
             : { reports: [] };
 
         return {
@@ -50,7 +54,11 @@ export class STACEntityMapper {
     }
 
     mapItemToLayerNode(item: STACItem): TreeNode | null {
-        const roles = mapAssetsToNodeRoles(item.assets, item.properties);
+        const roles = mapAssetsToNodeRoles(
+            item.assets,
+            this.layerConfigRegistry,
+            item.properties,
+        );
 
         if (roles.reports.length === 0 && !roles.display && !roles.attribute) {
             logger.warn(`Item ${item.id} has no recognized assets, skipping`);

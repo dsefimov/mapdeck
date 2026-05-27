@@ -7,7 +7,6 @@ import {
     type LayerTool,
     type LayerToolRole,
 } from "@core/framework/types";
-import { registerDefaultConfig } from "@core/domain/adapters";
 import { logger } from "@core/shared/diagnostics/logger";
 import type { RootStore } from "@core/framework/store";
 
@@ -42,7 +41,7 @@ export class ToolStore {
         }
 
         this._knownRoles.add(role);
-        registerDefaultConfig(role, defaultConfig);
+        this.rootStore.layerConfigRegistry.register(role, defaultConfig);
         await this.rootStore.layerAdapterFactory.register(role, adapter);
     }
 

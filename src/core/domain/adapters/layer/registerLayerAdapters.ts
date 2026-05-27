@@ -5,6 +5,7 @@ import {
 } from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
 import { logger } from "@core/shared/diagnostics/logger";
+import { registerDefaultLayerConfigs } from "./createDefaultLayerConfig";
 import { PointCloudAdapter } from "./impl/PointCloudAdapter";
 import { RasterAdapter } from "./impl/RasterAdapter";
 import { Vector3DAdapter } from "./impl/Vector3DAdapter";
@@ -21,6 +22,8 @@ export async function registerLayerAdapters(
     rootStore: RootStore,
 ): Promise<void> {
     try {
+        registerDefaultLayerConfigs(rootStore.layerConfigRegistry);
+
         for (const [role, adapter] of ADAPTERS) {
             await rootStore.layerAdapterFactory.register(role, adapter);
         }

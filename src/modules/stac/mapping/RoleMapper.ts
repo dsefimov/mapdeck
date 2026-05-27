@@ -9,7 +9,7 @@ import {
     type LayerRole,
     makeRenderDescriptor,
 } from "@core/framework/types";
-import { createDefaultConfig } from "@core/domain/adapters";
+import type { LayerConfigRegistry } from "@core/domain/adapters";
 import type {
     DisplayRole,
     AttributeRole,
@@ -60,6 +60,7 @@ const ATTRIBUTE_ROLES = new Set<string>(["wfs", "ogc-feature-api"]);
 export function mapAssetToNodeRole(
     assetKey: string,
     asset: STACAsset,
+    registry: LayerConfigRegistry,
     properties?: Record<string, unknown>,
 ): NodeRole | null {
     const assetRoles = asset.roles ?? [];
@@ -82,7 +83,7 @@ export function mapAssetToNodeRole(
     for (const role of assetRoles) {
         const mapping = INCOMING_MAPPING[role];
         if (mapping) {
-            return createDisplayRole(assetKey, asset, mapping);
+            return createDisplayRole(assetKey, asset, mapping, registry);
         }
     }
 
@@ -97,6 +98,7 @@ export function mapAssetToNodeRole(
  */
 export function mapAssetsToNodeRoles(
     assets: Record<string, STACAsset>,
+    registry: LayerConfigRegistry,
     properties?: Record<string, unknown>,
 ): NodeRoles {
     const displayRoles: DisplayRole[] = [];
@@ -104,7 +106,7 @@ export function mapAssetsToNodeRoles(
     const reportRoles: ReportRole[] = [];
 
     for (const [key, asset] of Object.entries(assets)) {
-        const role = mapAssetToNodeRole(key, asset, properties);
+        const role = mapAssetToNodeRole(key, asset, registry, properties);
         if (!role) continue;
 
         switch (role.category) {
@@ -132,8 +134,9 @@ function createDisplayRole(
     assetKey: string,
     asset: STACAsset,
     mapping: { role: LayerRole; type?: "xyz" | "wms" | "cog" },
+    registry: LayerConfigRegistry,
 ): DisplayRole {
-    const layerConfig = createDefaultConfig(mapping.role);
+    const layerConfig = registry.create(mapping.role);
     const cfg = layerConfig as unknown as Record<string, unknown>;
 
     // Set URL from asset href
