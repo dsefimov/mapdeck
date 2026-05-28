@@ -22,6 +22,7 @@ export class WorkerPool {
     private queue: QueuedItem[] = [];
     private pending = new Map<string, PendingRequest>();
     private workerBusy: boolean[] = [];
+    private workerCurrentRequest: (string | null)[] = [];
     private requestCounter = 0;
 
     constructor(
@@ -34,6 +35,7 @@ export class WorkerPool {
             w.onerror = (e) => this._onError(i, e);
             this.workers.push(w);
             this.workerBusy.push(false);
+            this.workerCurrentRequest.push(null);
         }
     }
 
@@ -47,7 +49,7 @@ export class WorkerPool {
 
     post<TReq, TRes>(data: TReq, transfer: Transferable[]): Promise<TRes> {
         const requestId = String(++this.requestCounter);
-        (data as Record<string, unknown>).requestId = requestId;
+        const payload = { ...(data as Record<string, unknown>), requestId };
 
         return new Promise<TRes>((resolve, reject) => {
             this.pending.set(requestId, {
@@ -57,9 +59,9 @@ export class WorkerPool {
 
             const freeIdx = this.workerBusy.findIndex((busy) => !busy);
             if (freeIdx !== -1) {
-                this._dispatch(freeIdx, data, transfer);
+                this._dispatch(freeIdx, payload, transfer, requestId);
             } else {
-                this.queue.push({ data, transfer, requestId });
+                this.queue.push({ data: payload, transfer, requestId });
             }
         });
     }
@@ -68,8 +70,10 @@ export class WorkerPool {
         workerIdx: number,
         data: unknown,
         transfer: Transferable[],
+        requestId: string,
     ): void {
         this.workerBusy[workerIdx] = true;
+        this.workerCurrentRequest[workerIdx] = requestId;
         this.workers[workerIdx]!.postMessage(data, transfer);
     }
 
@@ -77,6 +81,7 @@ export class WorkerPool {
         const pending = this.pending.get(result.requestId);
         this.pending.delete(result.requestId);
         this.workerBusy[workerIdx] = false;
+        this.workerCurrentRequest[workerIdx] = null;
         if (pending) {
             pending.resolve(result);
         }
@@ -84,6 +89,13 @@ export class WorkerPool {
     }
 
     private _onError(workerIdx: number, e: ErrorEvent): void {
+        const requestId = this.workerCurrentRequest[workerIdx];
+        if (requestId) {
+            const pending = this.pending.get(requestId);
+            this.pending.delete(requestId);
+            pending?.reject(new Error(`Worker error: ${e.message}`));
+            this.workerCurrentRequest[workerIdx] = null;
+        }
         logger.error(`WorkerPool: worker ${workerIdx} error`, e.message);
         this.workerBusy[workerIdx] = false;
         this._drainQueue(workerIdx);
@@ -92,7 +104,7 @@ export class WorkerPool {
     private _drainQueue(workerIdx: number): void {
         const next = this.queue.shift();
         if (next) {
-            this._dispatch(workerIdx, next.data, next.transfer);
+            this._dispatch(workerIdx, next.data, next.transfer, next.requestId);
         }
     }
 
