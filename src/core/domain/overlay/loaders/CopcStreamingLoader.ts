@@ -31,8 +31,6 @@ import type {
 import { WorkerPool } from "../deck/workers/WorkerPool";
 import { MinHeap } from "@core/shared/async/MinHeap";
 
-
-
 /** Bounding box entry for rbush spatial index. */
 interface NodeBBox {
     minX: number;
@@ -222,7 +220,6 @@ export class CopcStreamingLoader {
     private _needsTransform: boolean = false;
     private _workerPool: WorkerPool | null = null;
     private _currentColorScheme: string = ColorScheme.RGB;
-
 
     constructor(source: StreamingSource, options: StreamingLoaderOptions) {
         this._originalSource = source;
@@ -461,13 +458,17 @@ export class CopcStreamingLoader {
         this._setupCoordinateOrigin();
         this._allocateBuffers();
         const cpuCount: number =
-            typeof navigator !== "undefined" && typeof navigator.hardwareConcurrency !== "undefined"
+            typeof navigator !== "undefined" &&
+            typeof navigator.hardwareConcurrency !== "undefined"
                 ? navigator.hardwareConcurrency
                 : 4;
         this._workerPool = new WorkerPool(
             () =>
                 new Worker(
-                    new URL("../deck/workers/pointProcessing.worker.ts", import.meta.url),
+                    new URL(
+                        "../deck/workers/pointProcessing.worker.ts",
+                        import.meta.url,
+                    ),
                     { type: "module" },
                 ),
             Math.max(1, Math.min(4, Math.floor(cpuCount / 2))),
@@ -541,25 +542,49 @@ export class CopcStreamingLoader {
 
             const nodeSizesByDepth: Record<
                 string,
-                { widthDeg: number; heightDeg: number; widthMeters: number; heightMeters: number }
+                {
+                    widthDeg: number;
+                    heightDeg: number;
+                    widthMeters: number;
+                    heightMeters: number;
+                }
             > = {};
 
             for (let depth = 0; depth <= this._maxDepthInHierarchy; depth++) {
                 const widthDeg =
-                    (this._bounds.maxX - this._bounds.minX) / Math.pow(2, depth);
+                    (this._bounds.maxX - this._bounds.minX) /
+                    Math.pow(2, depth);
                 const heightDeg =
-                    (this._bounds.maxY - this._bounds.minY) / Math.pow(2, depth);
+                    (this._bounds.maxY - this._bounds.minY) /
+                    Math.pow(2, depth);
                 const widthMetersSource =
-                    (this._originalOctreeCube[3] - this._originalOctreeCube[0]) / Math.pow(2, depth);
+                    (this._originalOctreeCube[3] -
+                        this._originalOctreeCube[0]) /
+                    Math.pow(2, depth);
                 const heightMetersSource =
-                    (this._originalOctreeCube[4] - this._originalOctreeCube[1]) / Math.pow(2, depth);
-                nodeSizesByDepth[`depth_${depth}`] = { widthDeg, heightDeg, widthMeters: widthMetersSource, heightMeters: heightMetersSource };
+                    (this._originalOctreeCube[4] -
+                        this._originalOctreeCube[1]) /
+                    Math.pow(2, depth);
+                nodeSizesByDepth[`depth_${depth}`] = {
+                    widthDeg,
+                    heightDeg,
+                    widthMeters: widthMetersSource,
+                    heightMeters: heightMetersSource,
+                };
             }
 
-            const deepNodes: Array<{ key: string; depth: number; bounds: PointCloudBounds }> = [];
+            const deepNodes: Array<{
+                key: string;
+                depth: number;
+                bounds: PointCloudBounds;
+            }> = [];
             for (const node of this._nodeCache.values()) {
                 if (node.keyArray[0] >= this._maxDepthInHierarchy - 2) {
-                    deepNodes.push({ key: node.key, depth: node.keyArray[0], bounds: node.boundsWgs84 });
+                    deepNodes.push({
+                        key: node.key,
+                        depth: node.keyArray[0],
+                        bounds: node.boundsWgs84,
+                    });
                     if (deepNodes.length >= 5) break;
                 }
             }
@@ -577,8 +602,6 @@ export class CopcStreamingLoader {
 
         // Recursively load child pages
         await this._loadChildPages(subtree);
-
-
     }
 
     private _processSubtreeNodes(subtree: Hierarchy.Subtree): void {
@@ -611,7 +634,10 @@ export class CopcStreamingLoader {
 
             // Depth distribution — merged here, no second pass needed
             const depth = keyArray[0];
-            this._depthDistribution.set(depth, (this._depthDistribution.get(depth) ?? 0) + 1);
+            this._depthDistribution.set(
+                depth,
+                (this._depthDistribution.get(depth) ?? 0) + 1,
+            );
             if (depth > this._maxDepthInHierarchy) {
                 this._maxDepthInHierarchy = depth;
             }
@@ -1049,7 +1075,11 @@ export class CopcStreamingLoader {
             perfTracker.end("node.fetch");
 
             // Extract raw values on main thread, send to worker for processing
-            await this._extractAndProcessNode(view, node, node.bufferStartIndex!);
+            await this._extractAndProcessNode(
+                view,
+                node,
+                node.bufferStartIndex!,
+            );
 
             node.state = "loaded";
             this._totalLoadedNodes++;
@@ -1108,47 +1138,80 @@ export class CopcStreamingLoader {
             const gGet = view.getter("Green");
             const bGet = view.getter("Blue");
             for (let i = 0; i < pointCount; i++) {
-                rawX[i] = xGet(i); rawY[i] = yGet(i); rawZ[i] = zGet(i);
-                rawIntensity[i] = iGet(i); rawClassification[i] = cGet(i);
-                rawR[i] = rGet(i); rawG[i] = gGet(i); rawB[i] = bGet(i);
+                rawX[i] = xGet(i);
+                rawY[i] = yGet(i);
+                rawZ[i] = zGet(i);
+                rawIntensity[i] = iGet(i);
+                rawClassification[i] = cGet(i);
+                rawR[i] = rGet(i);
+                rawG[i] = gGet(i);
+                rawB[i] = bGet(i);
             }
-            return { rawX, rawY, rawZ, rawIntensity, rawClassification, rawR, rawG, rawB };
+            return {
+                rawX,
+                rawY,
+                rawZ,
+                rawIntensity,
+                rawClassification,
+                rawR,
+                rawG,
+                rawB,
+            };
         }
 
         for (let i = 0; i < pointCount; i++) {
-            rawX[i] = xGet(i); rawY[i] = yGet(i); rawZ[i] = zGet(i);
-            rawIntensity[i] = iGet(i); rawClassification[i] = cGet(i);
+            rawX[i] = xGet(i);
+            rawY[i] = yGet(i);
+            rawZ[i] = zGet(i);
+            rawIntensity[i] = iGet(i);
+            rawClassification[i] = cGet(i);
         }
 
-        return { rawX, rawY, rawZ, rawIntensity, rawClassification, rawR: null, rawG: null, rawB: null };
+        return {
+            rawX,
+            rawY,
+            rawZ,
+            rawIntensity,
+            rawClassification,
+            rawR: null,
+            rawG: null,
+            rawB: null,
+        };
     }
 
     /** Prepares the worker request payload from raw values */
-    private _buildProcessPayload(
-        args: {
-            pointCount: number;
-            rawX: Float64Array;
-            rawY: Float64Array;
-            rawZ: Float32Array;
-            rawIntensity: Uint16Array;
-            rawClassification: Uint8Array;
-            rawR: Uint16Array | null;
-            rawG: Uint16Array | null;
-            rawB: Uint16Array | null;
-        },
-    ): Record<string, unknown> {
+    private _buildProcessPayload(args: {
+        pointCount: number;
+        rawX: Float64Array;
+        rawY: Float64Array;
+        rawZ: Float32Array;
+        rawIntensity: Uint16Array;
+        rawClassification: Uint8Array;
+        rawR: Uint16Array | null;
+        rawG: Uint16Array | null;
+        rawB: Uint16Array | null;
+    }): Record<string, unknown> {
         return {
             pointCount: args.pointCount,
-            rawX: args.rawX, rawY: args.rawY, rawZ: args.rawZ,
-            rawIntensity: args.rawIntensity, rawClassification: args.rawClassification,
-            rawR: args.rawR, rawG: args.rawG, rawB: args.rawB,
+            rawX: args.rawX,
+            rawY: args.rawY,
+            rawZ: args.rawZ,
+            rawIntensity: args.rawIntensity,
+            rawClassification: args.rawClassification,
+            rawR: args.rawR,
+            rawG: args.rawG,
+            rawB: args.rawB,
             hasColor: this._hasColor,
             wkt: this._needsTransform ? this._copc!.wkt : null,
             coordinateOrigin: this._coordinateOrigin,
             colorScheme: this._currentColorScheme,
             globalBounds: [
-                this._bounds.minX, this._bounds.minY, this._bounds.minZ,
-                this._bounds.maxX, this._bounds.maxY, this._bounds.maxZ,
+                this._bounds.minX,
+                this._bounds.minY,
+                this._bounds.minZ,
+                this._bounds.maxX,
+                this._bounds.maxY,
+                this._bounds.maxZ,
             ],
         };
     }
@@ -1158,7 +1221,12 @@ export class CopcStreamingLoader {
         node: CachedNode,
         startIndex: number,
     ): Promise<void> {
-        if (!this._positions || !this._intensities || !this._classifications || !this._colors) {
+        if (
+            !this._positions ||
+            !this._intensities ||
+            !this._classifications ||
+            !this._colors
+        ) {
             throw new Error("Buffers not allocated");
         }
         if (!this._workerPool) {
@@ -1169,20 +1237,41 @@ export class CopcStreamingLoader {
         const N = node.pointCount;
 
         // Step 1: extract raw values from View (main thread, fast — only getter calls)
-        const { rawX, rawY, rawZ, rawIntensity, rawClassification, rawR, rawG, rawB } =
-            this._extractRawValues(view, N);
+        const {
+            rawX,
+            rawY,
+            rawZ,
+            rawIntensity,
+            rawClassification,
+            rawR,
+            rawG,
+            rawB,
+        } = this._extractRawValues(view, N);
         perfTracker.end("extract.raw");
 
         // Step 2: send raw data to Worker for transform + color computation
         perfTracker.start("worker.process");
 
         const transferList: Transferable[] = [
-            rawX.buffer, rawY.buffer, rawZ.buffer,
-            rawIntensity.buffer, rawClassification.buffer,
+            rawX.buffer,
+            rawY.buffer,
+            rawZ.buffer,
+            rawIntensity.buffer,
+            rawClassification.buffer,
         ];
         if (rawR) transferList.push(rawR.buffer, rawG!.buffer, rawB!.buffer);
 
-        const payload = this._buildProcessPayload({ pointCount: N, rawX, rawY, rawZ, rawIntensity, rawClassification, rawR, rawG, rawB });
+        const payload = this._buildProcessPayload({
+            pointCount: N,
+            rawX,
+            rawY,
+            rawZ,
+            rawIntensity,
+            rawClassification,
+            rawR,
+            rawG,
+            rawB,
+        });
 
         const result = await this._workerPool.post<
             Record<string, unknown>,
@@ -1212,7 +1301,11 @@ export class CopcStreamingLoader {
     async recomputeColors(newScheme: string): Promise<void> {
         this._currentColorScheme = newScheme;
 
-        if (!this._workerPool || !this._colors || this._totalLoadedPoints === 0) {
+        if (
+            !this._workerPool ||
+            !this._colors ||
+            this._totalLoadedPoints === 0
+        ) {
             return;
         }
 
@@ -1234,15 +1327,18 @@ export class CopcStreamingLoader {
                 classifications,
                 colorScheme: newScheme,
                 globalBounds: [
-                    this._bounds.minX, this._bounds.minY, this._bounds.minZ,
-                    this._bounds.maxX, this._bounds.maxY, this._bounds.maxZ,
+                    this._bounds.minX,
+                    this._bounds.minY,
+                    this._bounds.minZ,
+                    this._bounds.maxX,
+                    this._bounds.maxY,
+                    this._bounds.maxZ,
                 ],
             },
             [positions.buffer, intensities.buffer, classifications.buffer],
         );
 
         this._colors.set(result.colors, 0);
-        this._performLayerUpdate();
     }
 
     private _scheduleLayerUpdate(): void {

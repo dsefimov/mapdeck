@@ -14,10 +14,20 @@ import {
 } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 import { createCancellable } from "@core/shared/async";
+import { comparer } from "mobx";
 import { CopcStreamingLoader } from "@core/domain/overlay/loaders/CopcStreamingLoader";
 import { ViewportManager } from "@core/domain/overlay/ViewportManager";
 import { PointCloudLayerFactory } from "@core/domain/overlay/layers/PointCloudLayerFactory";
 import { perfTracker } from "@core/shared/diagnostics/PerfTracker";
+
+interface PointCloudLayerState {
+    loader: CopcStreamingLoader;
+    viewportManager: ViewportManager | null;
+    initTask: ReturnType<typeof createCancellable>;
+    config: PointCloudLayerConfig;
+    data: PointCloudData | null;
+    dataVersion: number;
+}
 
 /**
  * Streaming point cloud adapter for COPC.LAZ format.
@@ -37,12 +47,7 @@ export class PointCloudAdapter implements LayerAdapter<
             maxSubtreesPerViewport: 60,
         };
 
-    private loaders = new Map<string, CopcStreamingLoader>();
-    private viewportManagers = new Map<string, ViewportManager>();
-    private currentData = new Map<string, PointCloudData>();
-    private initTasks = new Map<string, ReturnType<typeof createCancellable>>();
-    private _layerConfigs = new Map<string, PointCloudLayerConfig>();
-    private _dataVersions = new Map<string, number>();
+    private _layers = new Map<string, PointCloudLayerState>();
 
     addToMap(
         layerId: string,
@@ -58,11 +63,11 @@ export class PointCloudAdapter implements LayerAdapter<
                 );
             }
 
-            this.removeFromMap(layerId, ctx);
+            if (this._layers.has(layerId)) {
+                this.removeFromMap(layerId, ctx);
+            }
 
             const pointCloudConfig = descriptor.config as PointCloudLayerConfig;
-            this._layerConfigs.set(layerId, pointCloudConfig);
-
             const sourceRef = descriptor.sourceUrl;
 
             if (typeof sourceRef !== "string" || !sourceRef.trim()) {
@@ -75,19 +80,25 @@ export class PointCloudAdapter implements LayerAdapter<
                 sourceRef,
                 PointCloudAdapter.DEFAULT_STREAMING_OPTIONS,
             );
-            this.loaders.set(layerId, loader);
 
             const task = createCancellable();
-            this.initTasks.set(layerId, task);
 
-            this._initializeLayer({
-                task,
-                layerId,
-                config: pointCloudConfig,
+            const state: PointCloudLayerState = {
                 loader,
-                ctx,
-            });
+                viewportManager: null,
+                initTask: task,
+                config: pointCloudConfig,
+                data: null,
+                dataVersion: 0,
+            };
+
+            this._layers.set(layerId, state);
+
+            this._initializeLayer(layerId, state, ctx);
         } catch (error) {
+            const state = this._layers.get(layerId);
+            state?.loader.destroy();
+            this._layers.delete(layerId);
             logger.error(
                 `PointCloudAdapter: Failed to add layer "${layerId}"`,
                 error,
@@ -96,14 +107,12 @@ export class PointCloudAdapter implements LayerAdapter<
         }
     }
 
-    private _initializeLayer(params: {
-        task: ReturnType<typeof createCancellable>;
-        layerId: string;
-        config: PointCloudLayerConfig;
-        loader: CopcStreamingLoader;
-        ctx: MapContext;
-    }): void {
-        const { task, layerId, loader, ctx } = params;
+    private _initializeLayer(
+        layerId: string,
+        state: PointCloudLayerState,
+        ctx: MapContext,
+    ): void {
+        const { initTask: task, loader } = state;
         const { map, overlayManager } = ctx;
         const opts = PointCloudAdapter.DEFAULT_STREAMING_OPTIONS;
 
@@ -124,15 +133,8 @@ export class PointCloudAdapter implements LayerAdapter<
                         pointCount: data.pointCount,
                     });
                 }
-                this.currentData.set(layerId, data);
-                const currentConfig = this._layerConfigs.get(layerId);
-                if (currentConfig) {
-                    this._updateDeckLayer(
-                        layerId,
-                        currentConfig,
-                        overlayManager,
-                    );
-                }
+                state.data = data;
+                this._updateDeckLayer(layerId, overlayManager);
             });
 
             const viewportManager = new ViewportManager(
@@ -153,7 +155,7 @@ export class PointCloudAdapter implements LayerAdapter<
                 },
             );
 
-            this.viewportManagers.set(layerId, viewportManager);
+            state.viewportManager = viewportManager;
             viewportManager.start();
 
             const initialViewport = viewportManager.getCurrentViewport();
@@ -163,52 +165,29 @@ export class PointCloudAdapter implements LayerAdapter<
                 `PointCloudAdapter: Failed to initialize COPC loader for layer "${layerId}"`,
                 error,
             );
-            this.loaders.delete(layerId);
-            this.initTasks.delete(layerId);
+            this._layers.delete(layerId);
         });
     }
 
     removeFromMap(layerId: string, ctx: MapContext): void {
-        const { overlayManager } = ctx;
-        try {
-            const initTask = this.initTasks.get(layerId);
-            if (initTask) {
-                initTask.cancel();
-                this.initTasks.delete(layerId);
-            }
+        const state = this._layers.get(layerId);
+        if (!state) return;
 
-            const viewportManager = this.viewportManagers.get(layerId);
-            if (viewportManager) {
-                viewportManager.stop();
-                viewportManager.destroy();
-                this.viewportManagers.delete(layerId);
-            }
-
-            const loader = this.loaders.get(layerId);
-            if (loader) {
-                loader.destroy();
-                this.loaders.delete(layerId);
-            }
-
-            overlayManager.removeLayer(layerId);
-            this.currentData.delete(layerId);
-            this._layerConfigs.delete(layerId);
-        } catch (error) {
-            logger.error(
-                `PointCloudAdapter: Failed to remove layer "${layerId}"`,
-                error,
-            );
-            throw error;
+        state.initTask.cancel();
+        if (state.viewportManager) {
+            state.viewportManager.stop();
+            state.viewportManager.destroy();
         }
+        state.loader.destroy();
+        ctx.overlayManager.removeLayer(layerId);
+
+        this._layers.delete(layerId);
     }
 
     updateVisibility(layerId: string, visible: boolean, ctx: MapContext): void {
         ctx.overlayManager.setLayerVisibility(layerId, visible);
     }
 
-    /**
-     * Visual-only fields that can be updated without reloading point data.
-     */
     private static readonly VISUAL_FIELDS = new Set([
         "pointSize",
         "colorScheme",
@@ -219,13 +198,6 @@ export class PointCloudAdapter implements LayerAdapter<
         "filterByClassification",
     ]);
 
-    /**
-     * Update layer configuration.
-     *
-     * If only visual properties changed (color scheme, point size, etc.),
-     * updates the deck.gl layer in-place without reloading point data.
-     * Otherwise falls back to full recreate.
-     */
     updateConfig(
         renderUnit: RenderUnit<typeof LayerRoles.POINT_CLOUD>,
         ctx: MapContext,
@@ -240,14 +212,24 @@ export class PointCloudAdapter implements LayerAdapter<
             return;
         }
 
-        const prevConfig = this._layerConfigs.get(layerId);
-        this._layerConfigs.set(layerId, config);
+        const state = this._layers.get(layerId);
+        if (!state) {
+            logger.warn(
+                `PointCloudAdapter: No state found for layer "${layerId}"`,
+            );
+            return;
+        }
 
-        if (prevConfig && this._canUpdateInPlace(prevConfig, config)) {
-            const loader = this.loaders.get(layerId);
-            if (loader && prevConfig.colorScheme !== config.colorScheme) {
-                loader
+        const prevConfig = state.config;
+        state.config = config;
+
+        if (this._canUpdateInPlace(prevConfig, config)) {
+            if (prevConfig.colorScheme !== config.colorScheme) {
+                state.loader
                     .recomputeColors(config.colorScheme ?? ColorScheme.RGB)
+                    .then(() =>
+                        this._updateDeckLayer(layerId, ctx.overlayManager),
+                    )
                     .catch((err) => {
                         logger.error(
                             `PointCloudAdapter: Failed to recompute colors for layer "${layerId}"`,
@@ -255,7 +237,7 @@ export class PointCloudAdapter implements LayerAdapter<
                         );
                     });
             } else {
-                this._updateDeckLayer(layerId, config, ctx.overlayManager);
+                this._updateDeckLayer(layerId, ctx.overlayManager);
             }
         } else {
             this.removeFromMap(layerId, ctx);
@@ -263,10 +245,6 @@ export class PointCloudAdapter implements LayerAdapter<
         }
     }
 
-    /**
-     * Check whether a config change affects only visual properties
-     * and can be applied without reloading point data.
-     */
     private _canUpdateInPlace(
         prevConfig: PointCloudLayerConfig,
         nextConfig: PointCloudLayerConfig,
@@ -279,10 +257,7 @@ export class PointCloudAdapter implements LayerAdapter<
         for (const key of allKeys) {
             if (key === "role") continue;
             if (PointCloudAdapter.VISUAL_FIELDS.has(key as string)) continue;
-            if (
-                JSON.stringify(prevConfig[key]) !==
-                JSON.stringify(nextConfig[key])
-            ) {
+            if (!comparer.structural(prevConfig[key], nextConfig[key])) {
                 return false;
             }
         }
@@ -292,10 +267,12 @@ export class PointCloudAdapter implements LayerAdapter<
 
     private _updateDeckLayer(
         layerId: string,
-        config: PointCloudLayerConfig,
         overlayManager: DeckOverlayManager,
     ): void {
-        const data = this.currentData.get(layerId);
+        const state = this._layers.get(layerId);
+        if (!state) return;
+
+        const { config, data, dataVersion } = state;
 
         if (!data) {
             logger.warn(
@@ -305,18 +282,15 @@ export class PointCloudAdapter implements LayerAdapter<
         }
 
         try {
-            // Bump version to signal data change to deck.gl
-            const version = (this._dataVersions.get(layerId) ?? 0) + 1;
-            this._dataVersions.set(layerId, version);
+            state.dataVersion = dataVersion + 1;
 
             const layer = PointCloudLayerFactory.createLayer(
                 layerId,
                 data,
                 config,
-                version,
+                state.dataVersion,
             );
 
-            // Force full layer replacement to ensure deck.gl picks up new data
             overlayManager.addLayer(layerId, layer);
         } catch (error) {
             logger.error(
@@ -327,46 +301,24 @@ export class PointCloudAdapter implements LayerAdapter<
     }
 
     dispose(): void {
-        this._safeDispose(
-            this.initTasks,
-            (task) => task.cancel(),
-            "cancelling init task",
-        );
-        this._safeDispose(
-            this.loaders,
-            (loader) => loader.destroy(),
-            "destroying loader",
-        );
-        this._safeDispose(
-            this.viewportManagers,
-            (vm) => vm.destroy(),
-            "destroying viewport manager",
-        );
-        this.currentData.clear();
-    }
-
-    /**
-     * Get loaded point cloud data for a layer.
-     */
-    getLoadedData(layerId: string): PointCloudData | undefined {
-        return this.currentData.get(layerId);
-    }
-
-    private _safeDispose<K, V>(
-        map: Map<K, V>,
-        dispose: (value: V) => void,
-        action: string,
-    ): void {
-        for (const [key, value] of map) {
+        for (const [layerId, state] of this._layers) {
             try {
-                dispose(value);
+                state.initTask.cancel();
+                if (state.viewportManager) {
+                    state.viewportManager.destroy();
+                }
+                state.loader.destroy();
             } catch (error) {
                 logger.error(
-                    `PointCloudAdapter: Error ${action} for "${String(key)}"`,
+                    `PointCloudAdapter: Error disposing layer "${layerId}"`,
                     error,
                 );
             }
         }
-        map.clear();
+        this._layers.clear();
+    }
+
+    getLoadedData(layerId: string): PointCloudData | undefined {
+        return this._layers.get(layerId)?.data ?? undefined;
     }
 }
