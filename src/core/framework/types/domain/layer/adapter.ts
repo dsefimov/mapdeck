@@ -54,4 +54,13 @@ export interface LayerAdapter<TRole extends LayerRole = LayerRole> {
      * @param ctx - Map context with map instance and related services
      */
     updateConfig(renderUnit: RenderUnit<TRole>, ctx: MapContext): void;
+
+    /**
+     * Get loaded data for a layer, if the adapter supports it.
+     * Implemented by data-providing adapters (e.g. PointCloudAdapter).
+     *
+     * @param layerId - Unique identifier for the layer
+     * @returns The loaded data, or undefined if not available
+     */
+    getLoadedData?(layerId: string): unknown;
 }

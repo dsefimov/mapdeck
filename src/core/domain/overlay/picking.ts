@@ -3,7 +3,6 @@
  * Extracted from ruler-3d/coordinates.ts for reuse across map tools.
  */
 import { logger } from "@core/shared/diagnostics/logger";
-import { PointCloudAdapter } from "@core/domain/adapters";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
 import { LayerRoles } from "@core/framework/types";
 import type { MeasurementPoint3D, PointCloudData } from "@core/framework/types";
@@ -49,13 +48,6 @@ export function pickPointFromCloud(
         adapterFactory,
         excludeLayerPrefix,
     } = options;
-    if (typeof overlayManager.pickObject !== "function") {
-        logger.warn(
-            "picking: pickObject method not available on overlayManager",
-        );
-        return null;
-    }
-
     const pickingInfo = overlayManager.pickObject(screenX, screenY, 20);
 
     if (!pickingInfo) {
@@ -253,17 +245,15 @@ function extractClassificationFromPoint(
 }
 
 /**
- * Get loaded point cloud data for a layer ID from the PointCloudAdapter.
+ * Get loaded point cloud data for a layer ID from the POINT_CLOUD adapter.
  */
 function getCloudData(
     layerId: string,
     adapterFactory: LayerAdapterFactory,
 ): PointCloudData | null {
-    const adapter = adapterFactory.get(LayerRoles.POINT_CLOUD) as
-        | PointCloudAdapter
-        | undefined;
-    if (!adapter) return null;
+    if (!adapterFactory.has(LayerRoles.POINT_CLOUD)) return null;
 
+    const adapter = adapterFactory.get(LayerRoles.POINT_CLOUD);
     const data = adapter.getLoadedData?.(layerId);
     return data && (data as PointCloudData).positions
         ? (data as PointCloudData)

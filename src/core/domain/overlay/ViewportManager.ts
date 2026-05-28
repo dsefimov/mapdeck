@@ -205,7 +205,7 @@ export class ViewportManager {
 
         depth = Math.min(depth, this._maxOctreeDepth);
 
-        logger.info(`[DEPTH] zoom=${zoom}, depth=${depth}`);
+        logger.debug(`[DEPTH] zoom=${zoom}, depth=${depth}`);
 
         return depth;
     }
