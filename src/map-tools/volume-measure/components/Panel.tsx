@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { observer } from "mobx-react-lite";
 import maplibregl from "maplibre-gl";
-import { pickPointFromCloud } from "@core/domain/overlay/picking";
+import { pickPointFromCloud } from "@core/domain/point-cloud/picking";
 import {
     convertPointToDegrees,
     formatDistance,
-} from "@core/domain/overlay/measurements";
+} from "@core/shared/geo/formatters";
 import {
     getThemeColor,
     THEME_PRIMARY,

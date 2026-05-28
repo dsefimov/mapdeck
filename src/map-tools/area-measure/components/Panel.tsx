@@ -7,12 +7,12 @@ import React, {
 } from "react";
 import { observer } from "mobx-react-lite";
 import maplibregl from "maplibre-gl";
-import { getPointWithFallback } from "@core/domain/overlay/picking";
+import { getPointWithFallback } from "@core/domain/point-cloud/picking";
 import {
     formatDistance,
     formatArea,
     convertPointToDegrees,
-} from "@core/domain/overlay/measurements";
+} from "@core/shared/geo/formatters";
 import {
     getThemeColor,
     THEME_PRIMARY,

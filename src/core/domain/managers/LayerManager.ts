@@ -10,7 +10,7 @@ import type { RootStore } from "@core/framework/store";
 import {
     buildGroupedRenderUnits,
     getNativeRenderOrder,
-} from "@core/domain/overlay/sync";
+} from "@core/domain/managers/layerSync";
 
 /**
  * Modern adapter-based Layer Manager

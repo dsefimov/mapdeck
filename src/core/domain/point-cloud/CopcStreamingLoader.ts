@@ -28,7 +28,7 @@ import type {
     PointCloudData,
     PointCloudBounds,
 } from "@core/framework/types";
-import { WorkerPool } from "../deck/workers/WorkerPool";
+import { WorkerPool } from "./workers/WorkerPool";
 import { MinHeap } from "@core/shared/async/MinHeap";
 
 /** Bounding box entry for rbush spatial index. */
@@ -501,7 +501,7 @@ export class CopcStreamingLoader {
             () =>
                 new Worker(
                     new URL(
-                        "../deck/workers/pointProcessing.worker.ts",
+                        "./workers/pointProcessing.worker.ts",
                         import.meta.url,
                     ),
                     { type: "module" },

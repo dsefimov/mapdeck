@@ -15,9 +15,9 @@ import {
 import { logger } from "@core/shared/diagnostics/logger";
 import { createCancellable } from "@core/shared/async";
 import { comparer } from "mobx";
-import { CopcStreamingLoader } from "@core/domain/overlay/loaders/CopcStreamingLoader";
-import { ViewportManager } from "@core/domain/overlay/ViewportManager";
-import { PointCloudLayerFactory } from "@core/domain/overlay/layers/PointCloudLayerFactory";
+import { CopcStreamingLoader } from "@core/domain/point-cloud/CopcStreamingLoader";
+import { ViewportManager } from "@core/domain/point-cloud/ViewportManager";
+import { PointCloudLayerFactory } from "@core/domain/point-cloud/PointCloudLayerFactory";
 import { perfTracker } from "@core/shared/diagnostics/PerfTracker";
 
 interface PointCloudLayerState {

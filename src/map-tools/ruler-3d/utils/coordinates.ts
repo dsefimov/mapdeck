@@ -9,11 +9,11 @@ import { point } from "@turf/helpers";
 export {
     pickPointFromCloud,
     getPointWithFallback,
-} from "@core/domain/overlay/picking";
+} from "@core/domain/point-cloud/picking";
 export {
     formatDistance,
     convertPointToDegrees,
-} from "@core/domain/overlay/measurements";
+} from "@core/shared/geo/formatters";
 
 export function geodesicDistance(
     point1: [number, number],

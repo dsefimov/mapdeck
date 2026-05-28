@@ -1,4 +1,4 @@
-import { getPointFromPickingInfo } from "@core/domain/overlay/picking";
+import { getPointFromPickingInfo } from "@core/domain/point-cloud/picking";
 import type { MapStore } from "@core/framework/store";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
 import type { FeatureProvider, Feature, CollectParams } from "../types";

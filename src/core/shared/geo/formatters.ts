@@ -1,7 +1,6 @@
 /**
- * Shared measurement utilities for map tools.
- * Contains only pure functions used by ruler-3d, area-measure, and other measurement tools.
- * Impure functions (pickPointFromCloud, getPointWithFallback) live in picking.ts.
+ * Shared geo formatters and data converters.
+ * Pure functions used by measurement tools (ruler-3d, area-measure, volume-measure).
  */
 import type { MeasurementPoint3D } from "@core/framework/types";
 
