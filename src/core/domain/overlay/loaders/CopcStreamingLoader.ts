@@ -40,6 +40,42 @@ interface NodeBBox {
     key: string;
 }
 
+/** Raw position dimensions extracted from a View. */
+interface RawPositions {
+    x: Float64Array;
+    y: Float64Array;
+    z: Float32Array;
+}
+/** Raw scalar attributes extracted from a View. */
+interface RawScalars {
+    intensity: Uint16Array;
+    classification: Uint8Array;
+}
+/** Raw color channels extracted from a View. */
+interface RawColor {
+    r: Uint16Array;
+    g: Uint16Array;
+    b: Uint16Array;
+}
+
+/** Payload sent to the point-processing worker. Mirrors ProcessRequest minus requestId (added by WorkerPool). */
+interface ProcessPayload {
+    pointCount: number;
+    rawX: Float64Array;
+    rawY: Float64Array;
+    rawZ: Float32Array;
+    rawIntensity: Uint16Array;
+    rawClassification: Uint8Array;
+    rawR: Uint16Array | null;
+    rawG: Uint16Array | null;
+    rawB: Uint16Array | null;
+    hasColor: boolean;
+    wkt: string | null;
+    coordinateOrigin: [number, number, number];
+    colorScheme: string;
+    globalBounds: [number, number, number, number, number, number];
+}
+
 /**
  * Creates a getter function from an ArrayBuffer for copc.js
  */
@@ -141,6 +177,27 @@ function extractProjcsFromWkt(wkt: string): string {
 }
 
 /**
+ * Builds a PointCloudBounds from SW/NE corners, clamping lat/lng to valid WGS84 ranges.
+ */
+function buildBoundsFromCorners(
+    sw: [number, number],
+    ne: [number, number],
+    minZ: number,
+    maxZ: number,
+): PointCloudBounds {
+    const [minLng, minLat] = clampLatLng(...sw);
+    const [maxLng, maxLat] = clampLatLng(...ne);
+    return {
+        minX: Math.min(minLng, maxLng),
+        minY: Math.min(minLat, maxLat),
+        minZ,
+        maxX: Math.max(minLng, maxLng),
+        maxY: Math.max(minLat, maxLat),
+        maxZ,
+    };
+}
+
+/**
  * Simplified COPC streaming loader for EPSG:4326.
  * Assumes all data is already in WGS84 degrees, no coordinate transformations needed.
  */
@@ -232,6 +289,14 @@ export class CopcStreamingLoader {
         }
     }
 
+    private static getWorkerPoolSize(): number {
+        const cpuCount =
+            typeof navigator !== "undefined"
+                ? (navigator.hardwareConcurrency ?? 4)
+                : 4;
+        return Math.max(1, Math.min(4, Math.floor(cpuCount / 2)));
+    }
+
     private async _setupSource(): Promise<void> {
         // Setup source - URL string or Getter for local files
         if (typeof this._originalSource === "string") {
@@ -240,12 +305,16 @@ export class CopcStreamingLoader {
         }
 
         if (this._originalSource instanceof File) {
-            await this._setupFileSource(this._originalSource);
+            const buffer = await this._originalSource.arrayBuffer();
+            await this._setupBufferSource(createBufferGetter(buffer), "File");
             return;
         }
 
         if (this._originalSource instanceof ArrayBuffer) {
-            await this._setupArrayBufferSource(this._originalSource);
+            await this._setupBufferSource(
+                createBufferGetter(this._originalSource),
+                "ArrayBuffer",
+            );
             return;
         }
 
@@ -288,25 +357,16 @@ export class CopcStreamingLoader {
         throw new Error(errorMessage);
     }
 
-    private async _setupFileSource(file: File): Promise<void> {
-        const buffer = await file.arrayBuffer();
-        this._source = createBufferGetter(buffer);
+    private async _setupBufferSource(
+        getter: Getter,
+        errorContext: string,
+    ): Promise<void> {
+        this._source = getter;
         try {
             this._copc = await Copc.create(this._source);
         } catch (error) {
             throw new Error(
-                `CopcStreamingLoader: Failed to create Copc instance from File: ${error instanceof Error ? error.message : String(error)}`,
-            );
-        }
-    }
-
-    private async _setupArrayBufferSource(buffer: ArrayBuffer): Promise<void> {
-        this._source = createBufferGetter(buffer);
-        try {
-            this._copc = await Copc.create(this._source);
-        } catch (error) {
-            throw new Error(
-                `CopcStreamingLoader: Failed to create Copc instance from ArrayBuffer: ${error instanceof Error ? error.message : String(error)}`,
+                `CopcStreamingLoader: Failed to create Copc instance from ${errorContext}: ${error instanceof Error ? error.message : String(error)}`,
             );
         }
     }
@@ -373,42 +433,22 @@ export class CopcStreamingLoader {
 
         const header = this._copc.header;
 
-        // Calculate bounds with transformation if needed
         if (this._needsTransform && this._transformer) {
-            const [rawMinLng, rawMinLat] = this._transformer([
-                header.min[0],
-                header.min[1],
-            ]);
-            const [rawMaxLng, rawMaxLat] = this._transformer([
-                header.max[0],
-                header.max[1],
-            ]);
-
-            // Clamp transformed coordinates to valid WGS84 range
-            const [minLng, minLat] = clampLatLng(rawMinLng, rawMinLat);
-            const [maxLng, maxLat] = clampLatLng(rawMaxLng, rawMaxLat);
-
-            this._bounds = {
-                minX: Math.min(minLng, maxLng),
-                minY: Math.min(minLat, maxLat),
-                minZ: header.min[2],
-                maxX: Math.max(minLng, maxLng),
-                maxY: Math.max(minLat, maxLat),
-                maxZ: header.max[2],
-            };
+            const sw = this._transformer([header.min[0], header.min[1]]);
+            const ne = this._transformer([header.max[0], header.max[1]]);
+            this._bounds = buildBoundsFromCorners(
+                sw,
+                ne,
+                header.min[2],
+                header.max[2],
+            );
         } else {
-            // Data is already in EPSG:4326 degrees, no transformation needed
-            const [minLng, minLat] = clampLatLng(header.min[0], header.min[1]);
-            const [maxLng, maxLat] = clampLatLng(header.max[0], header.max[1]);
-
-            this._bounds = {
-                minX: Math.min(minLng, maxLng),
-                minY: Math.min(minLat, maxLat),
-                minZ: header.min[2],
-                maxX: Math.max(minLng, maxLng),
-                maxY: Math.max(minLat, maxLat),
-                maxZ: header.max[2],
-            };
+            this._bounds = buildBoundsFromCorners(
+                [header.min[0], header.min[1]],
+                [header.max[0], header.max[1]],
+                header.min[2],
+                header.max[2],
+            );
         }
     }
 
@@ -457,11 +497,6 @@ export class CopcStreamingLoader {
         this._calculateBounds();
         this._setupCoordinateOrigin();
         this._allocateBuffers();
-        const cpuCount: number =
-            typeof navigator !== "undefined" &&
-            typeof navigator.hardwareConcurrency !== "undefined"
-                ? navigator.hardwareConcurrency
-                : 4;
         this._workerPool = new WorkerPool(
             () =>
                 new Worker(
@@ -471,7 +506,7 @@ export class CopcStreamingLoader {
                     ),
                     { type: "module" },
                 ),
-            Math.max(1, Math.min(4, Math.floor(cpuCount / 2))),
+            CopcStreamingLoader.getWorkerPoolSize(),
         );
         const spacingMeters = this._calculateSpacingMeters();
         this._isInitialized = true;
@@ -741,11 +776,7 @@ export class CopcStreamingLoader {
 
         // Further clamp to actual max depth in hierarchy (if hierarchy is loaded)
         if (this._maxDepthInHierarchy > 0) {
-            const originalTargetDepth = targetDepth;
             targetDepth = Math.min(targetDepth, this._maxDepthInHierarchy);
-            if (targetDepth !== originalTargetDepth) {
-                // Target depth clamped to max depth in hierarchy
-            }
         }
         return targetDepth;
     }
@@ -908,7 +939,7 @@ export class CopcStreamingLoader {
             node.bufferStartIndex = this._totalLoadedPoints;
             this._totalLoadedPoints += node.pointCount;
 
-            logger.info(
+            logger.debug(
                 `[BUDGET] loading node ${node.key} (${node.pointCount} pts), total: ${this._totalLoadedPoints}/${this._options.pointBudget}`,
             );
 
@@ -1104,105 +1135,79 @@ export class CopcStreamingLoader {
         }
     }
 
-    /** Result of extracting raw values from a View */
-    private _extractRawValues(
-        view: View,
-        pointCount: number,
-    ): {
-        rawX: Float64Array;
-        rawY: Float64Array;
-        rawZ: Float32Array;
-        rawIntensity: Uint16Array;
-        rawClassification: Uint8Array;
-        rawR: Uint16Array | null;
-        rawG: Uint16Array | null;
-        rawB: Uint16Array | null;
-    } {
-        const rawX = new Float64Array(pointCount);
-        const rawY = new Float64Array(pointCount);
-        const rawZ = new Float32Array(pointCount);
-        const rawIntensity = new Uint16Array(pointCount);
-        const rawClassification = new Uint8Array(pointCount);
-
+    private _extractPositions(view: View, n: number): RawPositions {
+        const x = new Float64Array(n);
+        const y = new Float64Array(n);
+        const z = new Float32Array(n);
         const xGet = view.getter("X");
         const yGet = view.getter("Y");
         const zGet = view.getter("Z");
-        const iGet = view.getter("Intensity");
-        const cGet = view.getter("Classification");
-
-        if (this._hasColor) {
-            const rawR = new Uint16Array(pointCount);
-            const rawG = new Uint16Array(pointCount);
-            const rawB = new Uint16Array(pointCount);
-            const rGet = view.getter("Red");
-            const gGet = view.getter("Green");
-            const bGet = view.getter("Blue");
-            for (let i = 0; i < pointCount; i++) {
-                rawX[i] = xGet(i);
-                rawY[i] = yGet(i);
-                rawZ[i] = zGet(i);
-                rawIntensity[i] = iGet(i);
-                rawClassification[i] = cGet(i);
-                rawR[i] = rGet(i);
-                rawG[i] = gGet(i);
-                rawB[i] = bGet(i);
-            }
-            return {
-                rawX,
-                rawY,
-                rawZ,
-                rawIntensity,
-                rawClassification,
-                rawR,
-                rawG,
-                rawB,
-            };
+        for (let i = 0; i < n; i++) {
+            x[i] = xGet(i);
+            y[i] = yGet(i);
+            z[i] = zGet(i);
         }
-
-        for (let i = 0; i < pointCount; i++) {
-            rawX[i] = xGet(i);
-            rawY[i] = yGet(i);
-            rawZ[i] = zGet(i);
-            rawIntensity[i] = iGet(i);
-            rawClassification[i] = cGet(i);
-        }
-
-        return {
-            rawX,
-            rawY,
-            rawZ,
-            rawIntensity,
-            rawClassification,
-            rawR: null,
-            rawG: null,
-            rawB: null,
-        };
+        return { x, y, z };
     }
 
-    /** Prepares the worker request payload from raw values */
-    private _buildProcessPayload(args: {
-        pointCount: number;
-        rawX: Float64Array;
-        rawY: Float64Array;
-        rawZ: Float32Array;
-        rawIntensity: Uint16Array;
-        rawClassification: Uint8Array;
-        rawR: Uint16Array | null;
-        rawG: Uint16Array | null;
-        rawB: Uint16Array | null;
-    }): Record<string, unknown> {
+    private _extractScalars(view: View, n: number): RawScalars {
+        const intensity = new Uint16Array(n);
+        const classification = new Uint8Array(n);
+        const iGet = view.getter("Intensity");
+        const cGet = view.getter("Classification");
+        for (let i = 0; i < n; i++) {
+            intensity[i] = iGet(i);
+            classification[i] = cGet(i);
+        }
+        return { intensity, classification };
+    }
+
+    private _extractColor(view: View, n: number): RawColor {
+        const r = new Uint16Array(n);
+        const g = new Uint16Array(n);
+        const b = new Uint16Array(n);
+        const rGet = view.getter("Red");
+        const gGet = view.getter("Green");
+        const bGet = view.getter("Blue");
+        for (let i = 0; i < n; i++) {
+            r[i] = rGet(i);
+            g[i] = gGet(i);
+            b[i] = bGet(i);
+        }
+        return { r, g, b };
+    }
+
+    private _extractRawValues(
+        view: View,
+        n: number,
+    ): {
+        positions: RawPositions;
+        scalars: RawScalars;
+        color: RawColor | null;
+    } {
+        const positions = this._extractPositions(view, n);
+        const scalars = this._extractScalars(view, n);
+        const color = this._hasColor ? this._extractColor(view, n) : null;
+        return { positions, scalars, color };
+    }
+
+    private _buildProcessPayload(
+        positions: RawPositions,
+        scalars: RawScalars,
+        color: RawColor | null,
+    ): ProcessPayload {
         return {
-            pointCount: args.pointCount,
-            rawX: args.rawX,
-            rawY: args.rawY,
-            rawZ: args.rawZ,
-            rawIntensity: args.rawIntensity,
-            rawClassification: args.rawClassification,
-            rawR: args.rawR,
-            rawG: args.rawG,
-            rawB: args.rawB,
+            pointCount: positions.x.length,
+            rawX: positions.x,
+            rawY: positions.y,
+            rawZ: positions.z,
+            rawIntensity: scalars.intensity,
+            rawClassification: scalars.classification,
+            rawR: color?.r ?? null,
+            rawG: color?.g ?? null,
+            rawB: color?.b ?? null,
             hasColor: this._hasColor,
-            wkt: this._needsTransform ? this._copc!.wkt : null,
+            wkt: this._needsTransform ? (this._copc!.wkt ?? null) : null,
             coordinateOrigin: this._coordinateOrigin,
             colorScheme: this._currentColorScheme,
             globalBounds: [
@@ -1216,11 +1221,7 @@ export class CopcStreamingLoader {
         };
     }
 
-    private async _extractAndProcessNode(
-        view: View,
-        node: CachedNode,
-        startIndex: number,
-    ): Promise<void> {
+    private _ensureNodeReadiness(): void {
         if (
             !this._positions ||
             !this._intensities ||
@@ -1232,49 +1233,44 @@ export class CopcStreamingLoader {
         if (!this._workerPool) {
             throw new Error("WorkerPool not initialized");
         }
+    }
+
+    private async _extractAndProcessNode(
+        view: View,
+        node: CachedNode,
+        startIndex: number,
+    ): Promise<void> {
+        this._ensureNodeReadiness();
+
+        const workerPool = this._workerPool!;
+        const positionsBuf = this._positions!;
+        const intensitiesBuf = this._intensities!;
+        const classificationsBuf = this._classifications!;
+        const colorsBuf = this._colors!;
 
         perfTracker.start("extract.raw");
         const N = node.pointCount;
 
-        // Step 1: extract raw values from View (main thread, fast — only getter calls)
-        const {
-            rawX,
-            rawY,
-            rawZ,
-            rawIntensity,
-            rawClassification,
-            rawR,
-            rawG,
-            rawB,
-        } = this._extractRawValues(view, N);
+        const { positions, scalars, color } = this._extractRawValues(view, N);
         perfTracker.end("extract.raw");
 
-        // Step 2: send raw data to Worker for transform + color computation
         perfTracker.start("worker.process");
 
         const transferList: Transferable[] = [
-            rawX.buffer,
-            rawY.buffer,
-            rawZ.buffer,
-            rawIntensity.buffer,
-            rawClassification.buffer,
+            positions.x.buffer,
+            positions.y.buffer,
+            positions.z.buffer,
+            scalars.intensity.buffer,
+            scalars.classification.buffer,
         ];
-        if (rawR) transferList.push(rawR.buffer, rawG!.buffer, rawB!.buffer);
+        if (color) {
+            transferList.push(color.r.buffer, color.g.buffer, color.b.buffer);
+        }
 
-        const payload = this._buildProcessPayload({
-            pointCount: N,
-            rawX,
-            rawY,
-            rawZ,
-            rawIntensity,
-            rawClassification,
-            rawR,
-            rawG,
-            rawB,
-        });
+        const payload = this._buildProcessPayload(positions, scalars, color);
 
-        const result = await this._workerPool.post<
-            Record<string, unknown>,
+        const result = await workerPool.post<
+            ProcessPayload,
             {
                 requestId: string;
                 positions: Float32Array;
@@ -1285,12 +1281,11 @@ export class CopcStreamingLoader {
         >(payload, transferList);
         perfTracker.end("worker.process");
 
-        // Step 3: write results to pre-allocated buffers (main thread, fast — TypedArray.set)
         perfTracker.start("extract.write");
-        this._positions.set(result.positions, startIndex * 3);
-        this._intensities.set(result.intensities, startIndex);
-        this._classifications.set(result.classifications, startIndex);
-        this._colors.set(result.colors, startIndex * 4);
+        positionsBuf.set(result.positions, startIndex * 3);
+        intensitiesBuf.set(result.intensities, startIndex);
+        classificationsBuf.set(result.classifications, startIndex);
+        colorsBuf.set(result.colors, startIndex * 4);
         perfTracker.end("extract.write");
     }
 

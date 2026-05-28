@@ -47,9 +47,12 @@ export class WorkerPool {
         return this.workerBusy.filter((busy) => busy).length;
     }
 
-    post<TReq, TRes>(data: TReq, transfer: Transferable[]): Promise<TRes> {
+    post<TReq extends object, TRes>(
+        data: TReq,
+        transfer: Transferable[],
+    ): Promise<TRes> {
         const requestId = String(++this.requestCounter);
-        const payload = { ...(data as Record<string, unknown>), requestId };
+        const payload = { ...data, requestId };
 
         return new Promise<TRes>((resolve, reject) => {
             this.pending.set(requestId, {
