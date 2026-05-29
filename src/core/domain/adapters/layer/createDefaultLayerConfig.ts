@@ -28,7 +28,6 @@ export class LayerConfigRegistry {
         }
         return factory();
     }
-    registry.set(role, factory);
 }
 
 /**
