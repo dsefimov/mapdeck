@@ -111,22 +111,14 @@ function extractPointsFromCloudData(
 function getAllLoadedCloudPoints(
     adapterFactory: LayerAdapterFactory,
 ): MeasurementPoint3D[] {
+    if (!adapterFactory.has(LayerRoles.POINT_CLOUD)) return [];
+
     const adapter = adapterFactory.get(LayerRoles.POINT_CLOUD);
-    if (!adapter) return [];
-
     const pcAdapter = adapter as PointCloudAdapter;
-    if (!pcAdapter.getLoadedData) return [];
-
-    const internalData = (
-        pcAdapter as unknown as {
-            currentData: Map<string, PointCloudData>;
-        }
-    ).currentData;
-
-    if (!internalData) return [];
+    const allData = pcAdapter.getAllLoadedData();
 
     const allPoints: MeasurementPoint3D[] = [];
-    for (const data of internalData.values()) {
+    for (const data of allData) {
         if (data?.positions) {
             const extracted = extractPointsFromCloudData(data);
             for (const pt of extracted) {

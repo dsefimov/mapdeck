@@ -321,4 +321,17 @@ export class PointCloudAdapter implements LayerAdapter<
     getLoadedData(layerId: string): PointCloudData | undefined {
         return this._layers.get(layerId)?.data ?? undefined;
     }
+
+    /**
+     * Get all loaded point cloud data across all layers managed by this adapter.
+     */
+    getAllLoadedData(): PointCloudData[] {
+        const result: PointCloudData[] = [];
+        for (const state of this._layers.values()) {
+            if (state.data) {
+                result.push(state.data);
+            }
+        }
+        return result;
+    }
 }

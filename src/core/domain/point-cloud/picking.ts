@@ -255,9 +255,9 @@ function getCloudData(
 
     const adapter = adapterFactory.get(LayerRoles.POINT_CLOUD);
     const data = adapter.getLoadedData?.(layerId);
-    return data && (data as PointCloudData).positions
-        ? (data as PointCloudData)
-        : null;
+    if (!data) return null;
+    const cloudData = data as PointCloudData;
+    return cloudData.positions ? cloudData : null;
 }
 
 /**
