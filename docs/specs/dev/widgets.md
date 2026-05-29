@@ -102,7 +102,7 @@ Size, visibility, and settings config as JSON — separate from code so it can c
 }
 ```
 
-Settings metadata lives in `config.json`. At runtime, `initialize()` reads it and calls `settingsStore.registerSetting()` for each entry — this makes them visible in the Settings widget.
+Settings metadata lives in `config.json`. Settings are auto-registered by `catalogStore.registerWidget()` into `SettingsStore` — no manual registration needed.
 
 ### 5. Register
 
@@ -114,10 +114,10 @@ Add import + `registerWidget()` call in [`src/widgets/registerWidgets.ts`](../..
 
 | Method | When | Purpose |
 |--------|------|---------|
-| `initialize(context)` | On registration (async) | Register settings, set up subscriptions |
+| `initialize(context)` | On registration (async) | Set up subscriptions, one-time async init |
 | `destroy()` | On unregistration (async) | Clean up, dispose reactions |
 
-`initialize()` is **recommended** for widgets that declare settings. Both methods support sync and async implementations.
+`initialize()` is optional — for widgets that need async setup beyond what the constructor provides.
 
 ---
 

@@ -34,6 +34,8 @@ class MyModule implements Module {
 
 For modules that add a **custom layer role**:
 
+Custom roles are registered via `layerToolStore.registerRole()` rather than directly through `layerAdapterFactory` because the role needs to be wired into three places at once: config registry (for default config), adapter factory (for rendering), and the known-role set (for tool discovery — tools with `role: "all"` must find it). `registerRole()` bundles all three steps into one call, keeping the registration surface minimal.
+
 ```ts
 // my-role/types.ts
 import type { LayerConfigBase } from "@core/framework/types";
@@ -81,6 +83,8 @@ class MyModule implements Module {
     }
 }
 ```
+
+`layerToolStore.registerRole()` is the registration point because **roles are mapped to tools** — the same store that knows about layer-specific actions (`LayerTool`) also knows about available render roles. This keeps role registration and tool lookup in one place, avoiding a separate registry just for role discovery.
 
 See: [`src/core/domain/adapters/source/SourceAdapterFactory.ts`](../../../src/core/domain/adapters/source/SourceAdapterFactory.ts)
 

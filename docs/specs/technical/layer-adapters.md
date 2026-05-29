@@ -38,7 +38,7 @@ Adds raster tile source (XYZ, WMS, COG) and layer to MapLibre.
 | `removeFromMap` | `map.removeLayer` + `map.removeSource` |
 | `updateVisibility` | `map.setLayoutProperty(id, "visibility", ...)` |
 
-> **TODO**: Implement `tryUpdateStyle` for opacity via `map.setPaintProperty`. See [PLAN.md](../../PLAN.md).
+> **TODO**: Implement incremental `updateConfig` — currently falls back to full remove+add. Tracked in [PLAN.md](../../PLAN.md).
 
 See: [`src/core/domain/adapters/layer/impl/RasterAdapter.ts`](../../../src/core/domain/adapters/layer/impl/RasterAdapter.ts)
 
@@ -66,9 +66,9 @@ Streams COPC/LAZ point cloud data with viewport-based LOD. Uses Deck.gl via `ove
 | `removeFromMap` | Cancels init task, stops viewport manager, destroys loader, removes overlay |
 | `updateVisibility` | `overlayManager.setLayerVisibility` |
 
-State: `loaders`, `viewportManagers`, `currentData`, `initTasks` — all per layerId, stored in private Maps.
+State: per-layer state stored in a single `_layers: Map<string, PointCloudLayerState>`. Each entry bundles loader, viewportManager, config, data, and lifecycle state.
 
-> **TODO**: Implement `tryUpdateStyle` for `pointSize` and `colorScheme` via deck.gl layer update. See [PLAN.md](../../PLAN.md).
+> **TODO**: Implement incremental `updateConfig` — currently falls back to full recreate. Tracked in [PLAN.md](../../PLAN.md).
 
 See: [`src/core/domain/adapters/layer/impl/PointCloudAdapter.ts`](../../../src/core/domain/adapters/layer/impl/PointCloudAdapter.ts)
 
@@ -100,7 +100,7 @@ See: [`src/core/domain/adapters/layer/registerLayerAdapters.ts`](../../../src/co
 
 1. Create class implementing `LayerAdapter` in [`src/core/domain/adapters/layer/impl/`](../../../src/core/domain/adapters/layer/impl/)
 2. Add to `ADAPTERS` array in `registerLayerAdapters.ts`
-3. Optionally implement `tryUpdateStyle` for incremental updates
+3. Implement `updateConfig` for incremental style updates (optional — falls back to full recreate by default)
 
 ---
 

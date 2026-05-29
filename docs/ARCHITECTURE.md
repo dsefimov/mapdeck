@@ -7,10 +7,29 @@ Strict unidirectional flow. **Cross-sibling & reverse imports are forbidden.**
 
 ```
 App                → depends on all layers
-Widgets | Tools    → depends on Core only
+Widgets | LayerTools → depends on Core only
 MapTools | Modules → depends on Core only
 Core               → depends on external libraries only
 ```
+
+## End-to-End Rendering Flow
+
+How a layer node becomes pixels on the map:
+
+```
+Module / built-in data source
+  └─ creates TreeNode with roles.display = { render: RenderDescriptor { role, sourceUrl, config } }
+       └─ stored in LayerTreeStore (MobX observable tree)
+            └─ layerSnapshot — frozen snapshot of the tree built by LayerTreeStore
+                 └─ LayerManager.syncAllLayers() reaction fires on snapshot change
+                      └─ buildGroupedRenderUnits(snapshot, adapterFactory) → Map<unitId, RenderUnit>
+                           └─ RenderUnit = { id, nodeIds, descriptor: RenderDescriptor, adapter: LayerAdapter }
+                                └─ adapter.addToMap(unitId, descriptor, mapContext)
+                                     ├─ Raster/VectorAdapter → MapLibre GL source + layer
+                                     └─ PointCloudAdapter → Deck.gl overlay layer
+```
+
+Key: `LayerManager` never reads the tree directly — it receives diffs via `layerSnapshot`, builds `RenderUnit` objects through `buildGroupedRenderUnits()`, and delegates all map mutations to `LayerAdapter` instances.
 
 ## Layer Map & Extension Points
 | Layer | Responsibility | How to extend | Spec |

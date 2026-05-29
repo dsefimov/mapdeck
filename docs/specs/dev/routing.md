@@ -23,14 +23,14 @@ App.tsx
 
 ### MapWorkspace
 
-The workspace is a full-viewport flexbox layout:
+The workspace is a full-viewport flexbox layout using CSS Modules (`MapWorkspace.module.css`):
 
-| Region | CSS | Content |
-|--------|-----|---------|
-| `.map-workspace` | `100vw × 100vh`, `display: flex` | Root container |
-| `.map-workspace__sidebar` | fixed width | `Sidebar` widget — icon buttons |
-| `.map-workspace__main-content` | `flex: 1` | Map area |
-| `.map-workspace__map-area` | `flex: 1`, `position: relative` | `MapViewer` + `WidgetGrid` |
+| Region | CSS Module class | CSS | Content |
+|--------|-----------------|-----|---------|
+| Root container | `mapWorkspace` | `100vw × 100vh`, `display: flex` | Root flex container |
+| Sidebar | — | fixed width | `Sidebar` — icon buttons |
+| Main content | `mainContent` | `flex: 1` | Column container |
+| Map area | `mapArea` | `flex: 1`, `position: relative` | `MapViewer` + `WidgetGrid` |
 
 Source: `src/app/workspace/`
 
@@ -40,7 +40,7 @@ Source: `src/app/workspace/`
 
 Instead of navigating between pages, users interact with **floating widget panels**:
 
-- **Sidebar** buttons toggle widgets via `widgetOverlayStore.openWidget(id)` / `closeWidget(id)`
+- **Sidebar** buttons toggle widgets via `rootStore.overlayStore.openWidget(id)` / `closeWidget(id)`
 - **WidgetGrid** renders open widgets as draggable/resizable panels (`react-grid-layout`)
 - **Widget-local state** persists across open/close cycles via `getWidgetStore(id, factory)`
 - **Z-ordering** is managed by `bringToFront(widgetId)`

@@ -18,18 +18,20 @@ Before writing code, identify which layer your feature belongs to:
 
 ## 2. Registration Principle
 
-All extensions are registered **explicitly** in dedicated `register*.ts` files during app initialization (`src/app/initialize.ts`).
+All extensions are registered **explicitly** in dedicated `register*.ts` files during app initialization via `RootStore.initialize()`.
 
 ### How it works
 
-```
-initialize.ts
+```ts
+RootStore.initialize()
   └─ registerLayerAdapters()
+  └─ registerAttributeAdapters()  ← src/core/domain/adapters/attribute/registerAttributeAdapters.ts
   └─ registerBuiltInWidgets()   ← src/widgets/registerWidgets.ts
-  └─ registerModules()          ← src/modules/registerModules.ts
   └─ registerTools()            ← src/layer-tools/registerTools.ts
   └─ registerMapTools()         ← src/map-tools/registerMapTools.ts
+  └─ registerModules()          ← src/modules/registerModules.ts
   └─ fetchLayerTree()
+  └─ markInitialized()
 ```
 
 Each `register*.ts` file contains an **explicit list** of extensions:
@@ -118,7 +120,7 @@ Global services (factories, managers) live in `RootStore` and are accessed throu
 rootStore.layerAdapterFactory       // LayerAdapter registry
 rootStore.sourceAdapterFactory      // SourceAdapter registry
 rootStore.attributeAdapterFactory   // AttributeAdapter registry
-rootStore.overlayManager            // Deck.gl overlay manager
+rootStore.mapStore.overlayManager   // Deck.gl overlay manager
 ```
 
 See [modules.md](./modules.md) for an example of registering a custom layer role.

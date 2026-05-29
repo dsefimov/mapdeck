@@ -22,7 +22,11 @@ NodeRole is a strict discriminated union: `DisplayRole | AttributeRole | ReportR
 
 ## Display Roles
 
-A display role connects a node to a visual representation on the map. The `layerConfig` determines the rendering behavior:
+A display role connects a node to a visual representation on the map. The `render: RenderDescriptor` field bundles three things:
+
+- `role` — which `LayerAdapter` to use (`raster`, `vector`, `point-cloud`, etc.)
+- `sourceUrl` — the data source URL
+- `config` — rendering parameters (type-specific, e.g. `RasterLayerConfig`)
 
 | Layer Role | What it renders | Config type |
 |------------|----------------|-------------|
@@ -33,7 +37,7 @@ A display role connects a node to a visual representation on the map. The `layer
 
 Each layer role is handled by a dedicated `LayerAdapter` that knows how to add/remove/update that type on the map.
 
-See: [`src/core/framework/types/domain/layer/config.ts`](../../../src/core/framework/types/domain/layer/config.ts)
+See: [`src/core/framework/types/domain/layer/descriptor.ts`](../../../src/core/framework/types/domain/layer/descriptor.ts)
 
 ---
 

@@ -36,6 +36,8 @@ Self-contained components that may use stores, hooks, or complex internal state.
 | Directory | Contents |
 |-----------|----------|
 | `data-table/` | Virtual-scrolled attribute table (ex `AttributeTable`, renamed) |
+| `measurement-panel/` | Measurement tools UI (distance, area) |
+| `tool-panel/` | Generic container for layer tool panels |
 
 ### Rules
 - Can use `useRootStore()` for store access

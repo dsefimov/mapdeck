@@ -49,7 +49,6 @@ type SettingMetadata =
     | SelectSettingMetadata
     | BooleanSettingMetadata;
 ```
-```
 
 This eliminates `unknown` — `defaultValue` type is enforced by `type` discriminator.
 

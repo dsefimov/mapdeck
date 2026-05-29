@@ -72,20 +72,12 @@ See: [`src/core/domain/overlay/deck/layers/PointCloudLayerFactory.ts`](../../../
 
 ## Layer Update
 
-> **TODO**: `updateLayer` uses `layer.clone(props)` which creates a new layer instance. When `tryUpdateStyle` is implemented on adapters, incremental updates should be preferred. See [PLAN.md](../../PLAN.md).
+Config changes trigger `adapter.updateConfig()` on the corresponding render unit. The current behaviour depends on the adapter:
 
-Current flow:
-```
-adapter.updateDeckLayer()
-  └─ PointCloudLayerFactory.createLayer()
-       └─ overlayManager.removeLayer(id) + overlayManager.addLayer(id, newLayer)
-```
+- **RasterAdapter / VectorAdapter**: full recreate — `map.removeLayer` + `map.removeSource` + re-add.
+- **PointCloudAdapter**: calls `overlayManager.addLayer()` which detects an existing layer and replaces it with a new `deck.gl` instance.
 
-Target flow (with `tryUpdateStyle`):
-```
-adapter.tryUpdateStyle()
-  └─ overlayManager.updateLayer(id, { pointSize, ... })  // clone-based, no full reload
-```
+The `DeckOverlayManager.updateLayer(layerId, props)` method exists for clone-based updates (`layer.clone(props)`) but is not yet used by adapters — full recreation is still the default. Incremental `updateConfig` is tracked in [PLAN.md](../../PLAN.md).
 
 ---
 

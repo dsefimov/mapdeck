@@ -95,7 +95,16 @@ Add `new MyTool()` to `BUILT_IN_TOOLS` in [`src/map-tools/registerMapTools.ts`](
 
 ## Tool State
 
-MapTool instances are classes — they hold their own state (`isActive`, event listeners, etc.) directly on the instance. No separate tool-local store registry exists; the tool instance itself persists across activate/deactivate cycles.
+MapTool instances are classes with MobX-observable state (`isActive`, event listeners, etc.) declared directly on the instance via `makeObservable` / `observable`. No separate tool-local store registry exists — the MapTool instance itself serves as its own store.
+
+**State rules:**
+- `isActive` — always an `observable` boolean, mutated by `activate()`/`deactivate()`
+- Business data (measurement points, drawn features) — MobX `observable` fields on the instance, not `useState` in the component
+- UI-only flags (panel open, hover state) — belong in the component via `useState`, not on the tool
+
+> **Note on existing tools**: Ruler3D, AreaMeasure, VolumeMeasure, and FeatureInfo currently store state in component `useState` — this is architectural debt tracked in [PLAN.md](../../PLAN.md) (Module 1). New tools must follow the pattern above (MobX on the tool instance, not `useState` in the component).
+
+The tool instance is created once at registration and persists for the app lifetime. Activate/deactivate cycles toggle `isActive` but don't recreate or dispose the instance.
 
 ---
 

@@ -39,14 +39,17 @@ Each adapter implements `addToMap`, `removeFromMap`, `updateVisibility`, `update
 ```ts
 interface LayerAdapter<TRole extends LayerRole = LayerRole> {
     readonly role: TRole;
-    addToMap(layerId: string, descriptor: RenderDescriptor<TRole>, map: Map): void;
-    removeFromMap(layerId: string, map: Map): void;
-    updateVisibility(layerId: string, visible: boolean, map: Map): void;
-    updateConfig(renderUnit: RenderUnit<TRole>, map: Map): void;
+    addToMap(layerId: string, descriptor: RenderDescriptor<TRole>, ctx: MapContext): void;
+    removeFromMap(layerId: string, ctx: MapContext): void;
+    updateVisibility(layerId: string, visible: boolean, ctx: MapContext): void;
+    updateConfig(renderUnit: RenderUnit<TRole>, ctx: MapContext): void;
+    getLoadedData?(layerId: string): unknown;
 }
 ```
 
-Adapters receive a `RenderDescriptor` (role + sourceUrl + config) instead of separate arguments.
+All methods receive `ctx: MapContext` (a MapLibre wrapper) instead of a raw `map` object — this keeps adapters decoupled from the MapLibre instance. Data-providing adapters (e.g. `PointCloudAdapter`) may additionally implement `getLoadedData`.
+
+Adapters receive a `RenderDescriptor` (role + sourceUrl + config) on `addToMap`.
 
 See: [`src/core/framework/types/domain/layer/adapter.ts`](../../../src/core/framework/types/domain/layer/adapter.ts)
 
@@ -72,29 +75,29 @@ Any config change triggers complete layer removal and re-creation:
 
 ```
 LayerTool → treeStore.updateLayerConfig(nodeId, { opacity: 0.5 })
-  └─ merges into displayRole.layerConfig (runInAction)
-       └─ LayerManager reaction detects config change
-            └─ _updateExistingLayer() → configsDiffer() = true
-                 └─ removeLayerFromMap() → addLayerToMap()
-                      ├─ RasterAdapter: map.removeLayer + map.removeSource + map.addSource + map.addLayer
-                      └─ PointCloudAdapter: destroy loader + viewport + overlay → create all new
+  └─ updateDescriptorConfig(display.render, updates) → new RenderDescriptor
+       └─ display.render = newDescriptor (MobX action)
+            └─ LayerManager.syncAllLayers() reaction fires
+                 └─ _updateChangedUnits() → _configsDiffer(current.descriptor.config, desired.descriptor.config) = true
+                      └─ _removeRenderUnit() + _addRenderUnit()
+                           ├─ RasterAdapter: map.removeLayer + map.removeSource + map.addSource + map.addLayer
+                           └─ PointCloudAdapter: destroy loader + viewport + overlay → create all new
 ```
 
 This causes visible flicker and is expensive for point clouds (destroys streaming state).
 
-### Target: Incremental via `tryUpdateStyle`
+### Target: Incremental via `updateConfig`
 
 ```
-LayerManager._updateExistingLayer()
-  └─ if config changed:
-       └─ adapter.tryUpdateStyle?(layerId, updates, map)
-            ├─ true  → style applied incrementally, no recreation
-            │    ├─ RasterAdapter: map.setPaintProperty(layerId, 'raster-opacity', value)
-            │    └─ PointCloudAdapter: update deck.gl layer props (pointSize, colorScheme)
-            └─ false → fallback: removeLayerFromMap + addLayerToMap
+LayerManager._updateExistingUnit(current, desired)
+  └─ if config or sourceUrl changed:
+       └─ adapter.updateConfig(desired, ctx)
+            ├─ RasterAdapter: map.setPaintProperty(layerId, 'raster-opacity', value)  ← TODO
+            └─ PointCloudAdapter: update deck.gl layer props (pointSize, colorScheme)  ← TODO
+            (currently: full removeFromMap + addToMap for both)
 ```
 
-> **TODO**: Implement `tryUpdateStyle` in RasterAdapter and PointCloudAdapter. See [PLAN.md](../../PLAN.md).
+> **TODO**: Implement incremental updates in `RasterAdapter.updateConfig` and `PointCloudAdapter.updateConfig` — currently both fall back to full recreate. Tracked in [PLAN.md](../../PLAN.md).
 
 ---
 
@@ -102,21 +105,22 @@ LayerManager._updateExistingLayer()
 
 ```
 Module (STAC, etc.)
-  └─ creates DisplayRole with layerConfig
-       └─ LayerNode.roles = [displayRole]
-            └─ LayerManager reads displayRole.layerConfig
-                 └─ LayerAdapterFactory.get(config.role)
-                      └─ adapter.addToMap(layerId, config, sourceUrl, map)
+  └─ creates DisplayRole with display.render = RenderDescriptor { role, sourceUrl, config }
+       └─ LayerNode.roles.display = displayRole
+            └─ LayerManager reads display.render via layerSnapshot
+                 └─ buildGroupedRenderUnits() → RenderUnit { descriptor, adapter }
+                      └─ adapter.addToMap(unitId, descriptor, ctx)
 
-Style update (incremental):
+Style update:
   LayerTool → treeStore.updateLayerConfig(nodeId, { opacity: 0.5 })
-    └─ LayerManager reaction detects config change
-         └─ adapter.tryUpdateStyle?(layerId, updates, map)
-              ├─ true  → style applied, no recreation
-              └─ false → fallback: removeLayer + addLayer
+    └─ updateDescriptorConfig(display.render, updates) → new RenderDescriptor
+         └─ display.render = newDescriptor
+              └─ LayerManager.syncAllLayers() reaction fires
+                   └─ _updateChangedUnits() → _configsDiffer() = true
+                        └─ _updateExistingUnit() → adapter.updateConfig(desired, ctx)
 ```
 
-The role and config travel together in `DisplayRole.layerConfig`. No duplication, no sync risk.
+The role, sourceUrl, and config travel together in `DisplayRole.render: RenderDescriptor`. No duplication, no sync risk.
 
 ---
 
@@ -127,8 +131,8 @@ The role and config travel together in `DisplayRole.layerConfig`. No duplication
 3. Add type guard function
 4. Add case to `createDefaultConfig`
 5. Implement `LayerAdapter` in [`src/core/domain/adapters/layer/impl/`](../../../src/core/domain/adapters/layer/impl/)
-6. Register adapter via `LayerAdapterFactory.register(role, adapter)`
-7. Optionally implement `tryUpdateStyle` for incremental updates
+6. Register role via `rootStore.layerToolStore.registerRole(role, adapter, defaultConfigFactory)` — this wraps adapter registration, config registration, and role discovery. See [modules.md](../dev/modules.md) for a full example.
+7. Done — the role is now discoverable and renderable by the system.
 
 ---
 

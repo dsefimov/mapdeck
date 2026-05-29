@@ -2,16 +2,17 @@
 
 ## Principles
 
-- **React `useState` → presentation. MobX → domain.**
-- `useState`/`useReducer` for: UI-only state (modal open, form value, hover), local animation, frequent updates (scroll, mouse)
-- MobX stores for: state shared by ≥2 unrelated components, survives navigation, contains business logic (async, validation, `@computed`), drives imperative APIs (map, WebGL, WebSocket)
-- **Start with `useState`. Extract to MobX when pain appears** (prop drilling, desync, complex async, need for `@computed`)
+- **React `useState` → UI presentation. MobX → domain logic.**
+- `useState`/`useReducer` exclusively for: UI-only state (modal open, form value, hover), local animation, frequent transient updates (scroll, mouse)
+- MobX stores for: state shared by ≥2 unrelated components, state that survives navigation, business logic (async, validation, `@computed`), imperative API handles (map, WebGL, WebSocket)
+- **Never `useState` for business data** (layer config, attribute data, tool state, feature info, settings). Business state always goes to MobX.
+- **Rule of extraction**: if state starts as `useState` and later needs cross-component access, async handling, or computed values — extract to MobX immediately. Don't extend the `useState` version.
 - **Strict actions** — `enforceActions: "always"`
 - **Safe computed access** — Computed values must not be read outside a reactive context
   (`observer`, `autorun`, `reaction`, or another computed). Reading plain observables in actions
   is unrestricted — only computed access is guarded to prevent stale reads.
 
-### Checklist (3 steps)
+### Decision guide (3 steps)
 1. **Needs other components?** → Yes → MobX
 2. **Survives navigation?** → Yes → MobX
 3. **Temporary UI flag or form value?** → Yes → `useState`
@@ -39,20 +40,16 @@ RootStore
 ├── overlayStore       { WidgetOverlayStore }
 ├── localeStore        { LocaleStore }
 ├── isInitialized      { boolean }
-├── initError          { string | null }
-├── syncLayout()       { layout sync helper }
-└── updateWidgetLayout() { single-widget layout update }
+└── initError          { string | null }
 ```
 
 ### Shared state on RootStore
 
-| Field | Why |
-|-------|-----|
-| `isInitialized` / `initError` | Needed by App and ErrorScreen |
-| `syncLayout()` | Layout sync from react-grid-layout |
-| `updateWidgetLayout()` | Single-widget layout update (edge snapping) |
+`isInitialized` / `initError` — needed by `App` and `ErrorScreen` (read before other stores are ready).
 
 **Rule**: if two stores need shared state → put it on RootStore.
+
+Layout methods (`syncLayout`, `updateLayout`) live on `overlayStore`, not on `RootStore` directly.
 
 ### Rules
 
