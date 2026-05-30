@@ -58,6 +58,10 @@ export interface STACAsset {
     readonly description?: string;
     readonly type?: string;
     readonly roles?: readonly string[];
+    // WMS Extension fields (unofficial but widespread)
+    readonly "wms:layers"?: string;
+    readonly "wms:styles"?: string;
+    readonly "wms:dimensions"?: Record<string, string>;
 }
 
 export interface STACSpatialExtent {

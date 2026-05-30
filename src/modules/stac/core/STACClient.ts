@@ -7,11 +7,17 @@ import { logger } from "@core/shared/diagnostics/logger";
 import type { STACConfig } from "./STACConfig";
 import type {
     STACCatalog,
+    STACCollection,
     STACEntity,
     STACItem,
     STACFeatureCollection,
 } from "../types";
-import { isSTACCatalog, isSTACItem, isSTACFeatureCollection } from "../types";
+import {
+    isSTACCatalog,
+    isSTACCollection,
+    isSTACItem,
+    isSTACFeatureCollection,
+} from "../types";
 
 export class STACClient {
     constructor(private readonly config: STACConfig) {}
@@ -39,18 +45,19 @@ export class STACClient {
     async fetchCatalog(
         catalogUrl: string,
         baseUrlOverride?: string,
-    ): Promise<STACCatalog> {
+    ): Promise<STACCatalog | STACCollection> {
         logger.debug(`Fetching STAC catalog from: ${catalogUrl}`);
         const entity = await this.fetchEntity(catalogUrl, baseUrlOverride);
 
-        if (!isSTACCatalog(entity)) {
+        if (!isSTACCatalog(entity) && !isSTACCollection(entity)) {
             throw new Error(
-                `Expected STAC Catalog but got type: ${entity.type}`,
+                `Expected STAC Catalog or Collection but got type: ${entity.type}`,
             );
         }
 
+        const label = isSTACCollection(entity) ? "Collection" : "Catalog";
         logger.debug(
-            `Loaded STAC catalog: ${entity.id} (${entity.title || "untitled"})`,
+            `Loaded STAC ${label}: ${entity.id} (${entity.title || "untitled"})`,
         );
         return entity;
     }

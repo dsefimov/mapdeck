@@ -11,7 +11,12 @@ import { STACCache } from "../core/STACCache";
 import { STACEntityMapper } from "../mapping/STACEntityMapper";
 import type { LayerConfigRegistry } from "@core/domain/adapters";
 import { resolveBaseUrl, filterLinksByRel } from "../utils/url";
-import { isSTACCollection, type STACCollection, type STACItem } from "../types";
+import {
+    isSTACCollection,
+    type STACCatalog,
+    type STACCollection,
+    type STACItem,
+} from "../types";
 
 interface InitializedState {
     client: STACClient;
@@ -47,38 +52,35 @@ export class STACTreeAdapter implements SourceAdapter {
             const catalog = await client.fetchCatalog(config.url);
             cache.store(catalog);
 
-            const childLinks = filterLinksByRel(catalog.links, "child");
+            const nodes: TreeNode[] = [];
 
-            if (childLinks.length === 0) {
-                logger.warn(`No child links found in catalog ${catalog.id}`);
-                return [];
+            // Handle child links → collections
+            const collectionNodes = await fetchChildCollections(catalog, {
+                client,
+                cache,
+                mapper,
+            });
+            for (const n of collectionNodes) {
+                if (n) nodes.push(n);
             }
 
-            logger.debug(
-                `Found ${childLinks.length} child link(s), fetching collections`,
-            );
+            // Handle item links directly in catalog (items linked without Collection container)
+            const itemNodes = await fetchCatalogItems(catalog, {
+                client,
+                cache,
+                mapper,
+            });
+            for (const n of itemNodes) {
+                if (n) nodes.push(n);
+            }
 
-            const nodes = await Promise.all(
-                childLinks.map(async (link) => {
-                    try {
-                        const entity = await client.fetchEntity(link.href);
-                        if (!isSTACCollection(entity)) return null;
-                        cache.store(entity);
-                        return mapper.mapCollectionToGroupNode(
-                            entity,
-                            observable.array<string>([]),
-                        );
-                    } catch (error) {
-                        logger.warn(
-                            `Failed to fetch child ${link.href}:`,
-                            error,
-                        );
-                        return null;
-                    }
-                }),
-            );
+            if (nodes.length === 0) {
+                logger.warn(
+                    `No children or items found in catalog ${catalog.id}`,
+                );
+            }
 
-            return nodes.filter((n): n is TreeNode => n !== null);
+            return nodes;
         } catch (error) {
             logger.error("Failed to fetch STAC catalog root:", error);
             throw error;
@@ -123,6 +125,58 @@ interface FetchContext {
     mapper: STACEntityMapper;
 }
 
+async function fetchChildCollections(
+    catalog: STACCatalog | STACCollection,
+    ctx: FetchContext,
+): Promise<(TreeNode | null)[]> {
+    const childLinks = filterLinksByRel(catalog.links, "child");
+    if (childLinks.length === 0) return [];
+
+    logger.debug(
+        `Found ${childLinks.length} child link(s), fetching collections`,
+    );
+
+    return Promise.all(
+        childLinks.map(async (link) => {
+            try {
+                const entity = await ctx.client.fetchEntity(link.href);
+                if (!isSTACCollection(entity)) return null;
+                ctx.cache.store(entity);
+                return ctx.mapper.mapCollectionToGroupNode(
+                    entity,
+                    observable.array<string>([]),
+                );
+            } catch (error) {
+                logger.warn(`Failed to fetch child ${link.href}:`, error);
+                return null;
+            }
+        }),
+    );
+}
+
+async function fetchCatalogItems(
+    catalog: STACCatalog | STACCollection,
+    ctx: FetchContext,
+): Promise<TreeNode[]> {
+    const itemLinks = filterLinksByRel(catalog.links, "item");
+    if (itemLinks.length === 0) return [];
+
+    const results: TreeNode[] = [];
+    for (const link of itemLinks) {
+        try {
+            const items = await ctx.client.fetchItems(link.href);
+            items.forEach((item) => ctx.cache.store(item));
+            for (const item of items) {
+                const node = ctx.mapper.mapItemToLayerNode(item);
+                if (node) results.push(node);
+            }
+        } catch (error) {
+            logger.warn(`Failed to fetch item ${link.href}:`, error);
+        }
+    }
+    return results;
+}
+
 function buildChildFetchPromises(
     collection: STACCollection,
     baseUrl: string | undefined,
@@ -144,10 +198,8 @@ function buildChildFetchPromises(
         );
     }
 
-    const childLinks = [
-        ...filterLinksByRel(collection.links, "child"),
-        ...filterLinksByRel(collection.links, "collection"),
-    ];
+    // "collection" rel is a back-reference from Item to parent, not a navigation link
+    const childLinks = filterLinksByRel(collection.links, "child");
 
     for (const link of childLinks) {
         promises.push(fetchChildCollection(link.href, baseUrl, ctx));

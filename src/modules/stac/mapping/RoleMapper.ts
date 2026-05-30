@@ -4,6 +4,7 @@
  * This is the ONLY place where STAC knowledge lives.
  * Core types (NodeRoles, LayerRole, LayerConfig) know nothing about STAC.
  */
+import { logger } from "@core/shared/diagnostics/logger";
 import {
     LayerRoles,
     type LayerRole,
@@ -21,17 +22,47 @@ import type {
 import type { STACAsset } from "../types";
 import { TileRoles, ReportRoles } from "../types";
 
+// ─── Display role priority ────────────────────────────────────────────────
+// More specific roles win over generic ones when an asset has multiple roles.
+const ROLE_PRIORITY: readonly string[] = [
+    TileRoles.POINT_CLOUD,
+    TileRoles.VECTOR3D,
+    TileRoles.VECTOR_TILE,
+    TileRoles.RASTER_TILE,
+    "wms",
+    "visual",
+    "data",
+    "cog",
+    "geotiff",
+    "image",
+];
+
+function getRolePriority(role: string): number {
+    const idx = ROLE_PRIORITY.indexOf(role);
+    return idx === -1 ? Infinity : idx;
+}
+
+// ─── Display role mapping ─────────────────────────────────────────────────
+// Split into standard STAC roles and project-specific extensions.
+// This makes it clear which roles are part of the official STAC spec
+// and which are custom / community conventions.
+
+type DisplayMapping = { role: LayerRole; type?: "xyz" | "wms" | "cog" };
+
 /**
- * Mapping from STAC asset role to LayerRole + type.
- * Only incoming mapping — application does not know about STAC.
+ * Official STAC roles that hint at rendering type.
+ * @see https://github.com/radiantearth/stac-spec/blob/master/item-spec/item-spec.md#asset-role-types
  */
-const INCOMING_MAPPING: Record<
-    string,
-    { role: LayerRole; type?: "xyz" | "wms" | "cog" }
-> = {
-    [TileRoles.RASTER_TILE]: { role: LayerRoles.RASTER, type: "xyz" },
+const STANDARD_DISPLAY_MAPPING: Record<string, DisplayMapping> = {
     visual: { role: LayerRoles.RASTER, type: "cog" },
     data: { role: LayerRoles.RASTER, type: "cog" },
+};
+
+/**
+ * Project-specific / community extension roles for precise rendering control.
+ */
+const EXTENDED_DISPLAY_MAPPING: Record<string, DisplayMapping> = {
+    [TileRoles.RASTER_TILE]: { role: LayerRoles.RASTER, type: "xyz" },
     cog: { role: LayerRoles.RASTER, type: "cog" },
     geotiff: { role: LayerRoles.RASTER, type: "cog" },
     image: { role: LayerRoles.RASTER, type: "cog" },
@@ -39,6 +70,14 @@ const INCOMING_MAPPING: Record<
     [TileRoles.POINT_CLOUD]: { role: LayerRoles.POINT_CLOUD },
     [TileRoles.VECTOR3D]: { role: LayerRoles.VECTOR3D },
     wms: { role: LayerRoles.RASTER, type: "wms" },
+};
+
+/**
+ * Combined mapping from STAC asset role to LayerRole + type.
+ */
+const INCOMING_MAPPING: Record<string, DisplayMapping> = {
+    ...STANDARD_DISPLAY_MAPPING,
+    ...EXTENDED_DISPLAY_MAPPING,
 };
 
 /**
@@ -79,8 +118,11 @@ export function mapAssetToNodeRole(
         }
     }
 
-    // Check for display roles (using mapping)
-    for (const role of assetRoles) {
+    // Check for display roles — sort by priority so the most specific wins
+    const sortedDisplayRoles = [...assetRoles].sort(
+        (a, b) => getRolePriority(a) - getRolePriority(b),
+    );
+    for (const role of sortedDisplayRoles) {
         const mapping = INCOMING_MAPPING[role];
         if (mapping) {
             return createDisplayRole(assetKey, asset, mapping, registry);
@@ -123,8 +165,22 @@ export function mapAssetsToNodeRoles(
     }
 
     const result: NodeRoles = { reports: reportRoles };
-    if (displayRoles[0]) result.display = displayRoles[0];
-    if (attributeRoles[0]) result.attribute = attributeRoles[0];
+    if (displayRoles[0]) {
+        if (displayRoles.length > 1) {
+            logger.debug(
+                `Item has ${displayRoles.length} display roles, using first: ${displayRoles[0].id}`,
+            );
+        }
+        result.display = displayRoles[0];
+    }
+    if (attributeRoles[0]) {
+        if (attributeRoles.length > 1) {
+            logger.debug(
+                `Item has ${attributeRoles.length} attribute roles, using first: ${attributeRoles[0].id}`,
+            );
+        }
+        result.attribute = attributeRoles[0];
+    }
     return result;
 }
 
@@ -147,9 +203,16 @@ function createDisplayRole(
         cfg.type = mapping.type;
     }
 
-    // Set WMS layers if specified in asset title or description
+    // Resolve WMS layers with fallback chain:
+    // 1. wms:layers asset field (WMS Extension) — explicit STAC metadata
+    // 2. LAYERS param extracted from full GetMap URL (static STAC catalogs) — handled by getWmsLayerName()
     if (mapping.type === "wms") {
-        cfg.layers = asset.title || assetKey;
+        if (asset["wms:layers"]) {
+            cfg.layers = asset["wms:layers"];
+        }
+        // If wms:layers is not set, cfg.layers stays undefined.
+        // getWmsLayerName() will extract LAYERS from URL if present
+        // (e.g. full GetMap URL from static STAC catalogs).
     }
 
     const result: DisplayRole = {

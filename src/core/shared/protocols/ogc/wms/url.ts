@@ -22,13 +22,12 @@ export function parseWmsUrl(url: string): ParsedWmsUrl {
 }
 
 /**
- * Get the WMS layer name from a URL or config.
- * Priority: URL LAYERS param > config.layers.
+ * Resolve WMS layer name with fallback chain:
+ * 1. LAYERS param extracted from full GetMap URL (static STAC catalogs)
+ * 2. configLayers — set from wms:layers asset field (WMS Extension) or explicit config
+ * 3. ""  — empty string fallback
  */
-export function getWmsLayerName(
-    url: string,
-    configLayers?: string,
-): string {
+export function getWmsLayerName(url: string, configLayers?: string): string {
     const { layers } = parseWmsUrl(url);
     if (layers) return layers;
     return configLayers ?? "";
