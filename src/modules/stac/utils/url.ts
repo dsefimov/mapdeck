@@ -2,7 +2,7 @@
  * URL utility functions for STAC data processing
  */
 
-import type { STACLink, STACCollection } from "../types";
+import type { STACLink } from "../types";
 
 const DEFAULT_LOCALHOST = "http://localhost";
 
@@ -40,18 +40,18 @@ export function resolveBaseUrlFromUrl(
 }
 
 /**
- * Resolve base URL from STAC collection
+ * Resolve base URL from STAC links
  * Uses the 'self' link if available, otherwise falls back to default
  *
- * @param collection - STAC collection
+ * @param links - STAC links array (from a collection/catalog/item)
  * @param fallbackBaseUrl - Optional fallback base URL
  * @returns Resolved base URL
  */
 export function resolveBaseUrl(
-    collection: STACCollection,
+    links: readonly STACLink[],
     fallbackBaseUrl?: string,
 ): string {
-    const selfLink = collection.links.find((link) => link.rel === "self");
+    const selfLink = links.find((link) => link.rel === "self");
     const baseUrl = fallbackBaseUrl || getDefaultBaseUrl();
 
     if (!selfLink?.href) {

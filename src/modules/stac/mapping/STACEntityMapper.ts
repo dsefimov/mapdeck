@@ -7,7 +7,6 @@ import {
     type GroupNode,
     type NodeRoles,
     type LayerNodeRoles,
-    type PointCloudLayerConfig,
 } from "@core/framework/types";
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
@@ -49,7 +48,6 @@ export class STACEntityMapper {
             icon: "",
             metadata: {
                 stacEntityRef: `Collection:${collection.id}`,
-                stacEntity: JSON.stringify(collection),
             },
             parentId: null,
             childrenIds,
@@ -66,6 +64,7 @@ export class STACEntityMapper {
             item.assets,
             this.layerConfigRegistry,
             item.properties,
+            item.bbox,
         );
 
         const hasBbox = item.bbox && item.bbox.length >= 4;
@@ -79,8 +78,6 @@ export class STACEntityMapper {
             return this.createPlaceholderOrSkip(item, hasBbox, "no display");
         }
 
-        this.augmentPointCloudRoles(layerRoles, item);
-
         const flattenedBbox = hasBbox ? flattenTo2D(new Bbox(item.bbox)) : null;
 
         const layerNode: LayerNode = {
@@ -91,7 +88,6 @@ export class STACEntityMapper {
             icon: "",
             metadata: {
                 stacEntityRef: `Feature:${item.id}`,
-                stacEntity: JSON.stringify(item),
             },
             parentId: null,
             bbox: flattenedBbox,
@@ -104,32 +100,14 @@ export class STACEntityMapper {
 
     getSTACEntityFromNode(node: TreeNode): STACEntity | null {
         const ref = node.metadata?.stacEntityRef as string | undefined;
-        if (ref) {
-            const colonIndex = ref.indexOf(":");
-            if (colonIndex !== -1) {
-                const type = ref.slice(0, colonIndex);
-                const id = ref.slice(colonIndex + 1);
-                const entity = this.cache.get<STACEntity>(type, id);
-                if (entity) return entity;
-            }
-        }
+        if (!ref) return null;
 
-        // Fallback: parse from serialized metadata on cache miss
-        const stacEntityString = node.metadata?.stacEntity as
-            | string
-            | undefined;
-        if (stacEntityString) {
-            try {
-                return JSON.parse(stacEntityString) as STACEntity;
-            } catch (error) {
-                logger.warn(
-                    `Failed to parse stacEntity from node ${node.id}:`,
-                    error,
-                );
-            }
-        }
+        const colonIndex = ref.indexOf(":");
+        if (colonIndex === -1) return null;
 
-        return null;
+        const type = ref.slice(0, colonIndex);
+        const id = ref.slice(colonIndex + 1);
+        return this.cache.get<STACEntity>(type, id) ?? null;
     }
 
     getSTACCollectionFromNode(node: TreeNode): STACCollection | null {
@@ -155,32 +133,6 @@ export class STACEntityMapper {
         };
         if (roles.attribute) result.attribute = roles.attribute;
         return result;
-    }
-
-    /**
-     * Augment point cloud layer configs with bounds and coordinate origin.
-     */
-    private augmentPointCloudRoles(
-        roles: LayerNodeRoles,
-        item: STACItem,
-    ): void {
-        const displayRole = roles.display;
-        if (!displayRole) return;
-        if (
-            !displayRole.render.config ||
-            displayRole.render.config.role !== "point-cloud"
-        ) {
-            return;
-        }
-
-        const bbox = new Bbox(item.bbox);
-        const pcConfig = displayRole.render.config as PointCloudLayerConfig;
-
-        pcConfig.coordinateOrigin = bbox.center;
-
-        if (bbox.is3D) {
-            pcConfig.bounds = bbox.bounds3D!;
-        }
     }
 
     /**
@@ -211,7 +163,6 @@ export class STACEntityMapper {
             icon: "",
             metadata: {
                 stacEntityRef: `Feature:${item.id}`,
-                stacEntity: JSON.stringify(item),
             },
             parentId: null,
             bbox: flattenedBbox,

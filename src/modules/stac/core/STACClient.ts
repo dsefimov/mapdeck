@@ -13,12 +13,7 @@ import type {
     STACItem,
     STACFeatureCollection,
 } from "../types";
-import {
-    isSTACCatalog,
-    isSTACCollection,
-    isSTACItem,
-    isSTACFeatureCollection,
-} from "../types";
+import { isSTACCatalog, isSTACCollection } from "../types";
 
 export class STACClient {
     constructor(private readonly config: STACConfig) {}
@@ -63,51 +58,47 @@ export class STACClient {
         return entity;
     }
 
+    /**
+     * Fetch STAC items from a URL. Handles both:
+     * - Direct item links (single STACItem response)
+     * - STAC API /items responses (FeatureCollection that may lack stac_version)
+     * - Static FeatureCollection .json files
+     *
+     * Detection is automatic based on response structure.
+     */
     async fetchItems(
-        itemLink: string,
+        url: string,
         baseUrlOverride?: string,
     ): Promise<STACItem[]> {
-        const entity = await this.fetchEntity(itemLink, baseUrlOverride);
+        logger.debug(`Fetching STAC items from: ${url}`);
 
-        if (isSTACItem(entity)) {
-            return [entity];
+        const data: unknown = await this.request(url, baseUrlOverride);
+
+        // Single STACItem
+        if (
+            data &&
+            typeof data === "object" &&
+            "type" in data &&
+            (data as Record<string, unknown>).type === "Feature"
+        ) {
+            return [data as STACItem];
         }
-        if (isSTACFeatureCollection(entity)) {
-            return entity.features;
+
+        // FeatureCollection (from API /items or static .json)
+        if (
+            data &&
+            typeof data === "object" &&
+            "features" in data &&
+            Array.isArray((data as Record<string, unknown>).features)
+        ) {
+            const fc = data as STACFeatureCollection;
+            logger.debug(`Loaded ${fc.features.length} items from: ${url}`);
+            return fc.features;
         }
 
         throw new Error(
-            `Expected STAC Item or FeatureCollection but got type: ${entity.type}`,
+            `Response from ${url} is not a valid STAC Item or FeatureCollection`,
         );
-    }
-
-    /**
-     * Fetch items from STAC API /items endpoint.
-     * This endpoint returns a FeatureCollection that may lack root-level stac_version,
-     * so we bypass fetchEntity validation.
-     */
-    async fetchItemsFromCollection(
-        itemsUrl: string,
-        baseUrlOverride?: string,
-    ): Promise<STACItem[]> {
-        logger.debug(`Fetching STAC items from: ${itemsUrl}`);
-
-        const data: unknown = await this.request(itemsUrl, baseUrlOverride);
-
-        if (
-            !data ||
-            typeof data !== "object" ||
-            !("features" in data) ||
-            !Array.isArray((data as Record<string, unknown>).features)
-        ) {
-            throw new Error(
-                "Response does not appear to be a valid STAC API items response",
-            );
-        }
-
-        const fc = data as STACFeatureCollection;
-        logger.debug(`Loaded ${fc.features.length} items from: ${itemsUrl}`);
-        return fc.features;
     }
 
     /**

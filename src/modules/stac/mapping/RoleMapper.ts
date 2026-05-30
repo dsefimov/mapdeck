@@ -21,9 +21,9 @@ import type {
 } from "@core/framework/types";
 import type { STACAsset } from "../types";
 import { TileRoles, ReportRoles } from "../types";
+import { Bbox } from "@core/framework/types";
 
 // ─── Display role priority ────────────────────────────────────────────────
-// More specific roles win over generic ones when an asset has multiple roles.
 const ROLE_PRIORITY: readonly string[] = [
     TileRoles.POINT_CLOUD,
     TileRoles.VECTOR3D,
@@ -44,24 +44,13 @@ function getRolePriority(role: string): number {
 }
 
 // ─── Display role mapping ─────────────────────────────────────────────────
-// Split into standard STAC roles and project-specific extensions.
-// This makes it clear which roles are part of the official STAC spec
-// and which are custom / community conventions.
-
 type DisplayMapping = { role: LayerRole; type?: "xyz" | "wms" | "cog" };
 
-/**
- * Official STAC roles that hint at rendering type.
- * @see https://github.com/radiantearth/stac-spec/blob/master/item-spec/item-spec.md#asset-role-types
- */
 const STANDARD_DISPLAY_MAPPING: Record<string, DisplayMapping> = {
     visual: { role: LayerRoles.RASTER, type: "cog" },
     data: { role: LayerRoles.RASTER, type: "cog" },
 };
 
-/**
- * Project-specific / community extension roles for precise rendering control.
- */
 const EXTENDED_DISPLAY_MAPPING: Record<string, DisplayMapping> = {
     [TileRoles.RASTER_TILE]: { role: LayerRoles.RASTER, type: "xyz" },
     cog: { role: LayerRoles.RASTER, type: "cog" },
@@ -71,87 +60,78 @@ const EXTENDED_DISPLAY_MAPPING: Record<string, DisplayMapping> = {
     [TileRoles.POINT_CLOUD]: { role: LayerRoles.POINT_CLOUD },
     [TileRoles.VECTOR3D]: { role: LayerRoles.VECTOR3D },
     wms: { role: LayerRoles.RASTER, type: "wms" },
-    // OGC API - Features (GeoJSON)
     ogc: { role: LayerRoles.VECTOR },
 };
 
-/**
- * Combined mapping from STAC asset role to LayerRole + type.
- */
 const INCOMING_MAPPING: Record<string, DisplayMapping> = {
     ...STANDARD_DISPLAY_MAPPING,
     ...EXTENDED_DISPLAY_MAPPING,
 };
 
-/**
- * STAC asset roles that map to report NodeRoles.
- */
 const REPORT_ROLES = new Set<string>([
     ReportRoles.REPORT,
     ReportRoles.METADATA,
 ]);
-
-/**
- * STAC asset roles that map to attribute NodeRoles (WFS endpoints).
- */
 const ATTRIBUTE_ROLES = new Set<string>(["wfs", "ogc-feature-api"]);
 
-/**
- * Map a single STAC asset to a NodeRole, or null if unrecognized.
- */
-export function mapAssetToNodeRole(
+export function mapAssetToNodeRole( // eslint-disable-line max-params
     assetKey: string,
     asset: STACAsset,
     registry: LayerConfigRegistry,
     properties?: Record<string, unknown>,
+    itemBbox?: readonly number[],
 ): NodeRole | null {
     const assetRoles = asset.roles ?? [];
 
-    // Check for report roles
     for (const role of assetRoles) {
         if (REPORT_ROLES.has(role)) {
             return createReportRole(assetKey, asset, properties);
         }
     }
 
-    // Check for attribute roles
     for (const role of assetRoles) {
         if (ATTRIBUTE_ROLES.has(role)) {
             return createAttributeRole(assetKey, asset, role);
         }
     }
 
-    // Check for display roles — sort by priority so the most specific wins
     const sortedDisplayRoles = [...assetRoles].sort(
         (a, b) => getRolePriority(a) - getRolePriority(b),
     );
     for (const role of sortedDisplayRoles) {
         const mapping = INCOMING_MAPPING[role];
         if (mapping) {
-            return createDisplayRole(assetKey, asset, mapping, registry);
+            return createDisplayRole(
+                assetKey,
+                asset,
+                mapping,
+                registry,
+                itemBbox,
+            );
         }
     }
 
     return null;
 }
 
-/**
- * Map all assets of a STAC entity (item or collection) to NodeRoles.
- *
- * For collections, pass `properties: undefined` — report roles will still work,
- * but `report:*` properties won't be populated.
- */
 export function mapAssetsToNodeRoles(
     assets: Record<string, STACAsset>,
     registry: LayerConfigRegistry,
     properties?: Record<string, unknown>,
+    itemBbox?: readonly number[],
 ): NodeRoles {
     const displayRoles: DisplayRole[] = [];
     const attributeRoles: AttributeRole[] = [];
     const reportRoles: ReportRole[] = [];
 
     for (const [key, asset] of Object.entries(assets)) {
-        const role = mapAssetToNodeRole(key, asset, registry, properties);
+        const role = mapAssetToNodeRole(
+            key,
+            asset,
+            registry,
+            properties,
+            itemBbox,
+        );
         if (!role) continue;
 
         switch (role.category) {
@@ -189,19 +169,18 @@ export function mapAssetsToNodeRoles(
 
 // ==================== Private helpers ====================
 
-function createDisplayRole(
+function createDisplayRole( // eslint-disable-line max-params
     assetKey: string,
     asset: STACAsset,
-    mapping: { role: LayerRole; type?: "xyz" | "wms" | "cog" },
+    mapping: DisplayMapping,
     registry: LayerConfigRegistry,
+    itemBbox?: readonly number[],
 ): DisplayRole {
     const layerConfig = registry.create(mapping.role);
     const cfg = layerConfig as unknown as Record<string, unknown>;
 
-    // Set URL from asset href
     cfg.url = asset.href;
 
-    // Set type for raster
     if (mapping.role === LayerRoles.RASTER && mapping.type) {
         cfg.type = mapping.type;
     }
@@ -213,9 +192,15 @@ function createDisplayRole(
         if (asset["wms:layers"]) {
             cfg.layers = asset["wms:layers"];
         }
-        // If wms:layers is not set, cfg.layers stays undefined.
-        // getWmsLayerName() will extract LAYERS from URL if present
-        // (e.g. full GetMap URL from static STAC catalogs).
+    }
+
+    // Augment point cloud config with bbox-derived values
+    if (mapping.role === LayerRoles.POINT_CLOUD && itemBbox) {
+        const bbox = new Bbox(itemBbox);
+        cfg.coordinateOrigin = bbox.center;
+        if (bbox.is3D) {
+            cfg.bounds = bbox.bounds3D;
+        }
     }
 
     const result: DisplayRole = {
@@ -268,7 +253,7 @@ function createAttributeRole(
     const result: AttributeRole = {
         id: assetKey,
         category: "attribute",
-        label: asset.title || "Таблица атрибутов",
+        label: asset.title || "Attribute Table",
         sourceUrl: asset.href,
         attributeConfig,
     };

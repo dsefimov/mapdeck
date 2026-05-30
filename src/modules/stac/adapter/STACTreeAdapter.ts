@@ -13,6 +13,7 @@ import type { LayerConfigRegistry } from "@core/domain/adapters";
 import { resolveBaseUrl, filterLinksByRel } from "../utils/url";
 import {
     isSTACCollection,
+    isSTACItem,
     type STACCatalog,
     type STACCollection,
     type STACItem,
@@ -70,6 +71,7 @@ export class STACTreeAdapter implements SourceAdapter {
                 "collections",
             )[0];
             if (apiCollectionsLink) {
+                logger.debug("STAC mode: api");
                 const apiNodes = await fetchCollectionsFromApi(
                     apiCollectionsLink.href,
                     { client, cache, mapper },
@@ -77,6 +79,8 @@ export class STACTreeAdapter implements SourceAdapter {
                 for (const n of apiNodes) {
                     if (n) nodes.push(n);
                 }
+            } else {
+                logger.debug("STAC mode: static");
             }
 
             // Handle item links directly in catalog (items linked without Collection container)
@@ -109,7 +113,7 @@ export class STACTreeAdapter implements SourceAdapter {
         const collection = mapper.getSTACCollectionFromNode(parent);
         if (!collection) return [];
 
-        const baseUrl = resolveBaseUrl(collection, config.baseUrl);
+        const baseUrl = resolveBaseUrl(collection.links, config.baseUrl);
         const promises = buildChildFetchPromises(collection, baseUrl, {
             client,
             cache,
@@ -237,10 +241,10 @@ function buildChildFetchPromises(
     const itemLinks = filterLinksByRel(collection.links, "item");
 
     if (itemsLink) {
-        promises.push(fetchItemsFromApi(itemsLink.href, baseUrl, ctx));
+        promises.push(fetchItemsFromUrl(itemsLink.href, baseUrl, ctx));
     } else if (itemLinks.length > 0) {
         for (const link of itemLinks) {
-            promises.push(fetchItemsFromLink(link.href, baseUrl, ctx));
+            promises.push(fetchItemsFromUrl(link.href, baseUrl, ctx));
         }
     } else {
         logger.warn(
@@ -258,23 +262,7 @@ function buildChildFetchPromises(
     return promises;
 }
 
-async function fetchItemsFromApi(
-    href: string,
-    baseUrl: string | undefined,
-    ctx: FetchContext,
-): Promise<TreeNode[]> {
-    try {
-        const items = await ctx.client.fetchItemsFromCollection(href, baseUrl);
-        const enriched = await enrichItems(items, ctx);
-        enriched.forEach((item) => ctx.cache.store(item));
-        return mapItemsToNodes(enriched, ctx.mapper);
-    } catch (error) {
-        logger.warn(`Failed to load items from ${href}:`, error);
-        return [];
-    }
-}
-
-async function fetchItemsFromLink(
+async function fetchItemsFromUrl(
     href: string,
     baseUrl: string | undefined,
     ctx: FetchContext,
@@ -331,7 +319,13 @@ async function enrichItems(
                 const selfLink = item.links?.find((l) => l.rel === "self");
                 if (!selfLink?.href) return null;
                 const entity = await ctx.client.fetchEntity(selfLink.href);
-                return entity as STACItem;
+                if (!isSTACItem(entity)) {
+                    logger.warn(
+                        `Self link ${selfLink.href} returned non-Item: ${entity.type}`,
+                    );
+                    return null;
+                }
+                return entity;
             }),
         );
 
