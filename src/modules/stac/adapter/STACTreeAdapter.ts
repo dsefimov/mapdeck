@@ -2,6 +2,7 @@ import { observable } from "mobx";
 import {
     type SourceAdapter,
     type TreeNode,
+    type ReportRole,
     LayerTreeNodeTypes,
 } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
@@ -114,14 +115,24 @@ export class STACTreeAdapter implements SourceAdapter {
         if (!collection) return [];
 
         const baseUrl = resolveBaseUrl(collection.links, config.baseUrl);
-        const promises = buildChildFetchPromises(collection, baseUrl, {
-            client,
-            cache,
-            mapper,
-        });
+        const ctx = { client, cache, mapper };
 
-        const results = await Promise.all(promises);
-        return results.flat();
+        const { itemPromises, collectionPromises } = buildChildFetchPromises(
+            collection,
+            baseUrl,
+            ctx,
+        );
+
+        const itemResults = await Promise.all(itemPromises);
+        const collectionNodes = (await Promise.all(collectionPromises)).flat();
+
+        // Merge collected reports from items into parent GroupNode
+        for (const result of itemResults) {
+            parent.roles.reports.push(...result.collectedReports);
+        }
+
+        const itemNodes = itemResults.flatMap((r) => r.nodes);
+        return [...itemNodes, ...collectionNodes];
     }
 
     dispose(): void {
@@ -142,6 +153,15 @@ interface FetchContext {
     client: STACClient;
     cache: STACCache;
     mapper: STACEntityMapper;
+}
+
+interface FetchItemsResult {
+    nodes: TreeNode[];
+    collectedReports: ReportRole[];
+}
+
+function collectReportsFromNodes(nodes: TreeNode[]): ReportRole[] {
+    return nodes.flatMap((n) => n.roles?.reports ?? []);
 }
 
 async function fetchChildCollections(
@@ -235,16 +255,20 @@ function buildChildFetchPromises(
     collection: STACCollection,
     baseUrl: string | undefined,
     ctx: FetchContext,
-): Promise<TreeNode[]>[] {
-    const promises: Promise<TreeNode[]>[] = [];
+): {
+    itemPromises: Promise<FetchItemsResult>[];
+    collectionPromises: Promise<TreeNode[]>[];
+} {
+    const itemPromises: Promise<FetchItemsResult>[] = [];
+    const collectionPromises: Promise<TreeNode[]>[] = [];
     const itemsLink = filterLinksByRel(collection.links, "items")[0];
     const itemLinks = filterLinksByRel(collection.links, "item");
 
     if (itemsLink) {
-        promises.push(fetchItemsFromUrl(itemsLink.href, baseUrl, ctx));
+        itemPromises.push(fetchItemsFromUrl(itemsLink.href, baseUrl, ctx));
     } else if (itemLinks.length > 0) {
         for (const link of itemLinks) {
-            promises.push(fetchItemsFromUrl(link.href, baseUrl, ctx));
+            itemPromises.push(fetchItemsFromUrl(link.href, baseUrl, ctx));
         }
     } else {
         logger.warn(
@@ -256,25 +280,29 @@ function buildChildFetchPromises(
     const childLinks = filterLinksByRel(collection.links, "child");
 
     for (const link of childLinks) {
-        promises.push(fetchChildCollection(link.href, baseUrl, ctx));
+        collectionPromises.push(fetchChildCollection(link.href, baseUrl, ctx));
     }
 
-    return promises;
+    return { itemPromises, collectionPromises };
 }
 
 async function fetchItemsFromUrl(
     href: string,
     baseUrl: string | undefined,
     ctx: FetchContext,
-): Promise<TreeNode[]> {
+): Promise<FetchItemsResult> {
     try {
         const items = await ctx.client.fetchItemsAll(href, baseUrl);
         const enriched = await enrichItems(items, ctx);
         enriched.forEach((item) => ctx.cache.store(item));
-        return mapItemsToNodes(enriched, ctx.mapper);
+
+        const nodes = mapItemsToNodes(enriched, ctx.mapper);
+        const collectedReports = collectReportsFromNodes(nodes);
+
+        return { nodes, collectedReports };
     } catch (error) {
         logger.warn(`Failed to load items from ${href}:`, error);
-        return [];
+        return { nodes: [], collectedReports: [] };
     }
 }
 
