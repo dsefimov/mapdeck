@@ -18,6 +18,9 @@ export interface PointSizeSliderProps {
 }
 
 const DEBOUNCE_DELAY_MS = 150;
+const POINT_SIZE_MIN = 0.1;
+const POINT_SIZE_MAX = 2;
+const POINT_SIZE_STEP = 0.1;
 
 export const PointSizeSliderComponent: (
     props: PointSizeSliderProps,
@@ -93,9 +96,9 @@ export const PointSizeSliderComponent: (
             </label>
             <input
                 type="range"
-                min="0.1"
-                max="2"
-                step="0.1"
+                min={POINT_SIZE_MIN}
+                max={POINT_SIZE_MAX}
+                step={POINT_SIZE_STEP}
                 value={displayPointSize}
                 onChange={handlePointSizeChange}
                 onPointerUp={handlePointerUp}
