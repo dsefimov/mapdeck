@@ -24,6 +24,7 @@ export const RasterOpacityComponent: (
     }
 
     const displayRole = node.roles.display;
+    if (!displayRole) return null;
     if (!isRasterConfig(displayRole.render.config)) {
         logger.warn(
             `RasterOpacitySlider: node ${nodeId} is not a raster layer`,

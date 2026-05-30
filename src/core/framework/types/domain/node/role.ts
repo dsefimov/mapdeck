@@ -79,8 +79,10 @@ export interface NodeRoles {
 }
 
 /**
- * Structured roles for a LayerNode — display role is required.
+ * Structured roles for a LayerNode.
+ * display is optional — nodes without a display role (placeholder items)
+ * appear in the tree but have no map rendering or action buttons.
  */
 export interface LayerNodeRoles extends NodeRoles {
-    display: DisplayRole;
+    display?: DisplayRole;
 }

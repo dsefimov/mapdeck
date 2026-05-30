@@ -154,6 +154,7 @@ interface NodeFlags {
 function getLayerTypeIconForNode(node: TreeNode): IconName {
     if (isLayerNode(node)) {
         const displayRole = node.roles.display;
+        if (!displayRole) return "layers";
         if (displayRole.render.config) {
             return (
                 LAYER_ROLE_ICON[displayRole.render.config.role as LayerRole] ??
@@ -307,6 +308,15 @@ const BaseNode: (props: BaseNodeProps) => React.ReactNode = observer(
             showExpandArrow,
             onToggleExpansion,
         );
+
+        // Placeholder nodes (no display role) get no action buttons
+        const isPlaceholder = isLayerNode(node) && !node.roles.display;
+        if (isPlaceholder) {
+            flags.hasEyeIcon = false;
+            flags.hasZoom = false;
+            flags.hasMore = false;
+        }
+
         const handlers = createClickHandlers(node, flags, {
             onToggleExpansion,
             onToggleVisibility,

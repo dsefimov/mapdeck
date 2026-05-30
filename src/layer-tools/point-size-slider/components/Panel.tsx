@@ -37,6 +37,7 @@ export const PointSizeSliderComponent: (
     }
 
     const displayRole = node.roles.display;
+    if (!displayRole) return null;
     if (!isPointCloudConfig(displayRole.render.config)) {
         logger.warn(
             `PointSizeSlider: config for node ${nodeId} is not a point cloud config`,

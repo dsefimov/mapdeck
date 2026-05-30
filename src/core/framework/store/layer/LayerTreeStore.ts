@@ -319,6 +319,7 @@ export class LayerTreeStore {
             return;
         }
         const { display } = node.roles;
+        if (!display) return;
         display.render = updateDescriptorConfig(
             display.render as RenderDescriptor<TRole>,
             updates,
@@ -446,7 +447,7 @@ export class LayerTreeStore {
                 return {
                     id: node.id,
                     visible: node.isVisible,
-                    descriptor: display.render ? toJS(display.render) : null,
+                    descriptor: display ? toJS(display.render) : null,
                 };
             });
         },

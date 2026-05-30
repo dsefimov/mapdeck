@@ -38,11 +38,12 @@ const ItemNode: (props: ItemNodeProps) => React.ReactNode = observer(
         // Get the active display role to determine tools
         const displayRole = node.roles.display;
         const roleForTools =
-            displayRole.render.config.role ?? LayerRoles.RASTER;
+            displayRole?.render.config.role ?? LayerRoles.RASTER;
 
         // Check if this node has any tools available
-        const hasTools =
-            rootStore.layerToolStore.getLayerTools(roleForTools).length > 0;
+        const hasTools = displayRole
+            ? rootStore.layerToolStore.getLayerTools(roleForTools).length > 0
+            : false;
 
         // Check if this node has any report roles
         const hasReports = node.roles.reports.length > 0;

@@ -7,10 +7,7 @@ import {
     type GroupNode,
     type NodeRoles,
     type LayerNodeRoles,
-    type DisplayRole,
     type PointCloudLayerConfig,
-    LayerRoles,
-    makeRenderDescriptor,
 } from "@core/framework/types";
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
@@ -74,12 +71,12 @@ export class STACEntityMapper {
         const hasBbox = item.bbox && item.bbox.length >= 4;
 
         if (roles.reports.length === 0 && !roles.display && !roles.attribute) {
-            return this.createPlaceholderNode(item, hasBbox);
+            return this.createPlaceholderOrSkip(item, hasBbox, "no assets");
         }
 
         const layerRoles = this.resolveRoleConflicts(roles);
         if (!layerRoles) {
-            return this.createPlaceholderNode(item, hasBbox);
+            return this.createPlaceholderOrSkip(item, hasBbox, "no display");
         }
 
         this.augmentPointCloudRoles(layerRoles, item);
@@ -168,6 +165,7 @@ export class STACEntityMapper {
         item: STACItem,
     ): void {
         const displayRole = roles.display;
+        if (!displayRole) return;
         if (
             !displayRole.render.config ||
             displayRole.render.config.role !== "point-cloud"
@@ -187,38 +185,19 @@ export class STACEntityMapper {
 
     /**
      * Create a placeholder layer node for items that have spatial extent
-     * but no renderable assets (e.g. pure observation records in HubOcean).
-     *
-     * Returns null when the item has no bbox — such items are skipped entirely.
-     *
-     * The placeholder has a minimal display role with `visible: false` so it
-     * appears in the tree but does not attempt to render on the map.
+     * but no renderable assets. The node has no display role — it appears
+     * in the tree with the item title and bbox, but no map rendering or
+     * action buttons.
      */
-    private createPlaceholderNode(
+    private createPlaceholderOrSkip(
         item: STACItem,
         hasBbox: boolean,
+        reason: string,
     ): TreeNode | null {
         if (!hasBbox) {
-            logger.debug(`Item ${item.id} has no bbox and no assets, skipping`);
+            logger.debug(`Item ${item.id} has no bbox and ${reason}, skipping`);
             return null;
         }
-        const placeholderRole: DisplayRole = {
-            category: "display",
-            id: item.id,
-            label: item.properties.title || item.id,
-            render: makeRenderDescriptor(LayerRoles.RASTER, "", {
-                role: LayerRoles.RASTER,
-                type: "xyz",
-                url: "",
-                visible: false,
-            }),
-        };
-
-        const layerRoles: LayerNodeRoles = {
-            display: placeholderRole,
-            reports: [],
-        };
-
         const flattenedBbox =
             item.bbox && item.bbox.length >= 4
                 ? flattenTo2D(new Bbox(item.bbox))
@@ -236,7 +215,7 @@ export class STACEntityMapper {
             },
             parentId: null,
             bbox: flattenedBbox,
-            roles: layerRoles,
+            roles: { reports: [] },
             isVisible: false,
         };
 

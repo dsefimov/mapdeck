@@ -28,6 +28,7 @@ export const PointColorSchemeComponent: (
     }
 
     const displayRole = node.roles.display;
+    if (!displayRole) return null;
     if (!isPointCloudConfig(displayRole.render.config)) {
         logger.warn(
             `PointColorSchemeSelector: config for node ${nodeId} is not a point cloud config`,
