@@ -8,6 +8,7 @@ import type { STACConfig } from "./STACConfig";
 import type {
     STACCatalog,
     STACCollection,
+    STACCollectionsResponse,
     STACEntity,
     STACItem,
     STACFeatureCollection,
@@ -107,6 +108,40 @@ export class STACClient {
         const fc = data as STACFeatureCollection;
         logger.debug(`Loaded ${fc.features.length} items from: ${itemsUrl}`);
         return fc.features;
+    }
+
+    /**
+     * Fetch all collections from a STAC API /collections endpoint.
+     * This endpoint returns a Collections response (not a single entity),
+     * so we bypass fetchEntity validation.
+     */
+    async fetchCollections(
+        collectionsUrl: string,
+        baseUrlOverride?: string,
+    ): Promise<STACCollection[]> {
+        logger.debug(`Fetching STAC collections from: ${collectionsUrl}`);
+
+        const data: unknown = await this.request(
+            collectionsUrl,
+            baseUrlOverride,
+        );
+
+        if (
+            !data ||
+            typeof data !== "object" ||
+            !("collections" in data) ||
+            !Array.isArray((data as Record<string, unknown>).collections)
+        ) {
+            throw new Error(
+                "Response does not appear to be a valid STAC collections response",
+            );
+        }
+
+        const response = data as STACCollectionsResponse;
+        logger.debug(
+            `Loaded ${response.collections.length} collections from: ${collectionsUrl}`,
+        );
+        return response.collections as STACCollection[];
     }
 
     // ---- private ----

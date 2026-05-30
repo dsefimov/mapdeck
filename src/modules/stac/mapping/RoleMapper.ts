@@ -30,6 +30,7 @@ const ROLE_PRIORITY: readonly string[] = [
     TileRoles.VECTOR_TILE,
     TileRoles.RASTER_TILE,
     "wms",
+    "ogc",
     "visual",
     "data",
     "cog",
@@ -70,6 +71,8 @@ const EXTENDED_DISPLAY_MAPPING: Record<string, DisplayMapping> = {
     [TileRoles.POINT_CLOUD]: { role: LayerRoles.POINT_CLOUD },
     [TileRoles.VECTOR3D]: { role: LayerRoles.VECTOR3D },
     wms: { role: LayerRoles.RASTER, type: "wms" },
+    // OGC API - Features (GeoJSON)
+    ogc: { role: LayerRoles.VECTOR },
 };
 
 /**

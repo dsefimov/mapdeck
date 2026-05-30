@@ -54,7 +54,7 @@ export class STACTreeAdapter implements SourceAdapter {
 
             const nodes: TreeNode[] = [];
 
-            // Handle child links → collections
+            // Handle child links → collections (static STAC)
             const collectionNodes = await fetchChildCollections(catalog, {
                 client,
                 cache,
@@ -62,6 +62,21 @@ export class STACTreeAdapter implements SourceAdapter {
             });
             for (const n of collectionNodes) {
                 if (n) nodes.push(n);
+            }
+
+            // Handle collections API endpoint (STAC API — e.g., HubOcean)
+            const apiCollectionsLink = filterLinksByRel(
+                catalog.links,
+                "collections",
+            )[0];
+            if (apiCollectionsLink) {
+                const apiNodes = await fetchCollectionsFromApi(
+                    apiCollectionsLink.href,
+                    { client, cache, mapper },
+                );
+                for (const n of apiNodes) {
+                    if (n) nodes.push(n);
+                }
             }
 
             // Handle item links directly in catalog (items linked without Collection container)
@@ -177,6 +192,41 @@ async function fetchCatalogItems(
     return results;
 }
 
+/**
+ * Fetch collections from a STAC API /collections endpoint
+ * and map each to a GroupNode.
+ */
+async function fetchCollectionsFromApi(
+    collectionsUrl: string,
+    ctx: FetchContext,
+): Promise<TreeNode[]> {
+    try {
+        const collections = await ctx.client.fetchCollections(collectionsUrl);
+        const nodes: TreeNode[] = [];
+
+        for (const collection of collections) {
+            ctx.cache.store(collection);
+            nodes.push(
+                ctx.mapper.mapCollectionToGroupNode(
+                    collection,
+                    observable.array<string>([]),
+                ),
+            );
+        }
+
+        logger.debug(
+            `Mapped ${nodes.length} collection(s) from API: ${collectionsUrl}`,
+        );
+        return nodes;
+    } catch (error) {
+        logger.warn(
+            `Failed to fetch collections from ${collectionsUrl}:`,
+            error,
+        );
+        return [];
+    }
+}
+
 function buildChildFetchPromises(
     collection: STACCollection,
     baseUrl: string | undefined,
@@ -215,8 +265,9 @@ async function fetchItemsFromApi(
 ): Promise<TreeNode[]> {
     try {
         const items = await ctx.client.fetchItemsFromCollection(href, baseUrl);
-        items.forEach((item) => ctx.cache.store(item));
-        return mapItemsToNodes(items, ctx.mapper);
+        const enriched = await enrichItems(items, ctx);
+        enriched.forEach((item) => ctx.cache.store(item));
+        return mapItemsToNodes(enriched, ctx.mapper);
     } catch (error) {
         logger.warn(`Failed to load items from ${href}:`, error);
         return [];
@@ -230,12 +281,69 @@ async function fetchItemsFromLink(
 ): Promise<TreeNode[]> {
     try {
         const items = await ctx.client.fetchItems(href, baseUrl);
-        items.forEach((item) => ctx.cache.store(item));
-        return mapItemsToNodes(items, ctx.mapper);
+        const enriched = await enrichItems(items, ctx);
+        enriched.forEach((item) => ctx.cache.store(item));
+        return mapItemsToNodes(enriched, ctx.mapper);
     } catch (error) {
         logger.warn(`Failed to load items from ${href}:`, error);
         return [];
     }
+}
+
+/**
+ * Enrich items that have no assets by fetching individual item details.
+ * Some STAC APIs (e.g., HubOcean) return lightweight items in list
+ * responses with empty `assets`, but full assets are available when
+ * fetching each item individually via its `self` link.
+ */
+async function enrichItems(
+    items: STACItem[],
+    ctx: FetchContext,
+): Promise<STACItem[]> {
+    const toEnrich: STACItem[] = [];
+    const enriched: STACItem[] = [];
+
+    for (const item of items) {
+        const assetKeys = item.assets ? Object.keys(item.assets) : [];
+        if (assetKeys.length === 0) {
+            toEnrich.push(item);
+        } else {
+            enriched.push(item);
+        }
+    }
+
+    if (toEnrich.length === 0) return items;
+
+    logger.debug(
+        `Enriching ${toEnrich.length} item(s) with individual fetches`,
+    );
+
+    const results = await Promise.allSettled(
+        toEnrich.map(async (item) => {
+            const selfLink = item.links?.find((l) => l.rel === "self");
+            if (!selfLink?.href) return null;
+            const entity = await ctx.client.fetchEntity(selfLink.href);
+            return entity as STACItem;
+        }),
+    );
+
+    let enrichedCount = 0;
+    for (const result of results) {
+        if (result.status === "fulfilled" && result.value) {
+            enriched.push(result.value);
+            ctx.cache.store(result.value);
+            enrichedCount++;
+        }
+    }
+
+    if (enrichedCount < toEnrich.length) {
+        logger.debug(
+            `Enriched ${enrichedCount} of ${toEnrich.length} item(s) ` +
+                `(${toEnrich.length - enrichedCount} failed or have no self link)`,
+        );
+    }
+
+    return enriched;
 }
 
 async function fetchChildCollection(

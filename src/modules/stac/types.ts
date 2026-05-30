@@ -137,6 +137,15 @@ export interface STACFeatureCollection {
     readonly links?: readonly STACLink[];
 }
 
+/**
+ * STAC Collections response (from /collections API endpoint)
+ * @see https://github.com/radiantearth/stac-api-spec/blob/main/STAC-extensions/Collections.md
+ */
+export interface STACCollectionsResponse {
+    readonly collections: readonly STACCollection[];
+    readonly links?: readonly STACLink[];
+}
+
 export type STACEntity =
     | STACCatalog
     | STACCollection
