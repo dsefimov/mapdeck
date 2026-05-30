@@ -6,13 +6,18 @@ import type {
     RenderDescriptor,
     MapContext,
 } from "@core/framework/types";
-import { LayerRoles, isGeoJsonConfig } from "@core/framework/types";
+import {
+    LayerRoles,
+    isGeoJsonConfig,
+    type GeoJsonLayerConfig,
+} from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 import {
     getTilesForBounds,
     tileToQuadkey,
     tileToBBOX,
 } from "@core/shared/tile";
+import { hexToRgba } from "@core/shared/ui/themeColors";
 import type { FeatureCollection } from "geojson";
 
 interface GeoJsonLayerState {
@@ -51,37 +56,8 @@ export class GeoJsonAdapter implements LayerAdapter<typeof LayerRoles.GEOJSON> {
             }
 
             const { config, sourceUrl } = descriptor;
-            const emptyFc: FeatureCollection = {
-                type: "FeatureCollection",
-                features: [],
-            };
-
-            const state: GeoJsonLayerState = {
-                map: ctx.map,
-                overlayManager: ctx.overlayManager,
-                sourceUrl,
-                tileCache: new Map(),
-                featureIds: new Set(),
-                mergedFc: emptyFc,
-                lastZoom: -1,
-                isDisposed: false,
-            };
-
-            const deckLayer = new GeoJsonLayer({
-                id: layerId,
-                data: emptyFc,
-                pickable: true,
-                filled: true,
-                stroked: true,
-                getFillColor: [63, 81, 181, 180],
-                getLineColor: [63, 81, 181],
-                getLineWidth: 2,
-                getPointRadius: 5,
-                pointRadiusUnits: "pixels",
-                lineWidthUnits: "pixels",
-                lineWidthScale: 1,
-                visible: config.visible ?? true,
-            });
+            const state = createGeoJsonState(sourceUrl, ctx);
+            const deckLayer = buildGeoJsonLayer(layerId, config);
 
             ctx.overlayManager.addLayer(layerId, deckLayer);
             this._layers.set(layerId, state);
@@ -123,8 +99,16 @@ export class GeoJsonAdapter implements LayerAdapter<typeof LayerRoles.GEOJSON> {
         renderUnit: RenderUnit<typeof LayerRoles.GEOJSON>,
         ctx: MapContext,
     ): void {
-        this.removeFromMap(renderUnit.id, ctx);
-        this.addToMap(renderUnit.id, renderUnit.descriptor, ctx);
+        const layerId = renderUnit.id;
+        const state = this._layers.get(layerId);
+        if (!state || state.isDisposed) {
+            this.addToMap(layerId, renderUnit.descriptor, ctx);
+            return;
+        }
+
+        const config = renderUnit.descriptor.config as GeoJsonLayerConfig;
+        const updates = buildGeoJsonLayerProps(config);
+        ctx.overlayManager.updateLayer(layerId, updates as Partial<Layer>);
     }
 
     // ---- internal ----
@@ -252,4 +236,59 @@ export class GeoJsonAdapter implements LayerAdapter<typeof LayerRoles.GEOJSON> {
             data: state.mergedFc,
         } as Partial<Layer>);
     }
+}
+
+function createGeoJsonState(
+    sourceUrl: string,
+    ctx: MapContext,
+): GeoJsonLayerState {
+    return {
+        map: ctx.map,
+        overlayManager: ctx.overlayManager,
+        sourceUrl,
+        tileCache: new Map(),
+        featureIds: new Set(),
+        mergedFc: { type: "FeatureCollection", features: [] },
+        lastZoom: -1,
+        isDisposed: false,
+    };
+}
+
+function buildGeoJsonLayerProps(
+    config: GeoJsonLayerConfig,
+): Record<string, unknown> {
+    const paint = config.paint ?? {};
+    const opacity = config.opacity ?? 1.0;
+
+    return {
+        getFillColor: hexToRgba(
+            paint["fill-color"] ?? "#005a9b",
+            (paint["fill-opacity"] ?? opacity) * 255,
+        ),
+        getLineColor: hexToRgba(
+            paint["line-color"] ?? "#005a9b",
+            (paint["line-opacity"] ?? opacity) * 255,
+        ),
+        getLineWidth: paint["line-width"] ?? 2,
+        getPointRadius: paint["circle-radius"] ?? 5,
+        visible: config.visible ?? true,
+    };
+}
+
+function buildGeoJsonLayer(
+    layerId: string,
+    config: GeoJsonLayerConfig,
+): GeoJsonLayer {
+    const props = buildGeoJsonLayerProps(config);
+    return new GeoJsonLayer({
+        id: layerId,
+        data: { type: "FeatureCollection", features: [] },
+        pickable: true,
+        filled: true,
+        stroked: true,
+        pointRadiusUnits: "pixels",
+        lineWidthUnits: "pixels",
+        lineWidthScale: 1,
+        ...props,
+    });
 }

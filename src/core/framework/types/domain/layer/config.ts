@@ -221,6 +221,18 @@ export interface GeoJsonLayerConfig extends LayerConfigBase {
      * @default "fill"
      */
     layerType: "fill" | "line" | "circle" | "symbol";
+
+    /** Paint style overrides for the rendered features. */
+    paint?: {
+        "fill-color"?: string;
+        "fill-opacity"?: number;
+        "line-color"?: string;
+        "line-width"?: number;
+        "line-opacity"?: number;
+        "circle-color"?: string;
+        "circle-radius"?: number;
+        "circle-opacity"?: number;
+    };
 }
 
 /**

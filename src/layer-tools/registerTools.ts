@@ -3,6 +3,7 @@ import { rasterOpacityTool } from "./raster-opacity";
 import { pointSizeTool } from "./point-size-slider";
 import { pointColorSchemeTool } from "./point-color-scheme";
 import { viewAttributeTableTools } from "./view-attribute-table";
+import { vectorColorPickerTool } from "./vector-color-picker/components/Tool";
 
 /**
  * All built-in layer tools.
@@ -13,6 +14,7 @@ const BUILT_IN_TOOLS = [
     rasterOpacityTool,
     pointSizeTool,
     pointColorSchemeTool,
+    vectorColorPickerTool,
 ];
 
 /**

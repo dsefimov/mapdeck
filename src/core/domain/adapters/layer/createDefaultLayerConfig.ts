@@ -11,6 +11,7 @@ import {
     type LayerRole,
     ColorScheme,
 } from "@core/framework/types";
+import { getThemeValue } from "@core/shared/ui/themeColors";
 
 type ConfigFactory = () => LayerConfig;
 
@@ -53,16 +54,32 @@ export function registerDefaultLayerConfigs(
         },
     }));
 
-    registry.register(LayerRoles.VECTOR, () => ({
-        role: LayerRoles.VECTOR,
-        layerType: "fill",
-        opacity: 1.0,
-        visible: true,
-        paint: {
-            "fill-color": "#3f51b5",
-            "fill-opacity": 0.7,
-        },
-    }));
+    registry.register(LayerRoles.VECTOR, () => {
+        const primary = getThemeValue("--color-primary", "#005a9b");
+        return {
+            role: LayerRoles.VECTOR,
+            layerType: "fill",
+            opacity: 1.0,
+            visible: true,
+            paint: {
+                "fill-color": primary,
+                "fill-opacity": 0.7,
+                "fill-outline-color": primary,
+                "line-color": primary,
+                "line-width": 2,
+                "line-opacity": 1.0,
+                "circle-color": primary,
+                "circle-radius": 5,
+                "circle-opacity": 1.0,
+                "circle-stroke-color": getThemeValue(
+                    "--color-background",
+                    "#ffffff",
+                ),
+                "circle-stroke-width": 1,
+                "text-color": getThemeValue("--color-text", "#000000"),
+            },
+        };
+    });
 
     registry.register(LayerRoles.POINT_CLOUD, () => ({
         role: LayerRoles.POINT_CLOUD,
@@ -75,10 +92,23 @@ export function registerDefaultLayerConfigs(
         filterByClassification: false,
     }));
 
-    registry.register(LayerRoles.GEOJSON, () => ({
-        role: LayerRoles.GEOJSON,
-        layerType: "fill",
-        opacity: 1.0,
-        visible: true,
-    }));
+    registry.register(LayerRoles.GEOJSON, () => {
+        const primary = getThemeValue("--color-primary", "#005a9b");
+        return {
+            role: LayerRoles.GEOJSON,
+            layerType: "fill",
+            opacity: 1.0,
+            visible: true,
+            paint: {
+                "fill-color": primary,
+                "fill-opacity": 0.7,
+                "line-color": primary,
+                "line-width": 2,
+                "line-opacity": 1.0,
+                "circle-color": primary,
+                "circle-radius": 5,
+                "circle-opacity": 1.0,
+            },
+        };
+    });
 }

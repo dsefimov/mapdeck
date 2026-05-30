@@ -19,10 +19,10 @@ export const COLOR_ALPHA_STROKE = 200;
 export const COLOR_ALPHA_PREVIEW = 150;
 
 /**
- * Parse a CSS color value to RGBA array [r, g, b, a] where a is 0-255
- * Handles hex colors and returns the parsed result
+ * Convert a hex color string to an RGBA array [r, g, b, a].
+ * Alpha is 0-255. Supports "#RRGGBB" format.
  */
-function hexToRgba(
+export function hexToRgba(
     hex: string,
     alpha: number = 255,
 ): [number, number, number, number] {
@@ -31,6 +31,25 @@ function hexToRgba(
     const g = parseInt(cleaned.substring(2, 4), 16);
     const b = parseInt(cleaned.substring(4, 6), 16);
     return [r, g, b, alpha];
+}
+
+/**
+ * Read a CSS custom property value from :root as a raw string.
+ * Falls back to the provided default when the property is not set
+ * or when document is unavailable (SSR, test).
+ */
+export function getThemeValue(
+    cssVariable: string,
+    fallback: string = "",
+): string {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+        return fallback;
+    }
+    const value = window
+        .getComputedStyle(document.documentElement)
+        .getPropertyValue(cssVariable)
+        .trim();
+    return value || fallback;
 }
 
 /**
