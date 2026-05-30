@@ -75,7 +75,10 @@ export class STACEntityMapper {
 
         this.augmentPointCloudRoles(layerRoles, item);
 
-        const flattenedBbox = flattenTo2D(new Bbox(item.bbox));
+        const flattenedBbox =
+            item.bbox && item.bbox.length >= 4
+                ? flattenTo2D(new Bbox(item.bbox))
+                : null;
 
         const layerNode: LayerNode = {
             id: item.id,

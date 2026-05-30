@@ -5,7 +5,7 @@ import type { Bbox } from "@core/shared/geo";
 export function resolveNodeExtent(
     node: TreeNode,
     getCombinedExtent: (nodeId: string) => Bbox | null,
-): Bbox | undefined {
+): Bbox | null {
     if (isGroupNode(node)) {
         return getCombinedExtent(node.id) ?? node.bbox;
     }
