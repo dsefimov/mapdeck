@@ -1,21 +1,10 @@
 /**
- * STAC (SpatioTemporal Asset Catalog) API Types
+ * STAC (SpatioTemporal Asset Catalog) Core Types
  *
- * Type definitions for the STAC (SpatioTemporal Asset Catalog) specification
- * version 1.0.0, adapted to project requirements.
- *
- * This module provides TypeScript interfaces and types for:
- * - STAC Catalog: Root catalog containing links to collections
- * - STAC Collection: Group of items with metadata and assets
- * - STAC Item: Individual geospatial features with assets
- * - Core components: Links, Assets, Extents, Properties
- *
- * All types are designed to be compatible with the STAC specification
- * while supporting additional project-specific requirements such as
- * report assets, tile roles (raster-tile, vector-tile).
+ * Base type definitions for the STAC specification version 1.0.0.
+ * Extension-specific fields live in separate files under `extensions/`.
  *
  * @see {@link https://github.com/radiantearth/stac-spec} STAC Specification
- * @module STACTypes
  */
 
 export type STACVersion = "1.0.0" | string;
@@ -62,6 +51,8 @@ export interface STACAsset {
     readonly "wms:layers"?: string;
     readonly "wms:styles"?: string;
     readonly "wms:dimensions"?: Record<string, string>;
+    // Extension fields via index signature
+    readonly [key: string]: unknown;
 }
 
 export interface STACSpatialExtent {
@@ -98,11 +89,12 @@ export interface STACCollection {
     readonly id: string;
     readonly type: STACCollectionType;
     readonly stac_version: STACVersion;
+    readonly stac_extensions?: readonly string[];
     readonly title?: string;
     readonly description: string;
     readonly extent: STACExtent;
     readonly links: readonly STACLink[];
-    readonly assets?: { readonly [key: string]: STACAsset };
+    readonly assets?: Readonly<Record<string, STACAsset>>;
 }
 
 export interface STACItemProperties {
@@ -117,12 +109,13 @@ export interface STACItemProperties {
  */
 export interface STACItem {
     readonly stac_version: STACVersion;
+    readonly stac_extensions?: readonly string[];
     readonly type: STACFeatureType;
     readonly id: string;
     readonly bbox: readonly number[];
     readonly geometry?: unknown;
     readonly properties: STACItemProperties;
-    readonly assets: { readonly [key: string]: STACAsset };
+    readonly assets: Readonly<Record<string, STACAsset>>;
     readonly links?: readonly STACLink[];
 }
 
@@ -175,7 +168,7 @@ export function assetHasRole(asset: STACAsset, role: string): boolean {
 }
 
 export function getAssetsByRole(
-    assets: { readonly [key: string]: STACAsset },
+    assets: Readonly<Record<string, STACAsset>>,
     role: string,
 ): STACAsset[] {
     return Object.values(assets).filter((asset) => assetHasRole(asset, role));
