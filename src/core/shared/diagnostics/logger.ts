@@ -4,11 +4,7 @@
  * - In production: Shows only warnings and errors
  */
 
-const isDevelopment =
-    (typeof process !== "undefined" &&
-        process.env.NODE_ENV === "development") ||
-    (typeof import.meta !== "undefined" &&
-        import.meta.env?.MODE === "development");
+const isDevelopment = import.meta.env?.MODE === "development";
 
 export const logger = {
     debug: (...args: unknown[]): void => {

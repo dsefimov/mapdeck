@@ -32,7 +32,7 @@ export class STACModule implements Module {
         const adapter = new STACTreeAdapter(this.rootStore.layerConfigRegistry);
         await this.rootStore.sourceAdapterFactory.register("stac", adapter);
 
-        logger.info("STAC adapter registered successfully");
+        logger.debug("STAC adapter registered successfully");
     }
 }
 

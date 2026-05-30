@@ -24,7 +24,7 @@ export async function registerModules(rootStore: RootStore): Promise<void> {
 
             await module.register();
 
-            logger.info(`Module "${module.id}" registered successfully`);
+            logger.debug(`Module "${module.id}" registered successfully`);
         }
 
         logger.info(`All modules registered (${modules.length} total)`);

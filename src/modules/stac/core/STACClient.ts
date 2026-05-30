@@ -40,7 +40,7 @@ export class STACClient {
         catalogUrl: string,
         baseUrlOverride?: string,
     ): Promise<STACCatalog> {
-        logger.info(`Fetching STAC catalog from: ${catalogUrl}`);
+        logger.debug(`Fetching STAC catalog from: ${catalogUrl}`);
         const entity = await this.fetchEntity(catalogUrl, baseUrlOverride);
 
         if (!isSTACCatalog(entity)) {
@@ -49,7 +49,7 @@ export class STACClient {
             );
         }
 
-        logger.info(
+        logger.debug(
             `Loaded STAC catalog: ${entity.id} (${entity.title || "untitled"})`,
         );
         return entity;
@@ -82,7 +82,7 @@ export class STACClient {
         itemsUrl: string,
         baseUrlOverride?: string,
     ): Promise<STACItem[]> {
-        logger.info(`Fetching STAC items from: ${itemsUrl}`);
+        logger.debug(`Fetching STAC items from: ${itemsUrl}`);
 
         const data: unknown = await this.request(itemsUrl, baseUrlOverride);
 
@@ -98,7 +98,7 @@ export class STACClient {
         }
 
         const fc = data as STACFeatureCollection;
-        logger.info(`Loaded ${fc.features.length} items from: ${itemsUrl}`);
+        logger.debug(`Loaded ${fc.features.length} items from: ${itemsUrl}`);
         return fc.features;
     }
 

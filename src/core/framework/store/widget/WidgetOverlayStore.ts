@@ -57,7 +57,7 @@ export class WidgetOverlayStore {
             const existing = this._openWidgets.get(widgetId)!;
 
             if (existing.isOpen) {
-                logger.info(`Widget "${widgetId}" is already open`);
+                logger.debug(`Widget "${widgetId}" is already open`);
                 this.bringToFront(widgetId);
                 return existing;
             }

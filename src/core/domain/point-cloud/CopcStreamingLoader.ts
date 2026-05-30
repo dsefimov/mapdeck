@@ -1013,7 +1013,7 @@ export class CopcStreamingLoader {
         // Compact buffers to eliminate gaps left by evicted nodes
         this._compactBuffers();
 
-        logger.info(
+        logger.debug(
             `Evicted ${evictedNodes.length} nodes (${freedPoints} points) to free buffer space`,
         );
 

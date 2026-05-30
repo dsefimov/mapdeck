@@ -54,7 +54,7 @@ export class STACTreeAdapter implements SourceAdapter {
                 return [];
             }
 
-            logger.info(
+            logger.debug(
                 `Found ${childLinks.length} child link(s), fetching collections`,
             );
 
