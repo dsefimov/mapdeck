@@ -34,6 +34,13 @@ export class STACEntityMapper {
             ? mapAssetsToNodeRoles(collection.assets, this.layerConfigRegistry)
             : { reports: [] };
 
+        // Estimate the number of direct children.
+        // Count directly linked children (static STAC).
+        // 0 means unknown — the component will decide how to handle it.
+        const childLinkCount = collection.links.filter(
+            (l) => l.rel === "child" || l.rel === "item",
+        ).length;
+
         return {
             id: collection.id,
             type: LayerTreeNodeTypes.Group,
@@ -46,6 +53,7 @@ export class STACEntityMapper {
             },
             parentId: null,
             childrenIds,
+            childrenCount: childLinkCount,
             bbox: flattenedBbox,
             roles,
             isExtended: false,

@@ -10,7 +10,7 @@ import type { FeatureGroup, CollectResult, ClickPosition } from "../types";
 import { featureCollector } from "../utils/FeatureCollector";
 import { showClickMarker, removeClickMarker } from "../utils/clickMarker";
 import { DataTable } from "@core/ui/composites/data-table";
-import { Spinner } from "@core/ui/components";
+import { LoadingScreen } from "@core/ui/components";
 import { ToolPanel } from "@core/ui/composites";
 import toolStyles from "@core/ui/composites/tool-panel/ToolPanel.module.css";
 import styles from "./Panel.module.css";
@@ -182,7 +182,7 @@ export const FeatureInfoComponent: (
                     </div>
                 )}
 
-                {loading && <Spinner />}
+                {loading && <LoadingScreen />}
 
                 {/* Layer selector — always visible, shows only layers with features */}
                 <div className={styles.layerSelector}>

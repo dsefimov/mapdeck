@@ -7,9 +7,26 @@ import { CollapsibleMenu } from "@core/ui/components";
 import BaseNode, { type BaseNodeProps } from "./BaseNode";
 import ItemNode from "./ItemNode";
 import { ReportDownloads } from "./ReportDownloads";
+import { LoadingScreen } from "@core/ui/components";
 import { useRootStore } from "@core/framework/store";
 import { logger } from "@core/shared/diagnostics/logger";
 import styles from "./Widget.module.css";
+
+/* Spinner threshold — show loading indicator when children count
+   is unknown (0) or exceeds this value. */
+const SPINNER_CHILDREN_THRESHOLD = 20;
+
+function shouldShowSpinner(
+    expanded: boolean,
+    isLoading: boolean,
+    childrenCount: number,
+): boolean {
+    return (
+        expanded &&
+        isLoading &&
+        (childrenCount === 0 || childrenCount > SPINNER_CHILDREN_THRESHOLD)
+    );
+}
 
 export interface CollectionNodeProps {
     /** The group node to render */
@@ -104,6 +121,12 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
                 isMorePanelOpen: isPanelOpen,
             };
 
+            const showSpinner = shouldShowSpinner(
+                expanded,
+                treeStore.loadingNodeIds.has(node.id),
+                node.childrenCount,
+            );
+
             return (
                 <>
                     <BaseNode {...baseNodeProps} />
@@ -125,6 +148,7 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
                     {expanded && childNodes.length > 0 && (
                         <div>{childNodes.map(renderChild)}</div>
                     )}
+                    {showSpinner && <LoadingScreen />}
                 </>
             );
         },

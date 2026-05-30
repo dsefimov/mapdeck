@@ -47,6 +47,9 @@ export interface GroupNode extends TreeNodeBase {
     /** Children node IDs. Only group nodes can have children. */
     childrenIds: IObservableArray<string>;
 
+    /** Known or estimated number of children (0 if unknown). */
+    childrenCount: number;
+
     isExtended: boolean;
 }
 

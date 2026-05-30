@@ -295,7 +295,11 @@ async function fetchItemsFromLink(
  * Some STAC APIs (e.g., HubOcean) return lightweight items in list
  * responses with empty `assets`, but full assets are available when
  * fetching each item individually via its `self` link.
+ *
+ * Requests are batched to avoid 429 rate limiting.
  */
+const ENRICH_BATCH_SIZE = 5;
+
 async function enrichItems(
     items: STACItem[],
     ctx: FetchContext,
@@ -315,24 +319,28 @@ async function enrichItems(
     if (toEnrich.length === 0) return items;
 
     logger.debug(
-        `Enriching ${toEnrich.length} item(s) with individual fetches`,
-    );
-
-    const results = await Promise.allSettled(
-        toEnrich.map(async (item) => {
-            const selfLink = item.links?.find((l) => l.rel === "self");
-            if (!selfLink?.href) return null;
-            const entity = await ctx.client.fetchEntity(selfLink.href);
-            return entity as STACItem;
-        }),
+        `Enriching ${toEnrich.length} item(s) in batches of ${ENRICH_BATCH_SIZE}`,
     );
 
     let enrichedCount = 0;
-    for (const result of results) {
-        if (result.status === "fulfilled" && result.value) {
-            enriched.push(result.value);
-            ctx.cache.store(result.value);
-            enrichedCount++;
+
+    for (let i = 0; i < toEnrich.length; i += ENRICH_BATCH_SIZE) {
+        const batch = toEnrich.slice(i, i + ENRICH_BATCH_SIZE);
+        const results = await Promise.allSettled(
+            batch.map(async (item) => {
+                const selfLink = item.links?.find((l) => l.rel === "self");
+                if (!selfLink?.href) return null;
+                const entity = await ctx.client.fetchEntity(selfLink.href);
+                return entity as STACItem;
+            }),
+        );
+
+        for (const result of results) {
+            if (result.status === "fulfilled" && result.value) {
+                enriched.push(result.value);
+                ctx.cache.store(result.value);
+                enrichedCount++;
+            }
         }
     }
 
