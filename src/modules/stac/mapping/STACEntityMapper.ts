@@ -12,6 +12,7 @@ import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
 import { mapAssetsToNodeRoles } from "./RoleMapper";
 import type { LayerConfigRegistry } from "@core/domain/adapters";
+import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { Bbox, flattenTo2D } from "@core/shared/geo";
 import type { STACCache } from "../core/STACCache";
 
@@ -19,6 +20,7 @@ export class STACEntityMapper {
     constructor(
         private cache: STACCache,
         private layerConfigRegistry: LayerConfigRegistry,
+        private roleRegistry: RoleResolverRegistry,
     ) {}
 
     mapCollectionToGroupNode(
@@ -30,7 +32,11 @@ export class STACEntityMapper {
         );
 
         const roles: NodeRoles = collection.assets
-            ? mapAssetsToNodeRoles(collection.assets, this.layerConfigRegistry)
+            ? mapAssetsToNodeRoles(
+                  collection.assets,
+                  this.roleRegistry,
+                  this.layerConfigRegistry,
+              )
             : { reports: [] };
 
         // Estimate the number of direct children.
@@ -62,6 +68,7 @@ export class STACEntityMapper {
     mapItemToLayerNode(item: STACItem): TreeNode | null {
         const roles = mapAssetsToNodeRoles(
             item.assets,
+            this.roleRegistry,
             this.layerConfigRegistry,
             item.properties,
             item.bbox,
