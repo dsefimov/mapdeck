@@ -210,27 +210,17 @@ export interface PointCloudLayerConfig extends LayerConfigBase {
 }
 
 /**
- * Vector 3D layer configuration (lines, paths, 3D vectors)
+ * GeoJSON layer configuration.
+ * Renders GeoJSON FeatureCollection data as fill/line/circle/symbol.
  */
-export interface Vector3DLayerConfig extends LayerConfigBase {
-    role: typeof LayerRoles.VECTOR3D;
+export interface GeoJsonLayerConfig extends LayerConfigBase {
+    role: typeof LayerRoles.GEOJSON;
 
     /**
-     * URL to GeoJSON or other vector data source
+     * Type of GeoJSON layer (fill, line, circle, symbol)
+     * @default "fill"
      */
-    url: string;
-
-    /**
-     * Line width in pixels
-     * @default 2
-     */
-    lineWidth?: number;
-
-    /**
-     * Line color as hex string
-     * @default "#3f51b5"
-     */
-    lineColor?: string;
+    layerType: "fill" | "line" | "circle" | "symbol";
 }
 
 /**
@@ -240,7 +230,7 @@ export type LayerConfig =
     | RasterLayerConfig
     | VectorLayerConfig
     | PointCloudLayerConfig
-    | Vector3DLayerConfig;
+    | GeoJsonLayerConfig;
 
 /**
  * Open registry: role string → config type.
@@ -250,7 +240,7 @@ export interface LayerConfigRegistry {
     [LayerRoles.RASTER]: RasterLayerConfig;
     [LayerRoles.VECTOR]: VectorLayerConfig;
     [LayerRoles.POINT_CLOUD]: PointCloudLayerConfig;
-    [LayerRoles.VECTOR3D]: Vector3DLayerConfig;
+    [LayerRoles.GEOJSON]: GeoJsonLayerConfig;
 }
 
 /**
@@ -294,8 +284,8 @@ export function isPointCloudConfig(
     return config.role === LayerRoles.POINT_CLOUD;
 }
 
-export function isVector3DConfig(
+export function isGeoJsonConfig(
     config: LayerConfig,
-): config is Vector3DLayerConfig {
-    return config.role === LayerRoles.VECTOR3D;
+): config is GeoJsonLayerConfig {
+    return config.role === LayerRoles.GEOJSON;
 }

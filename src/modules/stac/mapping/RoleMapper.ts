@@ -26,7 +26,6 @@ import { Bbox } from "@core/framework/types";
 // ─── Display role priority ────────────────────────────────────────────────
 const ROLE_PRIORITY: readonly string[] = [
     TileRoles.POINT_CLOUD,
-    TileRoles.VECTOR3D,
     TileRoles.VECTOR_TILE,
     TileRoles.RASTER_TILE,
     "wms",
@@ -58,9 +57,8 @@ const EXTENDED_DISPLAY_MAPPING: Record<string, DisplayMapping> = {
     image: { role: LayerRoles.RASTER, type: "cog" },
     [TileRoles.VECTOR_TILE]: { role: LayerRoles.VECTOR },
     [TileRoles.POINT_CLOUD]: { role: LayerRoles.POINT_CLOUD },
-    [TileRoles.VECTOR3D]: { role: LayerRoles.VECTOR3D },
     wms: { role: LayerRoles.RASTER, type: "wms" },
-    ogc: { role: LayerRoles.VECTOR },
+    ogc: { role: LayerRoles.GEOJSON },
 };
 
 const INCOMING_MAPPING: Record<string, DisplayMapping> = {
@@ -179,7 +177,11 @@ function createDisplayRole( // eslint-disable-line max-params
     const layerConfig = registry.create(mapping.role);
     const cfg = layerConfig as unknown as Record<string, unknown>;
 
-    cfg.url = asset.href;
+    // OGC API - Features endpoint returns collection metadata, not FeatureCollection.
+    // Resolve the canonical items endpoint for geojson role: append `/items` unless already present.
+    const sourceUrl = resolveDisplaySourceUrl(asset.href, mapping.role);
+
+    cfg.url = sourceUrl;
 
     if (mapping.role === LayerRoles.RASTER && mapping.type) {
         cfg.type = mapping.type;
@@ -207,7 +209,7 @@ function createDisplayRole( // eslint-disable-line max-params
         id: assetKey,
         category: "display",
         label: asset.title || assetKey,
-        render: makeRenderDescriptor(mapping.role, asset.href, layerConfig),
+        render: makeRenderDescriptor(mapping.role, sourceUrl, layerConfig),
     };
 
     if (asset.type) {
@@ -215,6 +217,18 @@ function createDisplayRole( // eslint-disable-line max-params
     }
 
     return result;
+}
+
+/**
+ * Resolve the data source URL for a display role.
+ * For OGC API - Features (geojson role), append `/items` to get the
+ * actual FeatureCollection instead of collection metadata.
+ */
+function resolveDisplaySourceUrl(href: string, role: LayerRole): string {
+    if (role !== LayerRoles.GEOJSON) return href;
+    const clean = href.endsWith("/") ? href.slice(0, -1) : href;
+    if (clean.endsWith("/items")) return href;
+    return `${clean}/items`;
 }
 
 function createReportRole(

@@ -11,13 +11,13 @@ export type {
     RasterLayerConfig,
     VectorLayerConfig,
     PointCloudLayerConfig,
-    Vector3DLayerConfig,
+    GeoJsonLayerConfig,
 } from "./config";
 export {
     isRasterConfig,
     isVectorConfig,
     isPointCloudConfig,
-    isVector3DConfig,
+    isGeoJsonConfig,
 } from "./config";
 export type { LayerTool, LayerToolRole } from "./tool";
 export type { RenderUnit, SnapshotItem } from "./renderUnit";

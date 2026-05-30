@@ -4,13 +4,12 @@ import type { FeatureProvider, Feature, CollectParams } from "../types";
 import {
     isVectorConfig,
     isRasterConfig,
-    isVector3DConfig,
     type LayerNode,
 } from "@core/framework/types";
 
 /**
  * Feature provider for vector layers rendered natively by the base map.
- * Uses map.queryRenderedFeatures to query vector, vector3d, and non-WMS raster layers.
+ * Uses map.queryRenderedFeatures to query vector and non-WMS raster layers.
  */
 export class VectorFeatureProvider implements FeatureProvider {
     async collect(params: CollectParams): Promise<Feature[]> {
@@ -51,7 +50,6 @@ export class VectorFeatureProvider implements FeatureProvider {
 
             if (
                 isVectorConfig(config) ||
-                isVector3DConfig(config) ||
                 (isRasterConfig(config) && config.type !== "wms")
             ) {
                 ids.push(node.id);

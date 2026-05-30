@@ -134,7 +134,7 @@ const LAYER_ROLE_ICON: Record<LayerRole, IconName> = {
     [LayerRoles.RASTER]: "raster",
     [LayerRoles.VECTOR]: "vector",
     [LayerRoles.POINT_CLOUD]: "point-cloud",
-    [LayerRoles.VECTOR3D]: "vector", // Reuse vector icon for 3D vectors
+    [LayerRoles.GEOJSON]: "vector", // Reuse vector icon for GeoJSON
 };
 
 interface NodeFlags {

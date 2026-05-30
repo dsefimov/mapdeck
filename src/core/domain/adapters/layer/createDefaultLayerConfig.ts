@@ -75,12 +75,10 @@ export function registerDefaultLayerConfigs(
         filterByClassification: false,
     }));
 
-    registry.register(LayerRoles.VECTOR3D, () => ({
-        role: LayerRoles.VECTOR3D,
-        url: "",
+    registry.register(LayerRoles.GEOJSON, () => ({
+        role: LayerRoles.GEOJSON,
+        layerType: "fill",
         opacity: 1.0,
         visible: true,
-        lineWidth: 2,
-        lineColor: "#3f51b5",
     }));
 }

@@ -22,7 +22,7 @@ export const LayerRoles = {
     RASTER: "raster" as LayerRole,
     VECTOR: "vector" as LayerRole,
     POINT_CLOUD: "point-cloud" as LayerRole,
-    VECTOR3D: "vector3d" as LayerRole,
+    GEOJSON: "geojson" as LayerRole,
 
     /** Cast any string to LayerRole — use in module definitions. */
     of: (s: string): LayerRole => s as LayerRole,
@@ -36,5 +36,5 @@ export const BUILT_IN_ROLES: readonly LayerRole[] = [
     LayerRoles.RASTER,
     LayerRoles.VECTOR,
     LayerRoles.POINT_CLOUD,
-    LayerRoles.VECTOR3D,
+    LayerRoles.GEOJSON,
 ];

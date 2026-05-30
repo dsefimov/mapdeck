@@ -128,7 +128,6 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
                     id: layerId,
                     type: "fill",
                     source: sourceId,
-                    "source-layer": "",
                     paint: {
                         "fill-color": "#3f51b5",
                         "fill-opacity": opacity,
@@ -139,7 +138,6 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
                     id: layerId,
                     type: "line",
                     source: sourceId,
-                    "source-layer": "",
                     paint: {
                         "line-color": "#3f51b5",
                         "line-width": 2,
@@ -151,7 +149,6 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
                     id: layerId,
                     type: "circle",
                     source: sourceId,
-                    "source-layer": "",
                     paint: {
                         "circle-color": "#3f51b5",
                         "circle-radius": 5,
@@ -163,7 +160,6 @@ export class VectorAdapter implements LayerAdapter<typeof LayerRoles.VECTOR> {
                     id: layerId,
                     type: "symbol",
                     source: sourceId,
-                    "source-layer": "",
                     layout: {
                         "text-field": ["get", "name"],
                         "text-size": 12,

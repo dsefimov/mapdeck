@@ -185,7 +185,6 @@ export const TileRoles = {
     RASTER_TILE: "raster-tile",
     VECTOR_TILE: "vector-tile",
     POINT_CLOUD: "point-cloud",
-    VECTOR3D: "vector3d",
 } as const;
 
 export const ReportRoles = {
