@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useRef, useCallback } from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/framework/store";
 import {
@@ -26,9 +26,7 @@ export const PointSizeSliderComponent: (
     const dict = rootStore.localeStore.t(POINT_SIZE_SLIDER_ID);
     const node = rootStore.treeStore.getNode(nodeId);
 
-    // Local state for immediate UI feedback
-    const [localPointSize, setLocalPointSize] = useState<number>(2);
-    const lastAppliedValueRef = useRef<number>(2);
+    const pendingRef = useRef<number | null>(null);
 
     if (!node || !isLayerNode(node)) {
         logger.warn(`PointSizeSlider: node ${nodeId} is not a layer`);
@@ -47,14 +45,10 @@ export const PointSizeSliderComponent: (
 
     const applyPointSizeUpdate = useCallback(
         (newPointSize: number) => {
-            if (lastAppliedValueRef.current === newPointSize) {
-                return;
-            }
-
             rootStore.treeStore.updateLayerConfig<
                 typeof LayerRoles.POINT_CLOUD
             >(nodeId, { pointSize: newPointSize });
-            lastAppliedValueRef.current = newPointSize;
+            pendingRef.current = null;
 
             logger.debug(
                 `Changed point size for layer ${nodeId} to ${newPointSize}`,
@@ -65,13 +59,6 @@ export const PointSizeSliderComponent: (
 
     const debounced = useDebounce(applyPointSizeUpdate, DEBOUNCE_DELAY_MS);
 
-    // Initialize local state from node config when component mounts or node changes
-    useEffect(() => {
-        const currentPointSize = config.pointSize ?? 2;
-        setLocalPointSize(currentPointSize);
-        lastAppliedValueRef.current = currentPointSize;
-    }, [nodeId, config.pointSize]);
-
     const handlePointSizeChange = useCallback(
         (event: React.ChangeEvent<HTMLInputElement>) => {
             const newPointSize = parseFloat(event.target.value);
@@ -80,21 +67,18 @@ export const PointSizeSliderComponent: (
                 return;
             }
 
-            // Update local state immediately for UI feedback
-            setLocalPointSize(newPointSize);
+            pendingRef.current = newPointSize;
             debounced.call(newPointSize);
         },
         [debounced],
     );
 
     const handlePointerUp = useCallback(() => {
-        // If user releases the slider, apply immediately
         debounced.flush();
     }, [debounced]);
 
-    // Get the actual point size from config for display (fallback to local during debounce)
     const displayPointSize = debounced.isPending
-        ? localPointSize
+        ? (pendingRef.current ?? config.pointSize ?? 2)
         : (config.pointSize ?? 2);
 
     return (
@@ -112,7 +96,7 @@ export const PointSizeSliderComponent: (
                 min="0.1"
                 max="2"
                 step="0.1"
-                value={localPointSize}
+                value={displayPointSize}
                 onChange={handlePointSizeChange}
                 onPointerUp={handlePointerUp}
                 onMouseUp={handlePointerUp}
