@@ -11,6 +11,7 @@ import { STACClient } from "../core/STACClient";
 import { STACCache } from "../core/STACCache";
 import { STACEntityMapper } from "../mapping/STACEntityMapper";
 import type { LayerConfigRegistry } from "@core/domain/adapters";
+import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { resolveBaseUrl, filterLinksByRel } from "../utils/url";
 import {
     isSTACCollection,
@@ -31,7 +32,10 @@ export class STACTreeAdapter implements SourceAdapter {
     readonly type = "stac";
     private state: InitializedState | null = null;
 
-    constructor(private readonly layerConfigRegistry: LayerConfigRegistry) {}
+    constructor(
+        private readonly layerConfigRegistry: LayerConfigRegistry,
+        readonly roleRegistry: RoleResolverRegistry,
+    ) {}
 
     initialize(config: Record<string, unknown>): void {
         const stacConfig = extractConfig(config);
@@ -41,7 +45,11 @@ export class STACTreeAdapter implements SourceAdapter {
             config: stacConfig,
             cache,
             client: new STACClient(stacConfig),
-            mapper: new STACEntityMapper(cache, this.layerConfigRegistry),
+            mapper: new STACEntityMapper(
+                cache,
+                this.layerConfigRegistry,
+                this.roleRegistry,
+            ),
         };
 
         logger.debug("STAC adapter initialized");
