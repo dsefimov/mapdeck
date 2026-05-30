@@ -1,12 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useMemo } from "react";
 import { observer } from "mobx-react-lite";
-import maplibregl from "maplibre-gl";
+import { geodesicDistance } from "@core/shared/geo";
 import {
-    geodesicDistance,
-    getPointWithFallback,
     formatDistance,
     convertPointToDegrees,
-} from "../utils/coordinates";
+} from "@core/shared/geo/formatters";
 import {
     getThemeColor,
     THEME_PRIMARY,
@@ -16,9 +14,11 @@ import {
     COLOR_ALPHA_PREVIEW,
 } from "@core/shared/ui";
 import { formatDict } from "@core/framework/i18n";
+import { useMeasureInteraction } from "@map-tools/shared/useMeasureInteraction";
+import { useOverlayLayers } from "@core/framework/hooks";
 
 import type { MapToolComponentProps } from "@core/framework/types";
-
+import type { MeasureToolStore } from "@map-tools/shared/MeasureToolStore";
 import { ToolPanel, SegmentsList } from "@core/ui/composites";
 import type { Segment } from "@core/ui/composites";
 import { PathLayer, ScatterplotLayer, LineLayer } from "@deck.gl/layers";
@@ -28,356 +28,94 @@ import type { Point3D, SegmentDistance3D } from "../types";
 import styles from "@core/ui/composites/measurement-panel/MeasurementPanel.module.css";
 import toolStyles from "@core/ui/composites/tool-panel/ToolPanel.module.css";
 
-// Re-export types for backward compatibility
 export type { Point3D, SegmentDistance3D } from "../types";
 
-// Layer IDs for ruler-3d tool
-const RULER_3D_LAYER_PREFIX = "ruler-3d-";
-const RULER_3D_POINTS_LAYER_ID = "ruler-3d-points";
-const RULER_3D_PATH_LAYER_ID = "ruler-3d-path";
-const RULER_3D_PREVIEW_POINT_LAYER_ID = "ruler-3d-preview-point";
-const RULER_3D_PREVIEW_LINE_LAYER_ID = "ruler-3d-preview-line";
+const LAYER_PREFIX = "ruler-3d-";
+const POINTS_LAYER_ID = "ruler-3d-points";
+const PATH_LAYER_ID = "ruler-3d-path";
+const PREVIEW_POINT_LAYER_ID = "ruler-3d-preview-point";
+const PREVIEW_LINE_LAYER_ID = "ruler-3d-preview-line";
 
-// Utility functions for distance calculations
-function getEuclideanDistance3D(p1: Point3D, p2: Point3D): number {
-    // Convert degrees to meters for 3D distance calculation
-    const horizontalDist = geodesicDistance([p1.lng, p1.lat], [p2.lng, p2.lat]);
-    const dz = p2.z - p1.z;
-    return Math.sqrt(horizontalDist * horizontalDist + dz * dz);
+function euclidean3D(p1: Point3D, p2: Point3D): number {
+    const h = geodesicDistance([p1.lng, p1.lat], [p2.lng, p2.lat]);
+    return Math.sqrt(h * h + (p2.z - p1.z) ** 2);
 }
 
-function getHorizontalDistance(p1: Point3D, p2: Point3D): number {
+function horizontalDist(p1: Point3D, p2: Point3D): number {
     return geodesicDistance([p1.lng, p1.lat], [p2.lng, p2.lat]);
 }
 
-function getVerticalDistance(p1: Point3D, p2: Point3D): number {
+function verticalDist(p1: Point3D, p2: Point3D): number {
     return Math.abs(p2.z - p1.z);
 }
 
-/**
- * Main 3D Ruler component
- */
 export const Ruler3DComponent: (
-    props: MapToolComponentProps,
+    props: MapToolComponentProps & { store: MeasureToolStore },
 ) => React.ReactNode = observer(
-    ({ map, deactivate, rootStore, overlayManager }) => {
+    ({ map, deactivate, rootStore, overlayManager, store }) => {
         const dict = rootStore.localeStore.t("ruler-3d");
         const adapterFactory = rootStore.layerAdapterFactory;
-        const [points, setPoints] = useState<Point3D[]>([]);
-        const [previewPoint, setPreviewPoint] = useState<Point3D | null>(null);
-        const [editMode, setEditMode] = useState(false);
-        const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-        const pointsRef = useRef<Point3D[]>([]);
 
-        // Sync ref with state
-        useEffect(() => {
-            pointsRef.current = points;
-        }, [points]);
-
-        // Auto-exit edit mode when points become empty
-        useEffect(() => {
-            if (points.length === 0 && editMode) {
-                setEditMode(false);
-                setDraggingIndex(null);
-            }
-        }, [points, editMode]);
-
-        // Event handlers with useCallback for stable references
-        const handleMapClick = useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                if (editMode) return;
-
-                const point = getPointWithFallback({
-                    screenX: event.point.x,
-                    screenY: event.point.y,
-                    eventLngLat: event.lngLat,
-                    adapterFactory,
-                    overlayManager,
-                    excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
-                });
-
-                if (point) {
-                    setPoints((prev) => [...prev, point]);
-                }
-            },
-            [adapterFactory, editMode, overlayManager],
-        );
-
-        const handleMapMouseMove = useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                if (draggingIndex !== null) {
-                    // Dragging mode: update dragged point
-                    const point = getPointWithFallback({
-                        screenX: event.point.x,
-                        screenY: event.point.y,
-                        eventLngLat: event.lngLat,
-                        adapterFactory,
-                        overlayManager,
-                        excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
-                    });
-
-                    if (point) {
-                        setPoints((prev) =>
-                            prev.map((p, i) =>
-                                i === draggingIndex ? point : p,
-                            ),
-                        );
-                    } else {
-                        // No point cloud under cursor - create point from map coordinates
-                        const draggedPoint = pointsRef.current[draggingIndex];
-                        if (draggedPoint) {
-                            const newPoint: Point3D = {
-                                lng: event.lngLat.lng,
-                                lat: event.lngLat.lat,
-                                z: draggedPoint.z,
-                            };
-                            setPoints((prev) =>
-                                prev.map((p, i) =>
-                                    i === draggingIndex ? newPoint : p,
-                                ),
-                            );
-                        }
-                    }
-                } else if (!editMode) {
-                    // Preview mode: show hover point
-                    const point = getPointWithFallback({
-                        screenX: event.point.x,
-                        screenY: event.point.y,
-                        eventLngLat: event.lngLat,
-                        adapterFactory,
-                        overlayManager,
-                        excludeLayerPrefix: RULER_3D_LAYER_PREFIX,
-                    });
-
-                    setPreviewPoint(point);
-                }
-            },
-            [adapterFactory, draggingIndex, editMode, overlayManager],
-        );
-
-        const handleMapMouseDown = useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                if (!editMode) return;
-
-                // Use Deck.gl picking to detect ruler points
-                const pickingInfo = overlayManager.pickObject(
-                    event.point.x,
-                    event.point.y,
-                    10,
-                );
-                if (
-                    pickingInfo &&
-                    pickingInfo.layer &&
-                    pickingInfo.layer.id === RULER_3D_POINTS_LAYER_ID &&
-                    pickingInfo.index != null
-                ) {
-                    const index = pickingInfo.index;
-                    if (index >= 0 && index < pointsRef.current.length) {
-                        setDraggingIndex(index);
-                        // Prevent map panning when dragging points
-                        event.preventDefault();
-                        return;
-                    }
-                }
-            },
-            [editMode, overlayManager],
-        );
-
-        const handleMapMouseUp = useCallback(() => {
-            setDraggingIndex(null);
-        }, []);
-
-        const handleMiddleClick = useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                if (
-                    event.originalEvent instanceof MouseEvent &&
-                    event.originalEvent.button === 1
-                ) {
-                    event.preventDefault();
-                    setEditMode((prev) => !prev);
-                    setPreviewPoint(null);
-                }
-            },
-            [],
-        );
-
-        const handleKeyDown = useCallback(
-            (event: KeyboardEvent) => {
-                if (event.key === "Escape") {
-                    if (editMode) {
-                        setEditMode(false);
-                        setDraggingIndex(null);
-                    } else {
-                        deactivate();
-                    }
-                } else if (event.key === "e" || event.key === "E") {
-                    event.preventDefault();
-                    setEditMode((prev) => !prev);
-                    setPreviewPoint(null);
-                } else if (event.key === "z" && event.ctrlKey) {
-                    // Ctrl+Z: undo last point
-                    event.preventDefault();
-                    setPoints((prev) => prev.slice(0, -1));
-                } else if (
-                    event.key === "Delete" &&
-                    editMode &&
-                    points.length > 0
-                ) {
-                    // Delete selected point if we had selection (future enhancement)
-                }
-            },
-            [editMode, deactivate, points.length],
-        );
-
-        // Subscribe to map events
-        useEffect(() => {
-            map.on("click", handleMapClick);
-            map.on("mousemove", handleMapMouseMove);
-            map.on("mousedown", handleMapMouseDown);
-            map.on("mouseup", handleMapMouseUp);
-            map.on("mousedown", handleMiddleClick);
-
-            window.addEventListener("keydown", handleKeyDown);
-
-            return () => {
-                map.off("click", handleMapClick);
-                map.off("mousemove", handleMapMouseMove);
-                map.off("mousedown", handleMapMouseDown);
-                map.off("mouseup", handleMapMouseUp);
-                map.off("mousedown", handleMiddleClick);
-                window.removeEventListener("keydown", handleKeyDown);
-            };
-        }, [
+        useMeasureInteraction({
             map,
-            handleMapClick,
-            handleMapMouseMove,
-            handleMapMouseDown,
-            handleMapMouseUp,
-            handleMiddleClick,
-            handleKeyDown,
-        ]);
+            overlayManager,
+            adapterFactory,
+            store,
+            layerPrefix: LAYER_PREFIX,
+            pointsLayerId: POINTS_LAYER_ID,
+            onDeactivate: deactivate,
+        });
 
-        // Update map cursor based on edit mode and dragging
-        useEffect(() => {
-            const canvas = map.getCanvas();
-            if (!canvas) return;
-
-            if (draggingIndex !== null) {
-                canvas.style.cursor = "grabbing";
-            } else if (editMode) {
-                canvas.style.cursor = "move";
-            } else {
-                canvas.style.cursor = "crosshair";
-            }
-
-            return () => {
-                canvas.style.cursor = "";
-            };
-        }, [map, editMode, draggingIndex]);
-
-        // Calculate distances - use useMemo to avoid recalculating on every render
+        // ---- distance calculations ----
         const { segments, totalDistance, totalHorizontal, totalVertical } =
-            React.useMemo(() => {
+            useMemo(() => {
                 const segs: SegmentDistance3D[] = [];
-                for (let i = 1; i < points.length; i++) {
-                    const from = points[i - 1]!;
-                    const to = points[i]!;
-
+                for (let i = 1; i < store.points.length; i++) {
+                    const from = store.points[i - 1]!;
+                    const to = store.points[i]!;
                     segs.push({
                         from,
                         to,
-                        distanceMeters: getEuclideanDistance3D(from, to),
-                        horizontalDistance: getHorizontalDistance(from, to),
-                        verticalDistance: getVerticalDistance(from, to),
+                        distanceMeters: euclidean3D(from, to),
+                        horizontalDistance: horizontalDist(from, to),
+                        verticalDistance: verticalDist(from, to),
                     });
                 }
-
-                const totalDist = segs.reduce(
-                    (sum, seg) => sum + seg.distanceMeters,
-                    0,
-                );
-                const totalHoriz = segs.reduce(
-                    (sum, seg) => sum + seg.horizontalDistance,
-                    0,
-                );
-                const totalVert = segs.reduce(
-                    (sum, seg) => sum + seg.verticalDistance,
-                    0,
-                );
-
                 return {
                     segments: segs,
-                    totalDistance: totalDist,
-                    totalHorizontal: totalHoriz,
-                    totalVertical: totalVert,
+                    totalDistance: segs.reduce(
+                        (s, seg) => s + seg.distanceMeters,
+                        0,
+                    ),
+                    totalHorizontal: segs.reduce(
+                        (s, seg) => s + seg.horizontalDistance,
+                        0,
+                    ),
+                    totalVertical: segs.reduce(
+                        (s, seg) => s + seg.verticalDistance,
+                        0,
+                    ),
                 };
-            }, [points]);
+            }, [store.points]);
 
-        // Data for measurement points (convert to geographic coordinates)
-        const pointsData = React.useMemo(() => {
-            const data = points.map((point, index) => {
-                const [lng, lat, elevation] = convertPointToDegrees(point);
-                return {
-                    position: [lng, lat, elevation] as [number, number, number],
-                    index,
-                };
-            });
+        // ---- Deck.gl layers ----
+        const pointsData = useMemo(
+            () =>
+                store.points.map((p, i) => ({
+                    position: convertPointToDegrees(p),
+                    index: i,
+                })),
+            [store.points],
+        );
 
-            return data;
-        }, [points]);
-
-        // Data for preview point (convert to geographic coordinates)
-        const previewPointData = React.useMemo(() => {
-            if (!previewPoint) {
-                return null;
-            }
-
-            const [lng, lat, elevation] = convertPointToDegrees(previewPoint);
-            return {
-                position: [lng, lat, elevation] as [number, number, number],
-            };
-        }, [previewPoint]);
-
-        // Data for preview line (convert to geographic coordinates)
-        const previewLineData = React.useMemo(() => {
-            if (!previewPoint || points.length === 0) {
-                return null;
-            }
-            const lastPoint = points[points.length - 1];
-            if (!lastPoint) return null;
-
-            const [lng1, lat1, elev1] = convertPointToDegrees(lastPoint);
-            const [lng2, lat2, elev2] = convertPointToDegrees(previewPoint);
-
-            const previewLineResult = [
-                [lng1, lat1, elev1],
-                [lng2, lat2, elev2],
-            ] as [number, number, number][];
-
-            return previewLineResult;
-        }, [previewPoint, points]);
-
-        // Create PathLayer for 3D lines in deck.gl (using LNGLAT)
-        const pathLayer = React.useMemo(() => {
-            if (points.length < 2) return null;
-
-            const primaryColor = getThemeColor(
-                THEME_PRIMARY,
-                COLOR_ALPHA_STROKE,
-            );
-
-            // Convert points to geographic coordinates
-            const pathData = points.map((point) => {
-                const [lng, lat, elevation] = convertPointToDegrees(point);
-                return [lng, lat, elevation];
-            });
-
-            // Create path layer with LNGLAT coordinate system
+        const pathLayer = useMemo(() => {
+            if (store.points.length < 2) return null;
+            const color = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE);
             return new PathLayer({
-                id: RULER_3D_PATH_LAYER_ID,
-                data: [pathData],
+                id: PATH_LAYER_ID,
+                data: [store.points.map((p) => convertPointToDegrees(p))],
                 getPath: (d: [number, number, number][]) => d,
-                getColor: primaryColor,
+                getColor: color,
                 getWidth: 4,
                 widthUnits: "pixels",
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
@@ -387,157 +125,127 @@ export const Ruler3DComponent: (
                 widthMinPixels: 2,
                 widthMaxPixels: 8,
             });
-        }, [points]);
+        }, [store.points]);
 
-        // Create points layer (using LNGLAT)
-        const pointsLayer = React.useMemo(() => {
+        const pointsLayer = useMemo(() => {
             if (pointsData.length === 0) return null;
-
-            const primaryColor = getThemeColor(
-                THEME_PRIMARY,
+            const color = getThemeColor(
+                store.editMode ? THEME_SECONDARY : THEME_PRIMARY,
                 COLOR_ALPHA_STROKE,
             );
-            const editModeColor = getThemeColor(
-                THEME_SECONDARY,
-                COLOR_ALPHA_STROKE,
-            );
-
             return new ScatterplotLayer({
-                id: RULER_3D_POINTS_LAYER_ID,
+                id: POINTS_LAYER_ID,
                 data: pointsData,
                 getPosition: (d: { position: [number, number, number] }) =>
                     d.position,
                 getRadius: 6,
-                getFillColor: editMode ? editModeColor : primaryColor,
+                getFillColor: color,
                 radiusUnits: "pixels",
                 pickable: true,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
                 radiusMinPixels: 4,
                 radiusMaxPixels: 10,
             });
-        }, [pointsData, editMode]);
+        }, [pointsData, store.editMode]);
 
-        // Create preview point layer (using LNGLAT)
-        const previewPointLayer = React.useMemo(() => {
-            if (!previewPointData) return null;
-
-            const previewColor = getThemeColor(
-                THEME_SUCCESS,
-                COLOR_ALPHA_PREVIEW,
-            );
-
+        const previewPointLayer = useMemo(() => {
+            if (!store.previewPoint) return null;
+            const color = getThemeColor(THEME_SUCCESS, COLOR_ALPHA_PREVIEW);
             return new ScatterplotLayer({
-                id: RULER_3D_PREVIEW_POINT_LAYER_ID,
-                data: [previewPointData],
+                id: PREVIEW_POINT_LAYER_ID,
+                data: [{ position: convertPointToDegrees(store.previewPoint) }],
                 getPosition: (d: { position: [number, number, number] }) =>
                     d.position,
                 getRadius: 6,
-                getFillColor: previewColor,
+                getFillColor: color,
                 radiusUnits: "pixels",
                 pickable: false,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
             });
-        }, [previewPointData]);
+        }, [store.previewPoint]);
 
-        // Create preview line layer (using LNGLAT)
-        const previewLineLayer = React.useMemo(() => {
-            if (!previewLineData) return null;
-
-            const previewColor = getThemeColor(
-                THEME_SUCCESS,
-                COLOR_ALPHA_PREVIEW,
-            );
-
+        const previewLineLayer = useMemo(() => {
+            if (!store.previewPoint || store.points.length === 0) return null;
+            const last = store.points[store.points.length - 1]!;
+            const color = getThemeColor(THEME_SUCCESS, COLOR_ALPHA_PREVIEW);
             return new LineLayer({
-                id: RULER_3D_PREVIEW_LINE_LAYER_ID,
-                data: [previewLineData],
+                id: PREVIEW_LINE_LAYER_ID,
+                data: [
+                    [
+                        convertPointToDegrees(last),
+                        convertPointToDegrees(store.previewPoint),
+                    ],
+                ],
                 getPath: (d: unknown) => d as [number, number, number][],
-                getColor: previewColor,
+                getColor: color,
                 getWidth: 2,
                 widthUnits: "pixels",
                 pickable: false,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
             });
-        }, [previewLineData]);
+        }, [store.previewPoint, store.points]);
 
-        // Manage deck.gl layer lifecycle
-        useEffect(() => {
-            if (!overlayManager) return;
-
-            const layers = [
-                { id: RULER_3D_PATH_LAYER_ID, layer: pathLayer },
-                { id: RULER_3D_POINTS_LAYER_ID, layer: pointsLayer },
-                {
-                    id: RULER_3D_PREVIEW_POINT_LAYER_ID,
-                    layer: previewPointLayer,
-                },
-                { id: RULER_3D_PREVIEW_LINE_LAYER_ID, layer: previewLineLayer },
-            ];
-
-            layers.forEach(({ id, layer }) => {
-                if (layer) {
-                    overlayManager.addLayer(id, layer);
-                } else {
-                    overlayManager.removeLayer(id);
-                }
-            });
-
-            return () => {
-                layers.forEach(({ id }) => overlayManager.removeLayer(id));
-            };
-        }, [
+        // ---- overlay lifecycle ----
+        useOverlayLayers(
             overlayManager,
-            pathLayer,
-            pointsLayer,
-            previewLineLayer,
-            previewPointLayer,
-        ]);
+            useMemo(
+                () =>
+                    [
+                        [PATH_LAYER_ID, pathLayer],
+                        [POINTS_LAYER_ID, pointsLayer],
+                        [PREVIEW_POINT_LAYER_ID, previewPointLayer],
+                        [PREVIEW_LINE_LAYER_ID, previewLineLayer],
+                    ] as const,
+                [pathLayer, pointsLayer, previewPointLayer, previewLineLayer],
+            ),
+        );
 
-        // Convert segments to the format expected by SegmentsList
-        const segmentItems: Segment[] = React.useMemo(
+        // ---- UI ----
+        const segmentItems: Segment[] = useMemo(
             () =>
-                segments.map((segment, index) => ({
+                segments.map((seg, i) => ({
                     label: formatDict(dict["segment.label"]!, {
-                        from: index + 1,
-                        to: index + 2,
+                        from: i + 1,
+                        to: i + 2,
                     }),
-                    value: formatDistance(segment.distanceMeters),
+                    value: formatDistance(seg.distanceMeters),
                     details: [
                         {
                             label: dict["segment.horizontal"]!,
-                            value: formatDistance(segment.horizontalDistance),
+                            value: formatDistance(seg.horizontalDistance),
                         },
                         {
                             label: dict["segment.vertical"]!,
-                            value: formatDistance(segment.verticalDistance),
+                            value: formatDistance(seg.verticalDistance),
                         },
                     ],
                 })),
             [segments, dict],
         );
 
-        // Render UI
         return (
             <ToolPanel
-                title={editMode ? dict["eyebrow.editMode"] : dict["eyebrow"]}
-                hint={editMode ? dict["hint.editMode"] : dict["hint.normal"]}
+                title={
+                    store.editMode ? dict["eyebrow.editMode"] : dict["eyebrow"]
+                }
+                hint={
+                    store.editMode ? dict["hint.editMode"] : dict["hint.normal"]
+                }
                 actions={
                     <>
                         <button
                             type="button"
                             className={toolStyles.button}
-                            disabled={points.length === 0}
-                            onClick={() =>
-                                setPoints((prev) => prev.slice(0, -1))
-                            }
+                            disabled={store.points.length === 0}
+                            onClick={() => store.removeLastPoint()}
                         >
                             {dict["button.undo"]}
                         </button>
                         <button
                             type="button"
                             className={toolStyles.button}
-                            disabled={points.length === 0}
-                            onClick={() => setPoints([])}
+                            disabled={store.points.length === 0}
+                            onClick={() => store.clearPoints()}
                         >
                             {dict["button.resetAll"]}
                         </button>
@@ -551,7 +259,7 @@ export const Ruler3DComponent: (
                     </>
                 }
             >
-                {points.length > 0 && (
+                {store.points.length > 0 && (
                     <div className={styles.measurementSummary}>
                         <div className={styles.summaryItem}>
                             <span className={styles.summaryLabel}>
@@ -566,7 +274,7 @@ export const Ruler3DComponent: (
                                 <span className={styles.distanceComponentLabel}>
                                     <span
                                         className={`${styles.distanceComponentDot} ${styles.distanceComponentDotHorizontal}`}
-                                    ></span>
+                                    />
                                     {dict["summary.horizontal"]}
                                 </span>
                                 <span className={styles.distanceComponentValue}>
@@ -577,7 +285,7 @@ export const Ruler3DComponent: (
                                 <span className={styles.distanceComponentLabel}>
                                     <span
                                         className={`${styles.distanceComponentDot} ${styles.distanceComponentDotVertical}`}
-                                    ></span>
+                                    />
                                     {dict["summary.vertical"]}
                                 </span>
                                 <span className={styles.distanceComponentValue}>
@@ -590,12 +298,11 @@ export const Ruler3DComponent: (
                                 {dict["summary.points"]}
                             </span>
                             <span className={styles.summaryValue}>
-                                {points.length}
+                                {store.points.length}
                             </span>
                         </div>
                     </div>
                 )}
-
                 {segmentItems.length > 0 && (
                     <SegmentsList
                         title={dict["segments.title"]!}

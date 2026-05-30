@@ -1,13 +1,6 @@
-import React, {
-    useEffect,
-    useState,
-    useRef,
-    useCallback,
-    useMemo,
-} from "react";
+import React, { useMemo } from "react";
 import { observer } from "mobx-react-lite";
-import maplibregl from "maplibre-gl";
-import { getPointWithFallback } from "@core/domain/point-cloud/picking";
+import { geodesicDistance } from "@core/shared/geo";
 import {
     formatDistance,
     formatArea,
@@ -23,8 +16,8 @@ import {
     COLOR_ALPHA_PREVIEW,
 } from "@core/shared/ui";
 import { formatDict } from "@core/framework/i18n";
-import distance from "@turf/distance";
-import { point } from "@turf/helpers";
+import { useMeasureInteraction } from "@map-tools/shared/useMeasureInteraction";
+import { useOverlayLayers } from "@core/framework/hooks";
 import area from "@turf/area";
 import { polygon } from "@turf/helpers";
 
@@ -32,7 +25,7 @@ import type {
     MapToolComponentProps,
     MeasurementPoint3D,
 } from "@core/framework/types";
-
+import type { MeasureToolStore } from "@map-tools/shared/MeasureToolStore";
 import { ToolPanel, SegmentsList } from "@core/ui/composites";
 import type { Segment } from "@core/ui/composites";
 import { PolygonLayer, ScatterplotLayer, LineLayer } from "@deck.gl/layers";
@@ -42,41 +35,21 @@ import type { PolygonEdge, AreaMeasurements } from "../types";
 import styles from "@core/ui/composites/measurement-panel/MeasurementPanel.module.css";
 import toolStyles from "@core/ui/composites/tool-panel/ToolPanel.module.css";
 
-// Layer IDs for area-measure tool
-const AREA_MEASURE_LAYER_PREFIX = "area-measure-";
-const AREA_MEASURE_POLYGON_LAYER_ID = "area-measure-polygon";
-const AREA_MEASURE_POINTS_LAYER_ID = "area-measure-points";
-const AREA_MEASURE_PREVIEW_POINT_LAYER_ID = "area-measure-preview-point";
-const AREA_MEASURE_PREVIEW_LINE_LAYER_ID = "area-measure-preview-line";
+const LAYER_PREFIX = "area-measure-";
+const POLYGON_LAYER_ID = "area-measure-polygon";
+const POINTS_LAYER_ID = "area-measure-points";
+const PREVIEW_POINT_LAYER_ID = "area-measure-preview-point";
+const PREVIEW_LINE_LAYER_ID = "area-measure-preview-line";
 
-/**
- * Calculate geodesic distance between two points in meters
- */
-function geodesicDistance(p1: [number, number], p2: [number, number]): number {
-    return distance(point(p1), point(p2), { units: "meters" });
-}
-
-/**
- * Calculate 2D area from MeasurementPoint3D array using @turf/area
- * Projects points to a polygon and calculates area in square meters
- */
 function calculateArea2D(points: MeasurementPoint3D[]): number {
     if (points.length < 3) return 0;
-
-    // Create polygon coordinates (close the ring by repeating first point)
     const coords = points.map((p) => [p.lng, p.lat]);
-    coords.push([points[0]!.lng, points[0]!.lat]); // Close the ring
-
-    const poly = polygon([coords]);
-    return area(poly);
+    coords.push([points[0]!.lng, points[0]!.lat]);
+    return area(polygon([coords]));
 }
 
-/**
- * Calculate perimeter from points
- */
 function calculatePerimeter(points: MeasurementPoint3D[]): number {
     if (points.length < 2) return 0;
-
     let perimeter = 0;
     for (let i = 1; i < points.length; i++) {
         const p1 = points[i - 1]!;
@@ -86,303 +59,71 @@ function calculatePerimeter(points: MeasurementPoint3D[]): number {
     return perimeter;
 }
 
-/**
- * Calculate edges with distances
- */
-function calculateEdges(points: MeasurementPoint3D[]): PolygonEdge[] {
-    if (points.length < 2) return [];
-
-    const edges: PolygonEdge[] = [];
-    for (let i = 1; i < points.length; i++) {
-        const from = points[i - 1]!;
-        const to = points[i]!;
-        edges.push({
-            from,
-            to,
-            distanceMeters: geodesicDistance(
-                [from.lng, from.lat],
-                [to.lng, to.lat],
-            ),
-        });
-    }
-    return edges;
-}
-
-/**
- * Main Area Measure component
- */
 export const AreaMeasureComponent: (
-    props: MapToolComponentProps,
+    props: MapToolComponentProps & { store: MeasureToolStore },
 ) => React.ReactNode = observer(
-    ({ map, deactivate, rootStore, overlayManager }) => {
+    ({ map, deactivate, rootStore, overlayManager, store }) => {
         const dict = rootStore.localeStore.t("area-measure");
         const adapterFactory = rootStore.layerAdapterFactory;
-        const [points, setPoints] = useState<MeasurementPoint3D[]>([]);
-        const [previewPoint, setPreviewPoint] =
-            useState<MeasurementPoint3D | null>(null);
-        const [editMode, setEditMode] = useState(false);
-        const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-        const pointsRef = useRef<MeasurementPoint3D[]>([]);
 
-        // Sync ref with state
-        useEffect(() => {
-            pointsRef.current = points;
-        }, [points]);
-
-        // Auto-exit edit mode when points become empty
-        useEffect(() => {
-            if (points.length === 0 && editMode) {
-                setEditMode(false);
-                setDraggingIndex(null);
-            }
-        }, [points, editMode]);
-
-        // Event handlers
-        const handleMapClick = useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                if (editMode) return;
-
-                const point = getPointWithFallback({
-                    screenX: event.point.x,
-                    screenY: event.point.y,
-                    eventLngLat: event.lngLat,
-                    adapterFactory,
-                    overlayManager: overlayManager,
-                    excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
-                });
-
-                if (point) {
-                    setPoints((prev) => [...prev, point]);
-                }
-            },
-            [adapterFactory, editMode, overlayManager],
-        );
-
-        const handleMapMouseMove = useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                if (draggingIndex !== null) {
-                    const point = getPointWithFallback({
-                        screenX: event.point.x,
-                        screenY: event.point.y,
-                        eventLngLat: event.lngLat,
-                        adapterFactory,
-                        overlayManager: overlayManager,
-                        excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
-                    });
-
-                    if (point) {
-                        setPoints((prev) =>
-                            prev.map((p, i) =>
-                                i === draggingIndex ? point : p,
-                            ),
-                        );
-                    } else {
-                        const draggedPoint = pointsRef.current[draggingIndex];
-                        if (draggedPoint) {
-                            const newPoint: MeasurementPoint3D = {
-                                lng: event.lngLat.lng,
-                                lat: event.lngLat.lat,
-                                z: draggedPoint.z,
-                            };
-                            setPoints((prev) =>
-                                prev.map((p, i) =>
-                                    i === draggingIndex ? newPoint : p,
-                                ),
-                            );
-                        }
-                    }
-                } else if (!editMode) {
-                    const point = getPointWithFallback({
-                        screenX: event.point.x,
-                        screenY: event.point.y,
-                        eventLngLat: event.lngLat,
-                        adapterFactory,
-                        overlayManager: overlayManager,
-                        excludeLayerPrefix: AREA_MEASURE_LAYER_PREFIX,
-                    });
-
-                    setPreviewPoint(point);
-                }
-            },
-            [adapterFactory, draggingIndex, editMode, overlayManager],
-        );
-
-        const handleMapMouseDown = useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                if (!editMode) return;
-
-                const pickingInfo = overlayManager.pickObject(
-                    event.point.x,
-                    event.point.y,
-                    10,
-                );
-                if (
-                    pickingInfo &&
-                    pickingInfo.layer &&
-                    pickingInfo.layer.id === AREA_MEASURE_POINTS_LAYER_ID &&
-                    pickingInfo.index != null
-                ) {
-                    const index = pickingInfo.index;
-                    if (index >= 0 && index < pointsRef.current.length) {
-                        setDraggingIndex(index);
-                        event.preventDefault();
-                        return;
-                    }
-                }
-            },
-            [editMode, overlayManager],
-        );
-
-        const handleMapMouseUp = useCallback(() => {
-            setDraggingIndex(null);
-        }, []);
-
-        const handleMiddleClick = useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                if (
-                    event.originalEvent instanceof MouseEvent &&
-                    event.originalEvent.button === 1
-                ) {
-                    event.preventDefault();
-                    setEditMode((prev) => !prev);
-                    setPreviewPoint(null);
-                }
-            },
-            [],
-        );
-
-        const handleKeyDown = useCallback(
-            (event: KeyboardEvent) => {
-                if (event.key === "Escape") {
-                    if (editMode) {
-                        setEditMode(false);
-                        setDraggingIndex(null);
-                    } else {
-                        deactivate();
-                    }
-                } else if (event.key === "e" || event.key === "E") {
-                    event.preventDefault();
-                    setEditMode((prev) => !prev);
-                    setPreviewPoint(null);
-                } else if (event.key === "z" && event.ctrlKey) {
-                    event.preventDefault();
-                    setPoints((prev) => prev.slice(0, -1));
-                }
-            },
-            [editMode, deactivate],
-        );
-
-        // Subscribe to map events
-        useEffect(() => {
-            map.on("click", handleMapClick);
-            map.on("mousemove", handleMapMouseMove);
-            map.on("mousedown", handleMapMouseDown);
-            map.on("mouseup", handleMapMouseUp);
-            map.on("mousedown", handleMiddleClick);
-
-            window.addEventListener("keydown", handleKeyDown);
-
-            return () => {
-                map.off("click", handleMapClick);
-                map.off("mousemove", handleMapMouseMove);
-                map.off("mousedown", handleMapMouseDown);
-                map.off("mouseup", handleMapMouseUp);
-                map.off("mousedown", handleMiddleClick);
-                window.removeEventListener("keydown", handleKeyDown);
-            };
-        }, [
+        useMeasureInteraction({
             map,
-            handleMapClick,
-            handleMapMouseMove,
-            handleMapMouseDown,
-            handleMapMouseUp,
-            handleMiddleClick,
-            handleKeyDown,
-        ]);
+            overlayManager,
+            adapterFactory,
+            store,
+            layerPrefix: LAYER_PREFIX,
+            pointsLayerId: POINTS_LAYER_ID,
+            onDeactivate: deactivate,
+        });
 
-        // Update cursor
-        useEffect(() => {
-            const canvas = map.getCanvas();
-            if (!canvas) return;
-
-            if (draggingIndex !== null) {
-                canvas.style.cursor = "grabbing";
-            } else if (editMode) {
-                canvas.style.cursor = "move";
-            } else {
-                canvas.style.cursor = "crosshair";
-            }
-
-            return () => {
-                canvas.style.cursor = "";
-            };
-        }, [map, editMode, draggingIndex]);
-
-        // Calculate measurements
+        // ---- measurements ----
         const measurements: AreaMeasurements = useMemo(() => {
-            const edges = calculateEdges(points);
-            const perimeter = calculatePerimeter(points);
-            const areaSquareMeters = calculateArea2D(points);
-
+            const edges: PolygonEdge[] = [];
+            for (let i = 1; i < store.points.length; i++) {
+                const from = store.points[i - 1]!;
+                const to = store.points[i]!;
+                edges.push({
+                    from,
+                    to,
+                    distanceMeters: geodesicDistance(
+                        [from.lng, from.lat],
+                        [to.lng, to.lat],
+                    ),
+                });
+            }
             return {
-                areaSquareMeters,
-                perimeterMeters: perimeter,
+                areaSquareMeters: calculateArea2D(store.points),
+                perimeterMeters: calculatePerimeter(store.points),
                 edges,
-                vertexCount: points.length,
+                vertexCount: store.points.length,
             };
-        }, [points]);
+        }, [store.points]);
 
-        // Data for polygon
+        // ---- Deck.gl layers ----
         const polygonData = useMemo(() => {
-            if (points.length < 3) return null;
-
-            const coords = points.map((p) => convertPointToDegrees(p));
-            coords.push(convertPointToDegrees(points[0]!)); // Close the ring
-
+            if (store.points.length < 3) return null;
+            const coords = store.points.map((p) => convertPointToDegrees(p));
+            coords.push(convertPointToDegrees(store.points[0]!));
             return [coords];
-        }, [points]);
+        }, [store.points]);
 
-        // Data for points
-        const pointsData = useMemo(() => {
-            return points.map((point, index) => ({
-                position: convertPointToDegrees(point),
-                index,
-            }));
-        }, [points]);
+        const pointsData = useMemo(
+            () =>
+                store.points.map((p, i) => ({
+                    position: convertPointToDegrees(p),
+                    index: i,
+                })),
+            [store.points],
+        );
 
-        // Data for preview point
-        const previewPointData = useMemo(() => {
-            if (!previewPoint) return null;
-
-            return {
-                position: convertPointToDegrees(previewPoint),
-            };
-        }, [previewPoint]);
-
-        // Data for preview line
-        const previewLineData = useMemo(() => {
-            if (!previewPoint || points.length === 0) return null;
-
-            const lastPoint = points[points.length - 1]!;
-            return [
-                convertPointToDegrees(lastPoint),
-                convertPointToDegrees(previewPoint),
-            ];
-        }, [previewPoint, points]);
-
-        // Create polygon layer
         const polygonLayer = useMemo(() => {
             if (!polygonData) return null;
-
-            const fillColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_FILL);
-            const lineColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE);
-
             return new PolygonLayer({
-                id: AREA_MEASURE_POLYGON_LAYER_ID,
+                id: POLYGON_LAYER_ID,
                 data: polygonData,
                 getPolygon: (d: [number, number, number][]) => d,
-                getFillColor: fillColor,
-                getLineColor: lineColor,
+                getFillColor: getThemeColor(THEME_PRIMARY, COLOR_ALPHA_FILL),
+                getLineColor: getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE),
                 getLineWidth: 3,
                 lineWidthUnits: "pixels",
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
@@ -391,148 +132,118 @@ export const AreaMeasureComponent: (
             });
         }, [polygonData]);
 
-        // Create points layer
         const pointsLayer = useMemo(() => {
             if (pointsData.length === 0) return null;
-
-            const primaryColor = getThemeColor(
-                THEME_PRIMARY,
+            const color = getThemeColor(
+                store.editMode ? THEME_SECONDARY : THEME_PRIMARY,
                 COLOR_ALPHA_STROKE,
             );
-            const editModeColor = getThemeColor(
-                THEME_SECONDARY,
-                COLOR_ALPHA_STROKE,
-            );
-
             return new ScatterplotLayer({
-                id: AREA_MEASURE_POINTS_LAYER_ID,
+                id: POINTS_LAYER_ID,
                 data: pointsData,
                 getPosition: (d: { position: [number, number, number] }) =>
                     d.position,
                 getRadius: 6,
-                getFillColor: editMode ? editModeColor : primaryColor,
+                getFillColor: color,
                 radiusUnits: "pixels",
                 pickable: true,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
                 radiusMinPixels: 4,
                 radiusMaxPixels: 10,
             });
-        }, [pointsData, editMode]);
+        }, [pointsData, store.editMode]);
 
-        // Create preview point layer
         const previewPointLayer = useMemo(() => {
-            if (!previewPointData) return null;
-
-            const previewColor = getThemeColor(
-                THEME_SUCCESS,
-                COLOR_ALPHA_PREVIEW,
-            );
-
+            if (!store.previewPoint) return null;
             return new ScatterplotLayer({
-                id: AREA_MEASURE_PREVIEW_POINT_LAYER_ID,
-                data: [previewPointData],
+                id: PREVIEW_POINT_LAYER_ID,
+                data: [{ position: convertPointToDegrees(store.previewPoint) }],
                 getPosition: (d: { position: [number, number, number] }) =>
                     d.position,
                 getRadius: 6,
-                getFillColor: previewColor,
+                getFillColor: getThemeColor(THEME_SUCCESS, COLOR_ALPHA_PREVIEW),
                 radiusUnits: "pixels",
                 pickable: false,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
             });
-        }, [previewPointData]);
+        }, [store.previewPoint]);
 
-        // Create preview line layer
         const previewLineLayer = useMemo(() => {
-            if (!previewLineData) return null;
-
-            const previewColor = getThemeColor(
-                THEME_SUCCESS,
-                COLOR_ALPHA_PREVIEW,
-            );
-
+            if (!store.previewPoint || store.points.length === 0) return null;
+            const last = store.points[store.points.length - 1]!;
             return new LineLayer({
-                id: AREA_MEASURE_PREVIEW_LINE_LAYER_ID,
-                data: [previewLineData],
+                id: PREVIEW_LINE_LAYER_ID,
+                data: [
+                    [
+                        convertPointToDegrees(last),
+                        convertPointToDegrees(store.previewPoint),
+                    ],
+                ],
                 getPath: (d: unknown) => d as [number, number, number][],
-                getColor: previewColor,
+                getColor: getThemeColor(THEME_SUCCESS, COLOR_ALPHA_PREVIEW),
                 getWidth: 2,
                 widthUnits: "pixels",
                 pickable: false,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
             });
-        }, [previewLineData]);
+        }, [store.previewPoint, store.points]);
 
-        // Manage deck.gl layers
-        useEffect(() => {
-            if (!overlayManager) return;
-
-            const layers = [
-                { id: AREA_MEASURE_POLYGON_LAYER_ID, layer: polygonLayer },
-                { id: AREA_MEASURE_POINTS_LAYER_ID, layer: pointsLayer },
-                {
-                    id: AREA_MEASURE_PREVIEW_POINT_LAYER_ID,
-                    layer: previewPointLayer,
-                },
-                {
-                    id: AREA_MEASURE_PREVIEW_LINE_LAYER_ID,
-                    layer: previewLineLayer,
-                },
-            ];
-
-            layers.forEach(({ id, layer }) => {
-                if (layer) {
-                    overlayManager.addLayer(id, layer);
-                } else {
-                    overlayManager.removeLayer(id);
-                }
-            });
-
-            return () => {
-                layers.forEach(({ id }) => overlayManager.removeLayer(id));
-            };
-        }, [
-            pointsLayer,
-            polygonLayer,
-            previewLineLayer,
-            previewPointLayer,
+        // ---- overlay lifecycle ----
+        useOverlayLayers(
             overlayManager,
-        ]);
+            useMemo(
+                () =>
+                    [
+                        [POLYGON_LAYER_ID, polygonLayer],
+                        [POINTS_LAYER_ID, pointsLayer],
+                        [PREVIEW_POINT_LAYER_ID, previewPointLayer],
+                        [PREVIEW_LINE_LAYER_ID, previewLineLayer],
+                    ] as const,
+                [
+                    polygonLayer,
+                    pointsLayer,
+                    previewPointLayer,
+                    previewLineLayer,
+                ],
+            ),
+        );
 
-        // Convert edges to the format expected by SegmentsList
+        // ---- UI ----
         const segmentItems: Segment[] = useMemo(
             () =>
-                measurements.edges.map((edge, index) => ({
+                measurements.edges.map((edge, i) => ({
                     label: formatDict(dict["segment.label"]!, {
-                        from: index + 1,
-                        to: index + 2,
+                        from: i + 1,
+                        to: i + 2,
                     }),
                     value: formatDistance(edge.distanceMeters),
                 })),
             [measurements.edges, dict],
         );
 
-        // Render UI
         return (
             <ToolPanel
-                title={editMode ? dict["eyebrow.editMode"] : dict["eyebrow"]}
-                hint={editMode ? dict["hint.editMode"] : dict["hint.normal"]}
+                title={
+                    store.editMode ? dict["eyebrow.editMode"] : dict["eyebrow"]
+                }
+                hint={
+                    store.editMode ? dict["hint.editMode"] : dict["hint.normal"]
+                }
                 actions={
                     <>
                         <button
                             type="button"
                             className={toolStyles.button}
-                            disabled={points.length === 0}
-                            onClick={() =>
-                                setPoints((prev) => prev.slice(0, -1))
-                            }
+                            disabled={store.points.length === 0}
+                            onClick={() => store.removeLastPoint()}
                         >
                             {dict["button.undo"]}
                         </button>
                         <button
                             type="button"
                             className={toolStyles.button}
-                            disabled={points.length === 0}
-                            onClick={() => setPoints([])}
+                            disabled={store.points.length === 0}
+                            onClick={() => store.clearPoints()}
                         >
                             {dict["button.resetAll"]}
                         </button>
@@ -546,7 +257,7 @@ export const AreaMeasureComponent: (
                     </>
                 }
             >
-                {points.length >= 3 && (
+                {store.points.length >= 3 && (
                     <div className={styles.measurementSummary}>
                         <div className={styles.summaryItem}>
                             <span className={styles.summaryLabel}>
@@ -574,7 +285,6 @@ export const AreaMeasureComponent: (
                         </div>
                     </div>
                 )}
-
                 {segmentItems.length > 0 && (
                     <SegmentsList
                         title={dict["segments.title"]!}

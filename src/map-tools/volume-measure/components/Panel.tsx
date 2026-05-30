@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useCallback, useMemo } from "react";
 import { observer } from "mobx-react-lite";
 import maplibregl from "maplibre-gl";
 import { pickPointFromCloud } from "@core/domain/point-cloud/picking";
@@ -23,6 +23,7 @@ import {
     calculateGridTrapezoidVolume,
     formatVolume,
 } from "@core/shared/geo/volume";
+import { useOverlayLayers } from "@core/framework/hooks";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
 import { PointCloudAdapter } from "@core/domain/adapters/layer/impl/PointCloudAdapter";
 import { LayerRoles } from "@core/framework/types";
@@ -32,6 +33,7 @@ import type {
     MeasurementPoint3D,
     PointCloudData,
 } from "@core/framework/types";
+import type { VolumeMeasureStore } from "../store/VolumeMeasureStore";
 
 import { ToolPanel } from "@core/ui/composites";
 import {
@@ -45,55 +47,44 @@ import { COORDINATE_SYSTEM } from "@deck.gl/core";
 import styles from "@core/ui/composites/measurement-panel/MeasurementPanel.module.css";
 import toolStyles from "@core/ui/composites/tool-panel/ToolPanel.module.css";
 
-// Layer IDs for volume-measure tool
-const VOLUME_MEASURE_LAYER_PREFIX = "volume-measure-";
-const VOLUME_MEASURE_POLYGON_LAYER_ID = "volume-measure-polygon";
-const VOLUME_MEASURE_POINTS_LAYER_ID = "volume-measure-points";
-const VOLUME_MEASURE_PREVIEW_POINT_LAYER_ID = "volume-measure-preview-point";
-const VOLUME_MEASURE_PREVIEW_LINE_LAYER_ID = "volume-measure-preview-line";
-const VOLUME_MEASURE_TIN_LAYER_ID = "volume-measure-tin";
+const LAYER_PREFIX = "volume-measure-";
+const POLYGON_LAYER_ID = "volume-measure-polygon";
+const POINTS_LAYER_ID = "volume-measure-points";
+const PREVIEW_POINT_LAYER_ID = "volume-measure-preview-point";
+const PREVIEW_LINE_LAYER_ID = "volume-measure-preview-line";
+const TIN_LAYER_ID = "volume-measure-tin";
 
-// Max points for Delaunay (performance limit)
 const MAX_DELAUNAY_POINTS = 5000;
 
-/**
- * Filter point cloud points inside a polygon boundary.
- * Uses bounding box pre-filter for performance.
- */
+// ---- Pure utilities (can be moved to core later) ----
+
 function filterPointsInsidePolygon(
     boundary: MeasurementPoint3D[],
     allCloudPoints: MeasurementPoint3D[],
 ): MeasurementPoint3D[] {
     if (boundary.length < 3) return [];
-
     const polygon2D: [number, number][] = boundary.map((p) => [p.lng, p.lat]);
     const bbox = polygonBoundingBox(polygon2D);
-
     const result: MeasurementPoint3D[] = [];
     for (const pt of allCloudPoints) {
         const pt2D: [number, number] = [pt.lng, pt.lat];
-        if (isPointInBoundingBox(pt2D, bbox)) {
-            if (isPointInPolygon(pt2D, polygon2D)) {
-                result.push(pt);
-            }
+        if (
+            isPointInBoundingBox(pt2D, bbox) &&
+            isPointInPolygon(pt2D, polygon2D)
+        ) {
+            result.push(pt);
         }
     }
-
     return result;
 }
 
-/**
- * Extract points from a single PointCloudData object.
- */
 function extractPointsFromCloudData(
     data: PointCloudData,
 ): MeasurementPoint3D[] {
     const points: MeasurementPoint3D[] = [];
     const origin = data.coordinateOrigin;
     const positions = data.positions;
-    const pointCount = data.pointCount;
-
-    for (let i = 0; i < pointCount; i++) {
+    for (let i = 0; i < data.pointCount; i++) {
         const base = i * 3;
         points.push({
             lng: origin[0] + positions[base]!,
@@ -101,58 +92,65 @@ function extractPointsFromCloudData(
             z: positions[base + 2]!,
         });
     }
-
     return points;
 }
 
-/**
- * Get all loaded point cloud points from the layer adapter.
- */
 function getAllLoadedCloudPoints(
     adapterFactory: LayerAdapterFactory,
 ): MeasurementPoint3D[] {
     if (!adapterFactory.has(LayerRoles.POINT_CLOUD)) return [];
-
     const adapter = adapterFactory.get(LayerRoles.POINT_CLOUD);
     const pcAdapter = adapter as PointCloudAdapter;
-    const allData = pcAdapter.getAllLoadedData();
-
     const allPoints: MeasurementPoint3D[] = [];
-    for (const data of allData) {
+    for (const data of pcAdapter.getAllLoadedData()) {
         if (data?.positions) {
-            const extracted = extractPointsFromCloudData(data);
-            for (const pt of extracted) {
+            for (const pt of extractPointsFromCloudData(data)) {
                 allPoints.push(pt);
             }
         }
     }
-
     return allPoints;
 }
 
-/**
- * Build top surface polygons for visualization.
- */
+function interpolateSurfaceZForVis(
+    lng: number,
+    lat: number,
+    insidePoints: MeasurementPoint3D[],
+    searchRadiusMeters: number,
+): number | null {
+    const nearby: { z: number; dist: number }[] = [];
+    for (const cp of insidePoints) {
+        const d =
+            Math.sqrt((cp.lng - lng) ** 2 + (cp.lat - lat) ** 2) * 111_320;
+        if (d <= searchRadiusMeters) nearby.push({ z: cp.z, dist: d });
+    }
+    if (nearby.length === 0) return null;
+    nearby.sort((a, b) => a.dist - b.dist);
+    const neighbors = nearby.slice(0, 4);
+    let sumWeight = 0,
+        sumZ = 0;
+    for (const n of neighbors) {
+        const w = 1 / (n.dist * n.dist + 0.001);
+        sumWeight += w;
+        sumZ += n.z * w;
+    }
+    return sumZ / sumWeight;
+}
+
 function buildTopSurfacePolygons(
     insidePoints: MeasurementPoint3D[],
     boundary: MeasurementPoint3D[],
 ): [number, number, number][][] {
     if (insidePoints.length < 3 || boundary.length < 3) return [];
-
-    const boundary2D: [number, number][] = boundary.map(
-        (p: MeasurementPoint3D) => [p.lng, p.lat],
-    );
+    const boundary2D: [number, number][] = boundary.map((p) => [p.lng, p.lat]);
     const bbox = polygonBoundingBox(boundary2D);
-
     const cellSizeMeters = 2.0;
-    const surfaceSearchRadius = 6.0;
+    const searchRadius = 6.0;
     const centerLat = (bbox[1] + bbox[3]) / 2;
     const cellSizeDeg =
         cellSizeMeters / (111_320 * Math.cos((centerLat * Math.PI) / 180));
-
     const polygons: [number, number, number][][] = [];
     const [minLng, minLat, maxLng, maxLat] = bbox;
-
     for (
         let lng = minLng + cellSizeDeg / 2;
         lng <= maxLng;
@@ -164,142 +162,85 @@ function buildTopSurfacePolygons(
             lat += cellSizeDeg
         ) {
             if (!isPointInPolygon([lng, lat], boundary2D)) continue;
-
-            const surfaceZ = interpolateSurfaceZForVis(
+            const z = interpolateSurfaceZForVis(
                 lng,
                 lat,
                 insidePoints,
-                surfaceSearchRadius,
+                searchRadius,
             );
-
-            if (surfaceZ === null) continue;
-
-            const halfDeg = cellSizeDeg / 2;
-            const x0 = lng - halfDeg;
-            const y0 = lat - halfDeg;
-            const x1 = lng + halfDeg;
-            const y1 = lat + halfDeg;
-
+            if (z === null) continue;
+            const h = cellSizeDeg / 2;
             polygons.push([
-                [x0, y0, surfaceZ],
-                [x1, y0, surfaceZ],
-                [x1, y1, surfaceZ],
-                [x0, y1, surfaceZ],
+                [lng - h, lat - h, z],
+                [lng + h, lat - h, z],
+                [lng + h, lat + h, z],
+                [lng - h, lat + h, z],
             ]);
         }
     }
-
     return polygons;
 }
 
-/**
- * Interpolate surface Z using IDW with 4 nearest cloud points.
- */
-function interpolateSurfaceZForVis(
-    lng: number,
-    lat: number,
-    insidePoints: MeasurementPoint3D[],
-    searchRadiusMeters: number,
-): number | null {
-    const nearby: { z: number; dist: number }[] = [];
+// ---- Component ----
 
-    for (const cp of insidePoints) {
-        const d =
-            Math.sqrt((cp.lng - lng) ** 2 + (cp.lat - lat) ** 2) * 111_320;
-        if (d <= searchRadiusMeters) {
-            nearby.push({ z: cp.z, dist: d });
-        }
-    }
-
-    if (nearby.length === 0) return null;
-
-    nearby.sort((a, b) => a.dist - b.dist);
-    const neighbors = nearby.slice(0, 4);
-
-    let sumWeight = 0;
-    let sumZ = 0;
-    for (const n of neighbors) {
-        const weight = 1 / (n.dist * n.dist + 0.001);
-        sumWeight += weight;
-        sumZ += n.z * weight;
-    }
-
-    return sumZ / sumWeight;
-}
-
-/**
- * Main Volume Measure component
- */
 export const VolumeMeasureComponent: (
-    props: MapToolComponentProps,
+    props: MapToolComponentProps & { store: VolumeMeasureStore },
 ) => React.ReactNode = observer(
-    ({ map, deactivate, rootStore, overlayManager }) => {
+    ({ map, deactivate, rootStore, overlayManager, store }) => {
         const dict = rootStore.localeStore.t("volume-measure");
         const adapterFactory = rootStore.layerAdapterFactory;
-        const [boundary, setBoundary] = useState<MeasurementPoint3D[]>([]);
-        const [previewPoint, setPreviewPoint] =
-            useState<MeasurementPoint3D | null>(null);
-        const [isComplete, setIsComplete] = useState(false);
-        const [insidePoints, setInsidePoints] = useState<MeasurementPoint3D[]>(
-            [],
-        );
 
         // When boundary is completed, find points inside
         useEffect(() => {
-            if (!isComplete || boundary.length < 3) {
-                setInsidePoints([]);
+            if (!store.isComplete || store.boundary.length < 3) {
+                store.setInsidePoints([]);
                 return;
             }
-
-            const allCloudPoints = getAllLoadedCloudPoints(adapterFactory);
+            const allPoints = getAllLoadedCloudPoints(adapterFactory);
             const filtered = filterPointsInsidePolygon(
-                boundary,
-                allCloudPoints,
+                store.boundary,
+                allPoints,
             );
-
             if (filtered.length > MAX_DELAUNAY_POINTS) {
                 const step = Math.ceil(filtered.length / MAX_DELAUNAY_POINTS);
-                const subsampled = filtered.filter((_, i) => i % step === 0);
-                setInsidePoints(subsampled);
+                store.setInsidePoints(
+                    filtered.filter((_, i) => i % step === 0),
+                );
             } else {
-                setInsidePoints(filtered);
+                store.setInsidePoints(filtered);
             }
-        }, [boundary, isComplete, adapterFactory]);
+        }, [store.boundary, store.isComplete, adapterFactory]); // eslint-disable-line react-hooks/exhaustive-deps
 
-        // Event handlers
+        // ---- Event handlers ----
         const handleMapClick = useCallback(
             (event: maplibregl.MapMouseEvent) => {
-                if (isComplete) return;
-
+                if (store.isComplete) return;
                 const point = pickPointFromCloud({
                     screenX: event.point.x,
                     screenY: event.point.y,
                     adapterFactory,
                     overlayManager,
-                    excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
+                    excludeLayerPrefix: LAYER_PREFIX,
                 });
-
-                if (point) {
-                    setBoundary((prev) => [...prev, point]);
-                }
+                if (point) store.addBoundaryPoint(point);
             },
-            [adapterFactory, isComplete, overlayManager],
+            [adapterFactory, overlayManager, store],
         );
 
         const handleMapMouseMove = useCallback(
             (event: maplibregl.MapMouseEvent) => {
-                if (!isComplete) {
+                if (!store.isComplete) {
                     const point = pickPointFromCloud({
                         screenX: event.point.x,
                         screenY: event.point.y,
                         adapterFactory,
                         overlayManager,
-                        excludeLayerPrefix: VOLUME_MEASURE_LAYER_PREFIX,
+                        excludeLayerPrefix: LAYER_PREFIX,
                     });
-                    setPreviewPoint(point);
+                    store.setPreviewPoint(point);
                 }
             },
-            [adapterFactory, isComplete, overlayManager],
+            [adapterFactory, overlayManager, store],
         );
 
         const handleMiddleClick = useCallback(
@@ -309,40 +250,36 @@ export const VolumeMeasureComponent: (
                     event.originalEvent.button === 1
                 ) {
                     event.preventDefault();
-                    if (!isComplete && boundary.length >= 3) {
-                        setIsComplete(true);
+                    if (!store.isComplete && store.boundary.length >= 3) {
+                        store.completeBoundary();
                     }
-                    setPreviewPoint(null);
                 }
             },
-            [isComplete, boundary.length],
+            [store],
         );
 
         const handleKeyDown = useCallback(
             (event: KeyboardEvent) => {
                 if (event.key === "Escape") {
-                    if (isComplete) {
-                        setIsComplete(false);
-                        setInsidePoints([]);
+                    if (store.isComplete) {
+                        store.setInsidePoints([]);
+                        store.isComplete = false;
                     } else {
                         deactivate();
                     }
-                } else if (event.key === "Enter" && !isComplete) {
+                } else if (event.key === "Enter" && !store.isComplete) {
                     event.preventDefault();
-                    setIsComplete(true);
+                    store.completeBoundary();
                 }
             },
-            [isComplete, deactivate],
+            [store, deactivate],
         );
 
-        // Subscribe to map events
         useEffect(() => {
             map.on("click", handleMapClick);
             map.on("mousemove", handleMapMouseMove);
             map.on("mousedown", handleMiddleClick);
-
             window.addEventListener("keydown", handleKeyDown);
-
             return () => {
                 map.off("click", handleMapClick);
                 map.off("mousemove", handleMapMouseMove);
@@ -357,21 +294,18 @@ export const VolumeMeasureComponent: (
             handleKeyDown,
         ]);
 
-        // Update cursor
         useEffect(() => {
             const canvas = map.getCanvas();
             if (!canvas) return;
-
-            canvas.style.cursor = isComplete ? "" : "crosshair";
-
+            canvas.style.cursor = store.isComplete ? "" : "crosshair";
             return () => {
                 canvas.style.cursor = "";
             };
-        }, [map, isComplete]);
+        }, [map, store.isComplete]);
 
-        // Compute volume measurements using Grid + Trapezoid method
+        // ---- Computations ----
         const volumeMeasurements = useMemo(() => {
-            if (insidePoints.length < 3 || boundary.length < 3) {
+            if (store.insidePoints.length < 3 || store.boundary.length < 3) {
                 return {
                     volumeCubicMeters: 0,
                     surfaceAreaSquareMeters: 0,
@@ -379,108 +313,80 @@ export const VolumeMeasureComponent: (
                     baseZMax: 0,
                     surfaceZMin: 0,
                     surfaceZMax: 0,
-                    cloudPointCount: insidePoints.length,
+                    cloudPointCount: store.insidePoints.length,
                     gridCellCount: 0,
                     totalGridCells: 0,
                     gridResolution: 0,
                 };
             }
-
             const result = calculateGridTrapezoidVolume(
-                boundary,
-                insidePoints,
+                store.boundary,
+                store.insidePoints,
                 {
                     cellSizeMeters: 2.0,
                     searchRadiusMeters: 6.0,
                     surfaceNeighborCount: 4,
                 },
             );
+            return { ...result, cloudPointCount: store.insidePoints.length };
+        }, [store.boundary, store.insidePoints]);
 
-            return {
-                ...result,
-                cloudPointCount: insidePoints.length,
-            };
-        }, [boundary, insidePoints]);
-
-        // Data for polygon
+        // ---- Deck.gl layers ----
         const polygonData = useMemo(() => {
-            if (boundary.length < 2) return null;
-
-            const coords = boundary.map((p) => convertPointToDegrees(p));
-            if (isComplete) {
-                coords.push(convertPointToDegrees(boundary[0]!));
-            }
+            if (store.boundary.length < 2) return null;
+            const coords = store.boundary.map((p) => convertPointToDegrees(p));
+            if (store.isComplete)
+                coords.push(convertPointToDegrees(store.boundary[0]!));
             return [coords];
-        }, [boundary, isComplete]);
+        }, [store.boundary, store.isComplete]);
 
-        // Data for boundary points
-        const boundaryPointsData = useMemo(() => {
-            return boundary.map((point, index) => ({
-                position: convertPointToDegrees(point),
-                index,
-            }));
-        }, [boundary]);
+        const boundaryPointsData = useMemo(
+            () =>
+                store.boundary.map((p, i) => ({
+                    position: convertPointToDegrees(p),
+                    index: i,
+                })),
+            [store.boundary],
+        );
 
-        // Data for preview point
-        const previewPointData = useMemo(() => {
-            if (!previewPoint) return null;
-            return {
-                position: convertPointToDegrees(previewPoint),
-            };
-        }, [previewPoint]);
+        const topSurfaceData = useMemo(
+            () =>
+                store.insidePoints.length < 3 || !store.isComplete
+                    ? []
+                    : buildTopSurfacePolygons(
+                          store.insidePoints,
+                          store.boundary,
+                      ),
+            [store.insidePoints, store.isComplete, store.boundary],
+        );
 
-        // Data for preview line
-        const previewLineData = useMemo(() => {
-            if (!previewPoint || boundary.length === 0) return null;
-            const lastPoint = boundary[boundary.length - 1]!;
-            return [
-                convertPointToDegrees(lastPoint),
-                convertPointToDegrees(previewPoint),
-            ];
-        }, [previewPoint, boundary]);
-
-        // Top surface polygons
-        const topSurfaceData = useMemo(() => {
-            if (insidePoints.length < 3 || !isComplete) return [];
-            return buildTopSurfacePolygons(insidePoints, boundary);
-        }, [insidePoints, isComplete, boundary]);
-
-        // Deck.gl layers
         const polygonLayer = useMemo(() => {
             if (!polygonData) return null;
-
-            const fillColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_FILL);
-            const lineColor = getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE);
-
             return new PolygonLayer({
-                id: VOLUME_MEASURE_POLYGON_LAYER_ID,
+                id: POLYGON_LAYER_ID,
                 data: polygonData,
                 getPolygon: (d: [number, number, number][]) => d,
-                getFillColor: isComplete ? fillColor : [0, 0, 0, 0],
-                getLineColor: lineColor,
+                getFillColor: store.isComplete
+                    ? getThemeColor(THEME_PRIMARY, COLOR_ALPHA_FILL)
+                    : [0, 0, 0, 0],
+                getLineColor: getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE),
                 getLineWidth: 3,
                 lineWidthUnits: "pixels",
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
                 pickable: false,
                 lineJointRounded: true,
             });
-        }, [polygonData, isComplete]);
+        }, [polygonData, store.isComplete]);
 
         const boundaryPointsLayer = useMemo(() => {
             if (boundaryPointsData.length === 0) return null;
-
-            const primaryColor = getThemeColor(
-                THEME_PRIMARY,
-                COLOR_ALPHA_STROKE,
-            );
-
             return new ScatterplotLayer({
-                id: VOLUME_MEASURE_POINTS_LAYER_ID,
+                id: POINTS_LAYER_ID,
                 data: boundaryPointsData,
                 getPosition: (d: { position: [number, number, number] }) =>
                     d.position,
                 getRadius: 6,
-                getFillColor: primaryColor,
+                getFillColor: getThemeColor(THEME_PRIMARY, COLOR_ALPHA_STROKE),
                 radiusUnits: "pixels",
                 pickable: true,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
@@ -490,59 +396,48 @@ export const VolumeMeasureComponent: (
         }, [boundaryPointsData]);
 
         const previewPointLayer = useMemo(() => {
-            if (!previewPointData) return null;
-
-            const previewColor = getThemeColor(
-                THEME_SUCCESS,
-                COLOR_ALPHA_PREVIEW,
-            );
-
+            if (!store.previewPoint) return null;
             return new ScatterplotLayer({
-                id: VOLUME_MEASURE_PREVIEW_POINT_LAYER_ID,
-                data: [previewPointData],
+                id: PREVIEW_POINT_LAYER_ID,
+                data: [{ position: convertPointToDegrees(store.previewPoint) }],
                 getPosition: (d: { position: [number, number, number] }) =>
                     d.position,
                 getRadius: 6,
-                getFillColor: previewColor,
+                getFillColor: getThemeColor(THEME_SUCCESS, COLOR_ALPHA_PREVIEW),
                 radiusUnits: "pixels",
                 pickable: false,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
             });
-        }, [previewPointData]);
+        }, [store.previewPoint]);
 
         const previewLineLayer = useMemo(() => {
-            if (!previewLineData) return null;
-
-            const previewColor = getThemeColor(
-                THEME_SUCCESS,
-                COLOR_ALPHA_PREVIEW,
-            );
-
+            if (!store.previewPoint || store.boundary.length === 0) return null;
+            const last = store.boundary[store.boundary.length - 1]!;
             return new LineLayer({
-                id: VOLUME_MEASURE_PREVIEW_LINE_LAYER_ID,
-                data: [previewLineData],
+                id: PREVIEW_LINE_LAYER_ID,
+                data: [
+                    [
+                        convertPointToDegrees(last),
+                        convertPointToDegrees(store.previewPoint),
+                    ],
+                ],
                 getPath: (d: unknown) => d as [number, number, number][],
-                getColor: previewColor,
+                getColor: getThemeColor(THEME_SUCCESS, COLOR_ALPHA_PREVIEW),
                 getWidth: 2,
                 widthUnits: "pixels",
                 pickable: false,
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
             });
-        }, [previewLineData]);
+        }, [store.previewPoint, store.boundary]);
 
-        // Top surface layer - nearly opaque to show height clearly
         const topSurfaceLayer = useMemo(() => {
             if (topSurfaceData.length === 0) return null;
-
-            const fillColor = getThemeColor(THEME_PRIMARY, 220);
-            const edgeColor = getThemeColor(THEME_PRIMARY, 255);
-
             return new SolidPolygonLayer({
-                id: VOLUME_MEASURE_TIN_LAYER_ID,
+                id: TIN_LAYER_ID,
                 data: topSurfaceData,
                 getPolygon: (d: [number, number, number][]) => d,
-                getFillColor: fillColor,
-                getLineColor: edgeColor,
+                getFillColor: getThemeColor(THEME_PRIMARY, 220),
+                getLineColor: getThemeColor(THEME_PRIMARY, 255),
                 getLineWidth: 2,
                 lineWidthUnits: "pixels",
                 coordinateSystem: COORDINATE_SYSTEM.LNGLAT,
@@ -550,66 +445,44 @@ export const VolumeMeasureComponent: (
             });
         }, [topSurfaceData]);
 
-        // Manage deck.gl layers
-        useEffect(() => {
-            if (!overlayManager) return;
-
-            const layers = [
-                { id: VOLUME_MEASURE_POLYGON_LAYER_ID, layer: polygonLayer },
-                {
-                    id: VOLUME_MEASURE_POINTS_LAYER_ID,
-                    layer: boundaryPointsLayer,
-                },
-                {
-                    id: VOLUME_MEASURE_PREVIEW_POINT_LAYER_ID,
-                    layer: previewPointLayer,
-                },
-                {
-                    id: VOLUME_MEASURE_PREVIEW_LINE_LAYER_ID,
-                    layer: previewLineLayer,
-                },
-                {
-                    id: VOLUME_MEASURE_TIN_LAYER_ID,
-                    layer: topSurfaceLayer,
-                },
-            ];
-
-            layers.forEach(({ id, layer }) => {
-                if (layer) {
-                    overlayManager.addLayer(id, layer);
-                } else {
-                    overlayManager.removeLayer(id);
-                }
-            });
-
-            return () => {
-                layers.forEach(({ id }) => overlayManager.removeLayer(id));
-            };
-        }, [
-            boundaryPointsLayer,
-            polygonLayer,
-            previewLineLayer,
-            previewPointLayer,
+        // ---- overlay lifecycle ----
+        useOverlayLayers(
             overlayManager,
-            topSurfaceLayer,
-        ]);
+            useMemo(
+                () =>
+                    [
+                        [POLYGON_LAYER_ID, polygonLayer],
+                        [POINTS_LAYER_ID, boundaryPointsLayer],
+                        [PREVIEW_POINT_LAYER_ID, previewPointLayer],
+                        [PREVIEW_LINE_LAYER_ID, previewLineLayer],
+                        [TIN_LAYER_ID, topSurfaceLayer],
+                    ] as const,
+                [
+                    polygonLayer,
+                    boundaryPointsLayer,
+                    previewPointLayer,
+                    previewLineLayer,
+                    topSurfaceLayer,
+                ],
+            ),
+        );
 
-        // Render UI
+        // ---- UI ----
         return (
             <ToolPanel
                 title={dict["eyebrow"]}
-                hint={isComplete ? dict["hint.complete"] : dict["hint.normal"]}
+                hint={
+                    store.isComplete
+                        ? dict["hint.complete"]
+                        : dict["hint.normal"]
+                }
                 actions={
                     <>
                         <button
                             type="button"
                             className={toolStyles.button}
-                            disabled={boundary.length === 0}
-                            onClick={() => {
-                                setBoundary([]);
-                                setIsComplete(false);
-                                setInsidePoints([]);
-                            }}
+                            disabled={store.boundary.length === 0}
+                            onClick={() => store.reset()}
                         >
                             {dict["button.resetAll"]}
                         </button>
@@ -623,7 +496,7 @@ export const VolumeMeasureComponent: (
                     </>
                 }
             >
-                {isComplete && (
+                {store.isComplete && (
                     <div className={styles.measurementSummary}>
                         <div className={styles.summaryItem}>
                             <span className={styles.summaryLabel}>
