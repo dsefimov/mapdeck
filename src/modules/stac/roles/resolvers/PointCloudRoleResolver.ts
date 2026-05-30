@@ -8,8 +8,8 @@ import { POINTCLOUD_MIMES } from "../../types/extensions/pointcloud";
  * COPC / LAZ point clouds.
  * Matches:
  *   - role "point-cloud" (custom)
- *   - role "data" + MIME from POINTCLOUD_MIMES
- *   - pc:encoding in properties (pointcloud extension)
+ *   - role "data" + MIME from POINTCLOUD_MIMES (laszip, copc)
+ *   - application/octet-stream only when role "data" AND pc:encoding in properties
  */
 export class PointCloudRoleResolver implements IRoleResolver {
     readonly priority = 22;
@@ -17,13 +17,15 @@ export class PointCloudRoleResolver implements IRoleResolver {
     canResolve(asset: STACAsset, ctx: ResolveContext): boolean {
         if (asset.roles?.includes("point-cloud")) return true;
 
-        const hasPcMime = !!asset.type && POINTCLOUD_MIMES.has(asset.type);
         const hasDataRole = asset.roles?.includes("data") ?? false;
-        if (hasPcMime && hasDataRole) return true;
+        if (!hasDataRole) return false;
 
-        // application/octet-stream with pc:encoding in properties
-        const hasPcEncoding = !!ctx.properties?.["pc:encoding"];
-        return hasPcMime && hasPcEncoding;
+        // Known point cloud MIME types (laszip, copc)
+        if (asset.type && POINTCLOUD_MIMES.has(asset.type)) return true;
+
+        // application/octet-stream only with explicit pc:encoding
+        const isOctetStream = asset.type === "application/octet-stream";
+        return isOctetStream && !!ctx.properties?.["pc:encoding"];
     }
 
     resolve(asset: STACAsset, ctx: ResolveContext): DisplayRole {

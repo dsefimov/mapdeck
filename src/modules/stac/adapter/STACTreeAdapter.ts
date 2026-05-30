@@ -1,4 +1,4 @@
-import { observable } from "mobx";
+import { observable, runInAction } from "mobx";
 import {
     type SourceAdapter,
     type TreeNode,
@@ -135,9 +135,11 @@ export class STACTreeAdapter implements SourceAdapter {
         const collectionNodes = (await Promise.all(collectionPromises)).flat();
 
         // Merge collected reports from items into parent GroupNode
-        for (const result of itemResults) {
-            parent.roles.reports.push(...result.collectedReports);
-        }
+        runInAction(() => {
+            for (const result of itemResults) {
+                parent.roles.reports.push(...result.collectedReports);
+            }
+        });
 
         const itemNodes = itemResults.flatMap((r) => r.nodes);
         return [...itemNodes, ...collectionNodes];
@@ -435,7 +437,17 @@ function extractConfig(raw: Record<string, unknown>): STACConfig {
     const headers = parseHeaders(raw.headers);
     if (headers) result.headers = headers;
 
+    const parsedMaxPages = parseMaxPages(raw.maxPages);
+    if (parsedMaxPages !== undefined) result.maxPages = parsedMaxPages;
+
     return result;
+}
+
+function parseMaxPages(raw: unknown): number | undefined {
+    if (typeof raw === "number" && Number.isInteger(raw) && raw > 0) {
+        return raw;
+    }
+    return undefined;
 }
 
 function parseHeaders(raw: unknown): Record<string, string> | undefined {

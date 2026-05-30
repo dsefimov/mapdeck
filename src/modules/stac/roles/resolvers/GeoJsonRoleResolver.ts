@@ -3,27 +3,26 @@ import type { DisplayRole } from "@core/framework/types";
 import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
 import type { STACAsset } from "../../types";
 
-const GEOJSON_MIMES = new Set([
-    "application/geo+json",
-    "application/json",
-    "application/vnd.geo+json",
-]);
-
-const OGC_ROLES = new Set(["ogc", "data"]);
-
 /**
  * GeoJSON for DeckGL.
- * Matches: role "ogc" or "data" + GeoJSON MIME, or explicit "geojson" role.
+ * Matches: explicit role "geojson", role "ogc", or specific geo+json MIME.
  * URL: if this is an OGC API Features endpoint, appends /items.
+ *
+ * Note: "data" role is intentionally excluded — it is too broad and
+ * overlaps with COG, GeoTIFF, LAZ, and other formats. GeoJSON detection
+ * relies on explicit roles or specific MIME types only.
  */
 export class GeoJsonRoleResolver implements IRoleResolver {
     readonly priority = 35;
 
     canResolve(asset: STACAsset): boolean {
         if (asset.roles?.includes("geojson")) return true;
-        const hasOgcRole = asset.roles?.some((r) => OGC_ROLES.has(r)) ?? false;
-        const hasGeojsonMime = !!asset.type && GEOJSON_MIMES.has(asset.type);
-        return hasOgcRole && hasGeojsonMime;
+        if (asset.roles?.includes("ogc")) return true;
+        // Explicit geo+json MIME only — application/json is too broad
+        return (
+            asset.type === "application/geo+json" ||
+            asset.type === "application/vnd.geo+json"
+        );
     }
 
     resolve(asset: STACAsset, ctx: ResolveContext): DisplayRole {

@@ -98,8 +98,8 @@ export interface STACCollection {
 }
 
 export interface STACItemProperties {
-    readonly title: string;
-    readonly description: string;
+    readonly title?: string;
+    readonly description?: string;
     readonly [key: string]: unknown;
 }
 

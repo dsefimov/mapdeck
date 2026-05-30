@@ -57,6 +57,7 @@ function createDefaultRoleRegistry(): RoleResolverRegistry {
     registry.register(new VectorTileRoleResolver());
     registry.register(new GeoJsonRoleResolver());
     registry.register(new PointCloudRoleResolver());
+    // Not yet implemented: TiledAssetsRoleResolver — tracked in PLAN.md
     return registry;
 }
 

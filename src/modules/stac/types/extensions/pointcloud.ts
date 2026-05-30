@@ -48,5 +48,6 @@ export function hasPointcloudExtension(
 export const POINTCLOUD_MIMES = new Set([
     "application/vnd.laszip",
     "application/vnd.copc",
-    "application/octet-stream",
+    // application/octet-stream is intentionally excluded — too broad.
+    // It is handled separately in PointCloudRoleResolver with pc:encoding check.
 ]);
