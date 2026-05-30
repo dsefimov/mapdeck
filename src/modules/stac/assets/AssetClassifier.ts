@@ -16,9 +16,7 @@ const REPORT_MIMES = new Set([
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "application/vnd.ms-excel",
     "text/plain",
-    "application/json",
     "text/csv",
-    "text/html",
 ]);
 
 /**
