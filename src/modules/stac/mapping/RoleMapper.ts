@@ -10,6 +10,7 @@ import { logger } from "@core/shared/diagnostics/logger";
 import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import type { ResolveContext } from "../roles/IRoleResolver";
 import type { STACAsset } from "../types";
+import { resolveOgcFeaturesUrl } from "../roles/resolvers/GeoJsonRoleResolver";
 
 export function mapAssetsToNodeRoles( // eslint-disable-line max-params
     assets: Readonly<Record<string, STACAsset>>,
@@ -77,9 +78,11 @@ function resolveSingleAsset( // eslint-disable-line max-params
     const role = registry.resolve(asset, ctx);
     if (!role) return null;
 
+    if (role.category === "display") {
+        return resolveDisplayWithAttribute(role as DisplayRole, asset, ctx);
+    }
+
     switch (role.category) {
-        case "display":
-            return { display: role as DisplayRole };
         case "attribute":
             return { attribute: role as AttributeRole };
         case "report":
@@ -87,6 +90,42 @@ function resolveSingleAsset( // eslint-disable-line max-params
         default:
             return null;
     }
+}
+
+/**
+ * When a GeoJSON display originates from an OGC API Features endpoint,
+ * also expose the same source as an attribute table.
+ */
+function resolveDisplayWithAttribute(
+    display: DisplayRole,
+    asset: STACAsset,
+    ctx: ResolveContext,
+): SingleAssetRoles {
+    const hasOgcRole = asset.roles?.includes("ogc") ?? false;
+    const isGeoJsonDisplay = display.render.role === LayerRoles.GEOJSON;
+
+    if (!hasOgcRole || !isGeoJsonDisplay) {
+        return { display };
+    }
+
+    // OGC API Features collection endpoint returns metadata, not data.
+    // Append /items to obtain the actual FeatureCollection.
+    const itemsUrl = resolveOgcFeaturesUrl(asset.href);
+
+    return {
+        display,
+        attribute: {
+            id: ctx.assetKey,
+            category: "attribute",
+            label: asset.title ?? ctx.assetKey,
+            sourceUrl: itemsUrl,
+            ...(asset.type ? { mimeType: asset.type } : {}),
+            attributeConfig: {
+                endpointUrl: itemsUrl,
+                type: "ogc-features",
+            },
+        },
+    };
 }
 
 /**

@@ -49,7 +49,7 @@ export class GeoJsonRoleResolver implements IRoleResolver {
  * OGC API Features collection endpoint returns collection metadata, not data.
  * Append /items to obtain a FeatureCollection.
  */
-function resolveOgcFeaturesUrl(href: string): string {
+export function resolveOgcFeaturesUrl(href: string): string {
     const clean = href.endsWith("/") ? href.slice(0, -1) : href;
     return clean.endsWith("/items") ? href : `${clean}/items`;
 }

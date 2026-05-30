@@ -9,7 +9,7 @@ import {
     type AttributeLayerInfo,
 } from "../utils/index";
 
-export const PAGE_SIZE = 50;
+export const PAGE_SIZE = 500;
 
 type SortParams = { sortBy: string; sortDirection: "asc" | "desc" } | undefined;
 
