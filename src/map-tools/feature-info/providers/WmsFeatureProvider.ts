@@ -190,22 +190,43 @@ export class WmsFeatureProvider implements FeatureProvider {
     ): Promise<Record<string, unknown>> {
         const { baseUrl, layers, version, screenX, screenY, map } = params;
 
-        const bounds = map.getBounds();
         const canvas = map.getCanvas();
+        const rawBounds = map.getBounds();
+
+        const west = Math.max(-180, Math.min(180, rawBounds.getWest()));
+        const east = Math.max(-180, Math.min(180, rawBounds.getEast()));
+        const south = Math.max(-90, Math.min(90, rawBounds.getSouth()));
+        const north = Math.max(-90, Math.min(90, rawBounds.getNorth()));
+
+        // Compute I,J from map.unproject so the WMS server's linear interpolation
+        // within the BBOX produces the exact click geo-coordinates,
+        // compensating for Web Mercator non-linearity.
+        const clickLngLat = map.unproject([screenX, screenY]);
+        const worldWidth = east - west;
+        const worldHeight = north - south;
+        const i = Math.round(
+            ((clickLngLat.lng - west) / worldWidth) * canvas.clientWidth,
+        );
+        const j = Math.round(
+            ((north - clickLngLat.lat) / worldHeight) * canvas.clientHeight,
+        );
 
         const baseUrlStr = buildWmsFeatureInfoUrl(baseUrl, layers, { version });
 
         const parsedUrl = new URL(baseUrlStr);
         const queryParams = parsedUrl.searchParams;
-        queryParams.set("I", String(screenX));
-        queryParams.set("J", String(screenY));
         queryParams.set("WIDTH", String(canvas.clientWidth));
         queryParams.set("HEIGHT", String(canvas.clientHeight));
-        queryParams.set(
-            "BBOX",
-            `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`,
-        );
-        queryParams.set("CRS", "EPSG:4326");
+
+        this.setGetFeatureInfoParams(queryParams, {
+            version,
+            screenX: i,
+            screenY: j,
+            west,
+            south,
+            east,
+            north,
+        });
 
         const url = parsedUrl.toString();
 
@@ -243,6 +264,45 @@ export class WmsFeatureProvider implements FeatureProvider {
         } catch {
             const text = await response.text();
             return { rawResponse: text.substring(0, 1000) };
+        }
+    }
+
+    /**
+     * Set version-dependent GetFeatureInfo URL parameters.
+     * WMS 1.3.0 uses CRS=EPSG:4326 with lat,lon BBOX; 1.1.x uses SRS with lon,lat BBOX.
+     */
+    private setGetFeatureInfoParams(
+        queryParams: URLSearchParams,
+        ctx: {
+            version: string;
+            screenX: number;
+            screenY: number;
+            west: number;
+            south: number;
+            east: number;
+            north: number;
+        },
+    ): void {
+        const isV1_1_x =
+            ctx.version &&
+            (ctx.version.startsWith("1.1") || ctx.version.startsWith("1.0"));
+
+        if (isV1_1_x) {
+            queryParams.set("X", String(ctx.screenX));
+            queryParams.set("Y", String(ctx.screenY));
+            queryParams.set("SRS", "EPSG:4326");
+            queryParams.set(
+                "BBOX",
+                `${ctx.west},${ctx.south},${ctx.east},${ctx.north}`,
+            );
+        } else {
+            queryParams.set("I", String(ctx.screenX));
+            queryParams.set("J", String(ctx.screenY));
+            queryParams.set("CRS", "EPSG:4326");
+            queryParams.set(
+                "BBOX",
+                `${ctx.south},${ctx.west},${ctx.north},${ctx.east}`,
+            );
         }
     }
 

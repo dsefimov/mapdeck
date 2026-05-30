@@ -152,6 +152,22 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
         }
     }
 
+    pickObjects(x: number, y: number, radius?: number): PickingInfo[] {
+        if (!this.map || !this.overlay) {
+            return [];
+        }
+
+        const params: PickParams =
+            radius !== undefined ? { x, y, radius } : { x, y };
+
+        try {
+            return this.overlay.pickObjects(params);
+        } catch (error) {
+            logger.error("OverlayManager: pickObjects failed", error);
+            return [];
+        }
+    }
+
     dispose(): void {
         this.detachFromMap();
         this.layers.clear();

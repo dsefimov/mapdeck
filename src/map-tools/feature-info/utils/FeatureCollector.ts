@@ -74,25 +74,16 @@ export class FeatureCollector {
     }
 
     /**
-     * Group features by their groupId (layerId).
+     * Create one group per feature so each feature is a separate selectable item.
      */
     private groupFeatures(features: Feature[]): FeatureGroup[] {
-        const groupMap = new Map<string, FeatureGroup>();
-
-        for (const feature of features) {
-            if (!groupMap.has(feature.groupId)) {
-                groupMap.set(feature.groupId, {
-                    layerId: feature.layerId,
-                    layerName: feature.layerName,
-                    sourceType: feature.sourceType,
-                    features: [],
-                    loading: false,
-                });
-            }
-            groupMap.get(feature.groupId)!.features.push(feature);
-        }
-
-        return Array.from(groupMap.values());
+        return features.map((feature) => ({
+            layerId: feature.layerId,
+            layerName: feature.layerName,
+            sourceType: feature.sourceType,
+            features: [feature],
+            loading: false,
+        }));
     }
 }
 

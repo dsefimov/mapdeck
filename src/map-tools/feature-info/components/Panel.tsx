@@ -2,7 +2,6 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import maplibregl from "maplibre-gl";
 import { logger } from "@core/shared/diagnostics/logger";
-import { formatDict } from "@core/framework/i18n";
 
 import type { MapToolComponentProps, LayerNode } from "@core/framework/types";
 
@@ -155,6 +154,7 @@ export const FeatureInfoComponent: (
 
         // Render
         const selectedGroup = groups[selectedIndex];
+        const totalGroups = groups.length;
 
         return (
             <ToolPanel
@@ -203,20 +203,16 @@ export const FeatureInfoComponent: (
                             </option>
                         )}
                         {groups.map((group, index) => {
-                            const featuresLabel =
-                                group.features.length === 1
-                                    ? dict["option.feature"]!
-                                    : dict["option.features"]!;
                             return (
-                                <option key={group.layerId} value={index}>
-                                    {formatDict(dict["option.label"]!, {
-                                        layerName: group.layerName,
-                                        count: group.features.length,
-                                        features: featuresLabel,
-                                        loadingSuffix: group.loading
-                                            ? dict["option.loadingSuffix"]!
-                                            : "",
-                                    })}
+                                <option
+                                    key={
+                                        group.layerId +
+                                        "_" +
+                                        (group.features[0]?.id ?? index)
+                                    }
+                                    value={index}
+                                >
+                                    {group.layerName} {index + 1}/{totalGroups}
                                 </option>
                             );
                         })}
@@ -225,7 +221,7 @@ export const FeatureInfoComponent: (
 
                 {selectedGroup && selectedGroup.features.length > 0 && (
                     <DataTable
-                        rows={[selectedGroup.features[0]!.attributes]}
+                        rows={selectedGroup.features.map((f) => f.attributes)}
                         {...(groups.length > 1 && {
                             header: selectedGroup.layerName,
                         })}

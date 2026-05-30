@@ -18,20 +18,57 @@ export class OverlayFeatureProvider implements FeatureProvider {
         if (!ctx) return [];
 
         const overlayManager = ctx.overlayManager;
-        const pickingInfo = overlayManager.pickObject(screenX, screenY, 5);
-        if (!pickingInfo || !pickingInfo.layer?.id) return [];
-
-        const layerId = pickingInfo.layer.id;
-        if (layerId.startsWith(FEATURE_INFO_LAYER_PREFIX)) return [];
+        const results = overlayManager.pickObjects(screenX, screenY, 5);
+        if (!results || results.length === 0) return [];
 
         const visibleIds = new Set(visibleLayers.map((n) => n.id));
+        const seen = new Set<string>();
+        const features: Feature[] = [];
+
+        for (const pickingInfo of results) {
+            const resolved = this._resolvePickedLayer(
+                pickingInfo,
+                visibleIds,
+                visibleLayers,
+            );
+            if (!resolved) continue;
+
+            const featureId = this._getFeatureId(pickingInfo);
+            const dedupKey = `${resolved.baseLayerId}_${featureId}`;
+            if (seen.has(dedupKey)) continue;
+            seen.add(dedupKey);
+
+            const result = this._buildFeature(
+                pickingInfo,
+                resolved.baseLayerId,
+                resolved.layerName,
+            );
+            features.push(...result);
+        }
+
+        return features;
+    }
+
+    private _getFeatureId(pickingInfo: PickingInfo): string {
+        const obj = pickingInfo.object as Record<string, unknown> | undefined;
+        const id = obj?.id ?? pickingInfo.index;
+        return id?.toString() ?? "0";
+    }
+
+    private _resolvePickedLayer(
+        pickingInfo: PickingInfo,
+        visibleIds: Set<string>,
+        visibleLayers: CollectParams["visibleLayers"],
+    ): { baseLayerId: string; layerName: string } | null {
+        if (!pickingInfo.layer?.id) return null;
+        const layerId = pickingInfo.layer.id;
+        if (layerId.startsWith(FEATURE_INFO_LAYER_PREFIX)) return null;
+
         const baseLayerId = this._resolveLayerId(layerId, visibleIds);
-        if (!baseLayerId) return [];
+        if (!baseLayerId) return null;
 
         const node = visibleLayers.find((n) => n.id === baseLayerId);
-        const layerName = node?.title ?? baseLayerId;
-
-        return this._buildFeature(pickingInfo, baseLayerId, layerName);
+        return { baseLayerId, layerName: node?.title ?? baseLayerId };
     }
 
     private _resolveLayerId(

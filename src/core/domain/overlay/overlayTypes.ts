@@ -17,7 +17,11 @@ export type PickParams = {
     unproject3D?: boolean;
 };
 
-export type TypedOverlay = Omit<MapboxOverlay, "pickObject" | "setProps"> & {
+export type TypedOverlay = Omit<
+    MapboxOverlay,
+    "pickObject" | "pickObjects" | "setProps"
+> & {
     pickObject(params: PickParams): PickingInfo | null;
+    pickObjects(params: PickParams): PickingInfo[];
     setProps(props: Partial<DeckProps>): void;
 };
