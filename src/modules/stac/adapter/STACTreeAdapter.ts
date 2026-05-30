@@ -183,7 +183,7 @@ async function fetchCatalogItems(
     const results: TreeNode[] = [];
     for (const link of itemLinks) {
         try {
-            const items = await ctx.client.fetchItems(link.href);
+            const items = await ctx.client.fetchItemsAll(link.href);
             items.forEach((item) => ctx.cache.store(item));
             for (const item of items) {
                 const node = ctx.mapper.mapItemToLayerNode(item);
@@ -268,7 +268,7 @@ async function fetchItemsFromUrl(
     ctx: FetchContext,
 ): Promise<TreeNode[]> {
     try {
-        const items = await ctx.client.fetchItems(href, baseUrl);
+        const items = await ctx.client.fetchItemsAll(href, baseUrl);
         const enriched = await enrichItems(items, ctx);
         enriched.forEach((item) => ctx.cache.store(item));
         return mapItemsToNodes(enriched, ctx.mapper);

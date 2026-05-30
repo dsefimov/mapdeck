@@ -10,4 +10,7 @@ export interface STACConfig {
 
     /** Additional HTTP headers (optional) */
     headers?: Record<string, string>;
+
+    /** Maximum number of pages when paginating /items. Default: 10. */
+    maxPages?: number;
 }

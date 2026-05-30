@@ -135,6 +135,36 @@ export class STACClient {
         return response.collections as STACCollection[];
     }
 
+    /**
+     * Fetches all items from a paginated STAC API endpoint.
+     * Follows "next" links until maxPages is reached or no further pages exist.
+     */
+    async fetchItemsAll(
+        url: string,
+        baseUrlOverride?: string,
+    ): Promise<STACItem[]> {
+        const maxPages = this.config.maxPages ?? 10;
+        const allItems: STACItem[] = [];
+        let nextUrl: string | null = url;
+        let page = 0;
+
+        while (nextUrl && page < maxPages) {
+            const data = await this.request(nextUrl, baseUrlOverride);
+            const { items, nextHref } = parseItemsResponse(data, nextUrl);
+            allItems.push(...items);
+            nextUrl = nextHref;
+            page++;
+        }
+
+        if (nextUrl) {
+            logger.warn(
+                `Stopped paginating after ${maxPages} pages for ${url}`,
+            );
+        }
+
+        return allItems;
+    }
+
     // ---- private ----
 
     private async request(
@@ -181,4 +211,41 @@ export class STACClient {
             return url;
         }
     }
+}
+
+/**
+ * Parses a STAC response into items and the next page link.
+ * Handles both single items and FeatureCollections with pagination links.
+ */
+function parseItemsResponse(
+    data: unknown,
+    sourceUrl: string,
+): { items: STACItem[]; nextHref: string | null } {
+    if (!data || typeof data !== "object") {
+        throw new Error(`Invalid response from ${sourceUrl}`);
+    }
+
+    const record = data as Record<string, unknown>;
+
+    // Single Item
+    if (record.type === "Feature") {
+        return { items: [data as STACItem], nextHref: null };
+    }
+
+    // FeatureCollection
+    if ("features" in record && Array.isArray(record.features)) {
+        const fc = data as {
+            features: STACItem[];
+            links?: Array<{ rel: string; href: string }>;
+        };
+        const nextLink = fc.links?.find((l) => l.rel === "next");
+        return {
+            items: fc.features,
+            nextHref: nextLink?.href ?? null,
+        };
+    }
+
+    throw new Error(
+        `Response from ${sourceUrl} is not a valid STAC Item or FeatureCollection`,
+    );
 }
