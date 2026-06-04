@@ -27,7 +27,11 @@ export function bboxFromGeometry(
     }
 
     if (!Array.isArray(geometry.coordinates)) return null;
-    return parseCoords2D(geometry.coordinates);
+    const coords: unknown[] =
+        geometry.type === "Point"
+            ? [geometry.coordinates]
+            : geometry.coordinates;
+    return parseCoords2D(coords);
 }
 
 function parseCoords2D(coords: unknown[]): Bbox | null {
@@ -108,12 +112,12 @@ export function bboxesIntersect(
 }
 
 export function validateBbox(bbox: Bbox): { isValid: boolean; error?: string } {
-    if (bbox.west >= bbox.east || bbox.south >= bbox.north)
+    if (bbox.west > bbox.east || bbox.south > bbox.north)
         return {
             isValid: false,
             error: "Invalid bounds: W<E and S<N required",
         };
-    if (bbox.is3D && bbox.minZ! >= bbox.maxZ!)
+    if (bbox.is3D && bbox.minZ! > bbox.maxZ!)
         return {
             isValid: false,
             error: "Invalid Z bounds: minZ < maxZ required",

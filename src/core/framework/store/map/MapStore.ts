@@ -99,6 +99,7 @@ export class MapStore {
             const bbox2D = flattenTo2D(bbox);
             this.map.fitBounds(bbox2D.bounds, {
                 padding: { top: 20, bottom: 20, left: 20, right: 20 },
+                maxZoom: 18,
                 duration: 500,
             });
         } catch (error) {
