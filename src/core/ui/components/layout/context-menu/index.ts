@@ -1,6 +1,6 @@
-export { useContextMenu } from "./useContextMenu";
+export { useMapContextMenu } from "./useContextMenu";
 export type {
-    UseContextMenuReturn,
+    MapContextMenuAPI,
     ContextMenuPosition,
     MenuSize,
 } from "./useContextMenu";

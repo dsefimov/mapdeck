@@ -1,42 +1,31 @@
-import type { BaseMapConfig, BaseMapSettings } from "@core/framework/types";
+import type { BaseMapConfig } from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
-import basemapConfigData from "../config.json";
-
-const basemapSettings = basemapConfigData as BaseMapSettings;
+import { checkBasemapHealth } from "./checkBasemapHealth";
 
 /**
- * Get all available basemap configs from settings
+ * Find a valid (reachable) basemap, preferring the current active one.
+ * Falls back to the first healthy basemap in the available list.
+ * Returns undefined only when the list is empty.
  */
-export function getAvailableBasemaps(rootStore: RootStore): BaseMapConfig[] {
-    const setting = rootStore.settingsStore.getOwnerSettings("basemap")[0];
-    if (!setting || setting.type !== "select") {
-        return basemapSettings.available_basemaps;
-    }
-
-    const options = setting.options;
-    if (!options) {
-        return basemapSettings.available_basemaps;
-    }
-
-    return options
-        .map((opt) =>
-            basemapSettings.available_basemaps.find(
-                (bm) => bm.id === opt.value,
-            ),
-        )
-        .filter((bm): bm is BaseMapConfig => bm !== undefined);
-}
-
-/**
- * Get active basemap config from settings
- */
-export function getActiveBasemap(
+export async function findValidBasemap(
     rootStore: RootStore,
-): BaseMapConfig | undefined {
-    const activeId =
-        rootStore.settingsStore.getStringSetting("basemap.basemap");
-    if (!activeId) {
-        return undefined;
+): Promise<BaseMapConfig | undefined> {
+    const available = rootStore.mapStore.availableBasemaps;
+    if (available.length === 0) return undefined;
+
+    const activeBasemap = rootStore.mapStore.activeBasemap;
+
+    const candidates = activeBasemap
+        ? [
+              activeBasemap,
+              ...available.filter((bm) => bm.id !== activeBasemap.id),
+          ]
+        : available;
+
+    for (const basemap of candidates) {
+        const healthy = await checkBasemapHealth(basemap.url);
+        if (healthy) return basemap;
     }
-    return basemapSettings.available_basemaps.find((bm) => bm.id === activeId);
+
+    return activeBasemap ?? available[0];
 }

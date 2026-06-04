@@ -23,8 +23,8 @@ export {
 } from "./layout/collapsible-menu/CollapsibleMenu";
 export { default as ContextMenu } from "./layout/context-menu/ContextMenu";
 export {
-    useContextMenu,
-    type UseContextMenuReturn,
+    useMapContextMenu,
+    type MapContextMenuAPI,
     type ContextMenuPosition,
     type MenuSize,
 } from "./layout/context-menu/useContextMenu";

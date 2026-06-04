@@ -11,15 +11,15 @@ export interface MenuSize {
     margin: number;
 }
 
-export interface UseContextMenuReturn {
+export interface MapContextMenuAPI {
     isOpen: boolean;
     position: ContextMenuPosition | null;
     open: (pos: ContextMenuPosition) => void;
     close: () => void;
 }
 
-export function useContextMenu(): UseContextMenuReturn {
-    return useLocalObservable<UseContextMenuReturn>(() => ({
+export function useMapContextMenu(): MapContextMenuAPI {
+    return useLocalObservable<MapContextMenuAPI>(() => ({
         isOpen: false,
         position: null,
         open(pos: ContextMenuPosition): void {

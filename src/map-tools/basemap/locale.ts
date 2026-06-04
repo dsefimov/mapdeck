@@ -7,5 +7,6 @@ export const basemapTranslations: Partial<
         "tool.name": "Basemap",
         "panel.title": "Basemap",
         "settings.label": "Basemap",
+        "status.unavailable": "Unavailable",
     },
 };

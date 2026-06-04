@@ -5,12 +5,15 @@ import { LayerManager } from "@core/domain/managers/LayerManager";
 import { logger } from "@core/shared/diagnostics/logger";
 import { validateBbox, flattenTo2D, type Bbox } from "@core/shared/geo";
 import { type RootStore } from "@core/framework/store";
-import type { MapContext } from "@core/framework/types";
+import type { BaseMapConfig, MapContext } from "@core/framework/types";
+
+const BASEMAP_LAYER_ID = "basemap";
 
 export class MapStore {
     private map: maplibregl.Map | null = null;
     readonly overlayManager: DeckOverlayManager;
     private layerManager: LayerManager | null = null;
+    private _basemapConfigs: BaseMapConfig[] = [];
 
     constructor(readonly rootStore: RootStore) {
         this.overlayManager = new DeckOverlayManager();
@@ -65,7 +68,6 @@ export class MapStore {
 
         this.map = map;
 
-        // Attach deck.gl overlay for point cloud rendering
         this.overlayManager.attachToMap(map);
 
         this.layerManager = new LayerManager(this.rootStore, {
@@ -74,7 +76,6 @@ export class MapStore {
         });
         this.layerManager.initialize();
 
-        // Notify MapToolStore about the map change
         this.rootStore.mapToolStore.onMapChanged(map);
     }
 
@@ -107,8 +108,85 @@ export class MapStore {
         }
     }
 
+    /**
+     * Register the full basemap config list (called once during app init).
+     * Enables `availableBasemaps` and `activeBasemap` getters.
+     */
+    registerBasemapConfigs(configs: BaseMapConfig[]): void {
+        this._basemapConfigs = configs;
+    }
+
+    /**
+     * Basemaps filterable by the current setting options.
+     * Falls back to the full registered list if no setting is registered.
+     */
+    get availableBasemaps(): BaseMapConfig[] {
+        const setting =
+            this.rootStore.settingsStore.getOwnerSettings("basemap")[0];
+        if (!setting || setting.type !== "select" || !setting.options) {
+            return this._basemapConfigs;
+        }
+        const optionIds = new Set(setting.options.map((o) => o.value));
+        return this._basemapConfigs.filter((bm) => optionIds.has(bm.id));
+    }
+
+    /** Currently active basemap config, resolved from the setting. */
+    get activeBasemap(): BaseMapConfig | undefined {
+        const id =
+            this.rootStore.settingsStore.getStringSetting("basemap.basemap");
+        if (!id) return undefined;
+        return this._basemapConfigs.find((bm) => bm.id === id);
+    }
+
+    /** Switch the active basemap setting. */
+    setActiveBasemap(basemapId: string): void {
+        this.rootStore.settingsStore.setSetting("basemap.basemap", basemapId);
+    }
+
+    /**
+     * Apply a basemap config directly to the maplibre map.
+     * Replaces any existing basemap source/layer.
+     */
+    applyBasemapToMap(basemap: BaseMapConfig): void {
+        if (!this.map) return;
+
+        if (this.map.getSource(BASEMAP_LAYER_ID)) {
+            this.map.removeLayer(BASEMAP_LAYER_ID);
+            this.map.removeSource(BASEMAP_LAYER_ID);
+        }
+
+        const source: maplibregl.RasterSourceSpecification = {
+            type: "raster",
+            tiles: [basemap.url],
+            tileSize: 256,
+            attribution: basemap.attribution || "",
+            minzoom: basemap.minZoom || 0,
+            maxzoom: basemap.maxZoom || 22,
+        };
+
+        const style = this.map.getStyle();
+        const layerIds = style.layers?.map((l) => l.id) || [];
+
+        let beforeId: string | undefined;
+        for (const layerId of layerIds) {
+            if (layerId !== BASEMAP_LAYER_ID) {
+                beforeId = layerId;
+                break;
+            }
+        }
+
+        this.map.addSource(BASEMAP_LAYER_ID, source);
+        this.map.addLayer(
+            {
+                id: BASEMAP_LAYER_ID,
+                type: "raster",
+                source: BASEMAP_LAYER_ID,
+            },
+            beforeId,
+        );
+    }
+
     dispose(): void {
-        // Detach deck.gl overlay
         this.overlayManager.detachFromMap();
 
         if (this.layerManager) {
@@ -116,7 +194,6 @@ export class MapStore {
             this.layerManager = null;
         }
 
-        // Properly remove the maplibre instance from DOM
         this.map?.remove();
         this.map = null;
     }

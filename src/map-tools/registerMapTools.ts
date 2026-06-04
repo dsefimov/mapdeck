@@ -9,6 +9,8 @@ import { OverlayFeatureProvider } from "./feature-info/providers/OverlayFeatureP
 import { VectorFeatureProvider } from "./feature-info/providers/VectorFeatureProvider";
 import { WmsFeatureProvider } from "./feature-info/providers/WmsFeatureProvider";
 import { featureProviderRegistry } from "./feature-info/providers/FeatureProvider";
+import basemapConfigData from "./basemap/config.json";
+import type { BaseMapSettings } from "@core/framework/types";
 
 /**
  * All built-in map tools.
@@ -37,6 +39,11 @@ export async function registerMapTools(rootStore: RootStore): Promise<void> {
     );
     featureProviderRegistry.register("vector", new VectorFeatureProvider());
     featureProviderRegistry.register("wms", new WmsFeatureProvider());
+
+    const basemapSettings = basemapConfigData as BaseMapSettings;
+    rootStore.mapStore.registerBasemapConfigs(
+        basemapSettings.available_basemaps,
+    );
 
     for (const tool of BUILT_IN_TOOLS) {
         rootStore.localeStore.registerTranslations(
