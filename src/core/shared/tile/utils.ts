@@ -14,13 +14,6 @@ const RAD_TO_DEG = 180 / PI;
 const DEG_TO_RAD = PI / 180;
 
 /**
- * Clamp a value between min and max.
- */
-function clamp(value: number, min: number, max: number): number {
-    return Math.min(Math.max(value, min), max);
-}
-
-/**
  * Convert longitude to tile x at given zoom.
  */
 function lonToX(lon: number, zoom: number): number {
@@ -31,7 +24,8 @@ function lonToX(lon: number, zoom: number): number {
  * Convert latitude to tile y at given zoom.
  */
 function latToY(lat: number, zoom: number): number {
-    const sin = Math.sin(clamp(lat, -85.05, 85.05) * DEG_TO_RAD);
+    const clamped = Math.min(Math.max(lat, -85.05), 85.05);
+    const sin = Math.sin(clamped * DEG_TO_RAD);
     return (
         (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * PI)) * Math.pow(2, zoom)
     );
@@ -50,22 +44,6 @@ function xToLon(x: number, zoom: number): number {
 function yToLat(y: number, zoom: number): number {
     const n = PI - (TWO_PI * y) / Math.pow(2, zoom);
     return RAD_TO_DEG * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
-}
-
-/**
- * Convert a geographic bounding box to the tile that contains it at the given zoom.
- * Returns [tileX, tileY, zoom].
- */
-export function bboxToTile(
-    bbox: [number, number, number, number],
-    zoom: number,
-): [number, number, number] {
-    const [west, south, east, north] = bbox;
-    const centerLon = (west + east) / 2;
-    const centerLat = (south + north) / 2;
-    const x = Math.floor(lonToX(centerLon, zoom));
-    const y = Math.floor(latToY(centerLat, zoom));
-    return [x, y, zoom];
 }
 
 /**
@@ -126,25 +104,4 @@ export function getTilesForBounds(
         }
     }
     return tiles;
-}
-
-/**
- * Get child tiles of a given tile at a higher zoom level.
- * Each tile splits into 4 children.
- */
-export function getChildren(
-    tile: [number, number, number],
-    targetZoom: number,
-): Array<[number, number, number]> {
-    const [x, y, zoom] = tile;
-    if (targetZoom <= zoom) return [tile];
-
-    const factor = Math.pow(2, targetZoom - zoom);
-    const children: Array<[number, number, number]> = [];
-    for (let dx = 0; dx < factor; dx++) {
-        for (let dy = 0; dy < factor; dy++) {
-            children.push([x * factor + dx, y * factor + dy, targetZoom]);
-        }
-    }
-    return children;
 }

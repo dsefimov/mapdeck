@@ -38,12 +38,6 @@ export interface PointcloudItemFields {
     readonly "pc:density"?: number;
 }
 
-export function hasPointcloudExtension(
-    stac_extensions?: readonly string[],
-): boolean {
-    return stac_extensions?.includes(POINTCLOUD_SCHEMA) ?? false;
-}
-
 /** MIME types commonly associated with point cloud data */
 export const POINTCLOUD_MIMES = new Set([
     "application/vnd.laszip",

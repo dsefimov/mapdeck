@@ -157,12 +157,6 @@ export function isSTACItem(entity: STACEntity): entity is STACItem {
     return entity.type === "Feature";
 }
 
-export function isSTACFeatureCollection(
-    entity: STACEntity,
-): entity is STACFeatureCollection {
-    return entity.type === "FeatureCollection";
-}
-
 export function assetHasRole(asset: STACAsset, role: string): boolean {
     return asset.roles?.includes(role) ?? false;
 }
@@ -173,14 +167,3 @@ export function getAssetsByRole(
 ): STACAsset[] {
     return Object.values(assets).filter((asset) => assetHasRole(asset, role));
 }
-
-export const TileRoles = {
-    RASTER_TILE: "raster-tile",
-    VECTOR_TILE: "vector-tile",
-    POINT_CLOUD: "point-cloud",
-} as const;
-
-export const ReportRoles = {
-    REPORT: "report",
-    METADATA: "metadata",
-} as const;

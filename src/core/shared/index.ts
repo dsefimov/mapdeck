@@ -82,10 +82,4 @@ export {
 } from "./protocols/ogc/wms/grouper";
 
 // Tile coordinates
-export {
-    bboxToTile,
-    tileToBBOX,
-    tileToQuadkey,
-    getTilesForBounds,
-    getChildren,
-} from "./tile";
+export { tileToBBOX, tileToQuadkey, getTilesForBounds } from "./tile";
