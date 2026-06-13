@@ -18,6 +18,12 @@ export function useMapContextMenuTrigger(
         const map = mapRef.current;
         if (!map) return;
 
+        const canvas = map.getCanvas();
+
+        const handleNativeContextMenu = (e: MouseEvent) => {
+            e.preventDefault();
+        };
+
         const handleMouseDown = (
             event: maplibregl.MapMouseEvent & { originalEvent: MouseEvent },
         ) => {
@@ -34,6 +40,7 @@ export function useMapContextMenuTrigger(
         ) => {
             event.preventDefault();
             const start = rightClickStartRef.current;
+            rightClickStartRef.current = null;
             if (!start) return;
 
             if (
@@ -52,15 +59,16 @@ export function useMapContextMenuTrigger(
                     screenPoint: { x: event.point.x, y: event.point.y },
                 };
             }
-            rightClickStartRef.current = null;
         };
 
+        canvas.addEventListener("contextmenu", handleNativeContextMenu);
         map.on("mousedown", handleMouseDown);
         map.on("contextmenu", handleContextMenu);
 
         return () => {
+            canvas.removeEventListener("contextmenu", handleNativeContextMenu);
             map.off("mousedown", handleMouseDown);
             map.off("contextmenu", handleContextMenu);
         };
-    }, [ctx, mapRef, lastRightClickRef]);
+    }, [ctx, mapRef]);
 }
