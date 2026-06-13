@@ -1,6 +1,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 import maplibregl from "maplibre-gl";
 import type { MapContextMenuAPI } from "@core/ui/components";
+import type { MapClickPoint } from "@core/framework/store";
 import { isStaticClick } from "./isStaticClick";
 
 const DRAG_THRESHOLD = 5;
@@ -9,6 +10,7 @@ const DRAG_THRESHOLD = 5;
 export function useMapContextMenuTrigger(
     mapRef: RefObject<maplibregl.Map | null>,
     ctx: MapContextMenuAPI,
+    lastRightClickRef: RefObject<MapClickPoint | null>,
 ): void {
     const rightClickStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -45,6 +47,10 @@ export function useMapContextMenuTrigger(
                     x: event.originalEvent.clientX,
                     y: event.originalEvent.clientY,
                 });
+                lastRightClickRef.current = {
+                    lngLat: { lng: event.lngLat.lng, lat: event.lngLat.lat },
+                    screenPoint: { x: event.point.x, y: event.point.y },
+                };
             }
             rightClickStartRef.current = null;
         };
@@ -56,5 +62,5 @@ export function useMapContextMenuTrigger(
             map.off("mousedown", handleMouseDown);
             map.off("contextmenu", handleContextMenu);
         };
-    }, [ctx, mapRef]);
+    }, [ctx, mapRef, lastRightClickRef]);
 }

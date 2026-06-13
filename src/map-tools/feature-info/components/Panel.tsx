@@ -1,5 +1,6 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
+import { reaction } from "mobx";
 import maplibregl from "maplibre-gl";
 import { logger } from "@core/shared/diagnostics/logger";
 
@@ -40,42 +41,32 @@ export const FeatureInfoComponent: (
             );
         }, [rootStore.treeStore]);
 
-        /**
-         * Handle map click — collect features and update UI.
-         */
-        const handleMapClick = React.useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                // Abort any in-flight collection
-                if (abortRef.current) {
-                    abortRef.current.abort();
-                }
+        const triggerCollection = React.useCallback(
+            (
+                lngLat: maplibregl.LngLat,
+                screenPoint: { x: number; y: number },
+            ) => {
+                if (abortRef.current) abortRef.current.abort();
 
-                const screenX = event.point.x;
-                const screenY = event.point.y;
-
-                // Show visual click marker
                 const position: ClickPosition = {
-                    lng: event.lngLat.lng,
-                    lat: event.lngLat.lat,
+                    lng: lngLat.lng,
+                    lat: lngLat.lat,
                 };
                 showClickMarker(position, overlayManager);
                 setHasClicked(true);
-
-                // Reset selection
                 setSelectedIndex(0);
                 setLoading(true);
 
                 const visibleLayers = getVisibleLayers();
 
-                // Start collection
                 const controller = new AbortController();
                 abortRef.current = controller;
 
                 featureCollector
                     .collect(
                         {
-                            screenX,
-                            screenY,
+                            screenX: screenPoint.x,
+                            screenY: screenPoint.y,
                             map,
                             visibleLayers,
                             signal: controller.signal,
@@ -90,7 +81,6 @@ export const FeatureInfoComponent: (
                             setGroups(result.groups);
                             setLoading(result.loading);
 
-                            // Reset selection if current index is out of bounds
                             setSelectedIndex((prev) =>
                                 result.groups.length <= prev ? 0 : prev,
                             );
@@ -107,6 +97,19 @@ export const FeatureInfoComponent: (
                     });
             },
             [dict, getVisibleLayers, map, overlayManager],
+        );
+
+        const triggerCollectionRef = React.useRef(triggerCollection);
+        triggerCollectionRef.current = triggerCollection;
+
+        const handleMapClick = React.useCallback(
+            (event: maplibregl.MapMouseEvent) => {
+                triggerCollection(event.lngLat, {
+                    x: event.point.x,
+                    y: event.point.y,
+                });
+            },
+            [triggerCollection],
         );
 
         /**
@@ -129,13 +132,6 @@ export const FeatureInfoComponent: (
             return () => {
                 map.off("click", handleMapClick);
                 window.removeEventListener("keydown", handleKeyDown);
-
-                // Abort any in-flight collection
-                if (abortRef.current) {
-                    abortRef.current.abort();
-                }
-
-                // Clean up click marker
                 removeClickMarker(overlayManager);
             };
         }, [handleMapClick, handleKeyDown, map, overlayManager]);
@@ -151,6 +147,26 @@ export const FeatureInfoComponent: (
                 canvas.style.cursor = "";
             };
         }, [map]);
+
+        React.useEffect(() => {
+            return reaction(
+                () => rootStore.mapToolStore.pendingPoint,
+                (pending) => {
+                    if (!pending) return;
+                    const point = rootStore.mapToolStore.consumePendingPoint();
+                    if (!point) return;
+
+                    triggerCollectionRef.current(
+                        new maplibregl.LngLat(
+                            point.lngLat.lng,
+                            point.lngLat.lat,
+                        ),
+                        point.screenPoint,
+                    );
+                },
+                { fireImmediately: true },
+            );
+        }, [rootStore.mapToolStore]);
 
         // Render
         const selectedGroup = groups[selectedIndex];

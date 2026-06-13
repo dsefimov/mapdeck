@@ -26,5 +26,6 @@ export type {
     MapToolComponentProps,
     MapToolPlacement,
     BaseMapTool,
+    ContextMenuBehavior,
 } from "./tools";
 export { isMapTool, isMapActionTool } from "./tools";

@@ -10,6 +10,7 @@ import {
     LOCALE_KEY_TOOL_NAME,
     type AnyMapTool,
 } from "@core/framework/types";
+import type { MapClickPoint } from "@core/framework/store";
 import { useMapLifecycle } from "../utils/useMapLifecycle";
 import { useMapContextMenuTrigger } from "../utils/useMapContextMenuTrigger";
 import type { MapViewerProps } from "../types";
@@ -20,14 +21,29 @@ const MapViewerComponent = observer(({ className = "" }: MapViewerProps) => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useMapLifecycle(mapContainerRef, rootStore);
     const contextMenu = useMapContextMenu();
+    const lastRightClickRef = useRef<MapClickPoint | null>(null);
 
-    useMapContextMenuTrigger(mapRef, contextMenu);
+    useMapContextMenuTrigger(mapRef, contextMenu, lastRightClickRef);
 
     const handleToolClick = (tool: AnyMapTool) => {
-        if (isMapTool(tool)) {
-            rootStore.mapToolStore.toggleTool(tool.id);
-        } else if (isMapActionTool(tool)) {
+        if (isMapActionTool(tool)) {
             rootStore.mapToolStore.executeTool(tool.id);
+        } else if (isMapTool(tool)) {
+            const mode = tool.contextMenu?.mode ?? "activate";
+
+            switch (mode) {
+                case "activate":
+                    rootStore.mapToolStore.toggleTool(tool.id);
+                    break;
+                case "activate-at-point":
+                    if (lastRightClickRef.current) {
+                        rootStore.mapToolStore.setPendingPoint(
+                            lastRightClickRef.current,
+                        );
+                    }
+                    rootStore.mapToolStore.activateTool(tool.id);
+                    break;
+            }
         }
         contextMenu.close();
     };

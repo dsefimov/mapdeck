@@ -9,3 +9,5 @@ export type { StoreProviderProps } from "./root/context";
 
 // Locale
 export { LocaleStore } from "./locale/LocaleStore";
+
+export type { MapClickPoint } from "./map/MapToolStore";

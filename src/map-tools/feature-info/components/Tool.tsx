@@ -1,6 +1,10 @@
 import { makeObservable, observable } from "mobx";
 import type maplibregl from "maplibre-gl";
-import type { MapTool, MapToolPlacement } from "@core/framework/types";
+import type {
+    MapTool,
+    MapToolPlacement,
+    ContextMenuBehavior,
+} from "@core/framework/types";
 import type { IconName } from "@core/ui/components";
 import { FeatureInfoComponent } from "./Panel";
 import { featureInfoTranslations } from "../locale";
@@ -15,6 +19,7 @@ export class FeatureInfoTool implements MapTool {
     readonly placement: MapToolPlacement = "top-right";
     readonly order = 10;
     readonly component = FeatureInfoComponent;
+    readonly contextMenu: ContextMenuBehavior = { mode: "activate-at-point" };
     readonly localeTranslations = featureInfoTranslations;
 
     isActive = false;

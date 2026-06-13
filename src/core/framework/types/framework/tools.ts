@@ -18,6 +18,16 @@ export type MapToolPlacement =
     | "bottom-left"
     | "bottom-right";
 
+/**
+ * Declarative behavior of a map tool when invoked from the map context menu.
+ *
+ * - `"activate"`: activate the tool, user continues interacting with the map.
+ * - `"activate-at-point"`: activate and immediately execute at the right-click point.
+ */
+export type ContextMenuBehavior =
+    | { mode: "activate" }
+    | { mode: "activate-at-point" };
+
 export interface MapToolComponentProps {
     rootStore: RootStore;
     map: maplibregl.Map;
@@ -49,6 +59,11 @@ export interface MapTool extends BaseMapTool {
     readonly isActive: boolean;
     /** UI component rendered when tool is active */
     readonly component: React.ComponentType<MapToolComponentProps>;
+    /**
+     * Behavior when invoked from the map context menu.
+     * If omitted — defaults to `"activate"`.
+     */
+    readonly contextMenu?: ContextMenuBehavior;
 
     /**
      * Activate the tool with the current map instance

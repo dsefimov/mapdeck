@@ -10,6 +10,13 @@ import {
 } from "@core/framework/types";
 import type { RootStore } from "@core/framework/store";
 
+export interface MapClickPoint {
+    /** Geographic coordinates of the click */
+    lngLat: { lng: number; lat: number };
+    /** Pixel coordinates on the map canvas (used by featureCollector) */
+    screenPoint: { x: number; y: number };
+}
+
 /**
  * Store for managing map interaction tools.
  * Tools are activated/deactivated explicitly via onMapChanged()
@@ -22,12 +29,18 @@ export class MapToolStore {
     activeToolId: string | null = null;
     /** Current map reference (set via onMapChanged) */
     private _currentMap: maplibregl.Map | null = null;
+    /** Observable — позволяет MobX-реакциям следить за изменением */
+    private _pendingPoint: MapClickPoint | null = null;
 
     constructor(readonly rootStore: RootStore) {
         makeAutoObservable<this, "_currentMap">(this, {
             rootStore: false,
             _currentMap: false,
         });
+    }
+
+    get pendingPoint(): MapClickPoint | null {
+        return this._pendingPoint;
     }
 
     /**
@@ -151,5 +164,18 @@ export class MapToolStore {
         }
         tool.execute(this.rootStore);
         logger.debug(`Executed action tool: ${tool.id} (${toolId})`);
+    }
+
+    /**
+     * Save the map point before activating a tool from the context menu.
+     */
+    setPendingPoint(point: MapClickPoint): void {
+        this._pendingPoint = point;
+    }
+
+    consumePendingPoint(): MapClickPoint | null {
+        const p = this._pendingPoint;
+        this._pendingPoint = null;
+        return p;
     }
 }
