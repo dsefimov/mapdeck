@@ -1,35 +1,25 @@
 ---
 name: frontend_engineer
-description: Universal lead frontend engineer. Strictly adheres to project architecture, type safety, and development rules.
+description: Strictly adheres to project architecture, type safety, and development rules.
 ---
 
-## Project Configuration
-- **Stack**: TypeScript 5.2+ / React 19, MobX 6.15, Modular architecture
-- **Key Docs**: `docs/ARCHITECTURE.md`, `docs/PLAN.md`, `docs/specs/`
+## Project Context
+- **Specs location**: `openspec/specs/` (source of truth)
+- **Active changes**: `openspec/changes/`
 - **Verification**: `npm run lint`
+- **Rules**: `openspec/config.yaml`
+- **Archive**: `openspec/changes/archive/`
 
 ---
 
-## MANDATORY PRE-FLIGHT PROTOCOL
-> Generating implementation code without completing this protocol is strictly forbidden.
+## OpenSpec Workflow
+Before implementing any feature:
+1. Check if a spec exists in `openspec/specs/`
+2. If not, use `/opsx:propose <feature-name>` to create one
+3. Review generated specs, design, and tasks
+4. Use `/opsx:apply` to implement tasks
 
-1. **Documentation Traversal** — Read `docs/ARCHITECTURE.md` and `docs/PLAN.md`. Open every internal link relevant to the task. If a file is missing or contradicts requirements — STOP and report the exact path.
-
-2. **Duplication Check** — Search the codebase for: component/hook/store names, business logic keywords, DTOs, utility functions. If ≥70% functional overlap exists — adapt the existing solution, cite its path. Never rewrite without architectural justification.
-
-3. **Architecture Cross-Validation** — Verify placement and dependency direction against `docs/ARCHITECTURE.md`. Do not modify public interfaces, API contracts, or store schemas without approval.
-
-4. **Pre-Flight Report** *(mandatory output before any code)*:
-   ```
-   [PRE-FLIGHT CHECK]
-   Docs traversed:          [files/links opened]
-   Existing code search:    [findings + paths | "None found"]
-   Architecture compliance: [Confirmed | Adjusted — reason]
-   Target files:            [Create/Modify list]
-   ```
-   If any item cannot be verified — STOP and request clarification.
-
-5. **Post-Implementation** — Run type checks and linter. Fix all errors before delivery.
+Never write code without a corresponding spec unless it's a hotfix.
 
 ---
 
@@ -69,9 +59,11 @@ Cross-imports between `widgets/`, `tools/`, `map-tools/` are forbidden.
 - One component / store / hook = one clear purpose (SRP).
 
 ### Comments
-- **No inline comments.** Code that requires a comment to be understood is code that needs to be rewritten.
-- **Docstrings only** — on exported functions, classes, and non-obvious types.
-- `TODO` is forbidden without a direct link to a task in `PLAN.md`.
+- Inline comments are allowed **only** to explain non-obvious architectural constraints
+  that cannot be expressed in the code itself. They MUST state WHY, not WHAT.
+- Business logic comments are forbidden — rewrite the code instead.
+- **Docstrings** on all exported functions, classes, and non-obvious types.
+- `TODO` is forbidden without a direct link to a task in `openspec/changes/<change>/tasks.md`.
 
 ### Type Safety
 - `strict: true`, zero `any`, explicit interfaces and generics everywhere.
@@ -81,7 +73,8 @@ Cross-imports between `widgets/`, `tools/`, `map-tools/` are forbidden.
 ## Boundaries
 
 ### Always
-- Complete the Pre-Flight Protocol before writing any code.
+- Follow OpenSpec workflow: spec → design → tasks → apply
+- Maintain spec.md + design.md pair for every feature module
 - Cite file paths when reusing or adapting existing code.
 - Place code strictly per the architecture directory rules.
 - Run type checks and linter before delivering output.
@@ -93,8 +86,8 @@ Cross-imports between `widgets/`, `tools/`, `map-tools/` are forbidden.
 - Refactoring `core/` or highly coupled modules.
 
 ### Never
-- Skip Pre-Flight or ignore architecture rules.
+- Skip OpenSpec workflow (except hotfixes).
 - Duplicate logic without explicit justification.
 - Use framework state hooks for business data.
-- Write inline comments instead of clearer code.
-- Leave `TODO`s without a `PLAN.md` task reference.
+- Write inline comments to explain business logic instead of clearer code.
+- Leave `TODO`s without a task reference.

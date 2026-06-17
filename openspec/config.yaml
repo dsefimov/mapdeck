@@ -1,0 +1,131 @@
+context: |
+    ## Stack
+    - TypeScript 5.2+ (strict), React 19, MobX 6.15, Vite 8
+    - deck.gl 9.2, MapLibre GL 5.21
+    - Module resolution: bundler
+    - Path aliases: @app/*, @core/*, @layer-tools/*, @map-tools/*, @modules/*, @widgets/*
+
+    ## Architecture
+    Strict unidirectional dependency graph:
+    - App → depends on all layers
+    - Widgets | LayerTools | MapTools | Modules → depends on Core only
+    - Core → depends on external libraries only
+
+    Forbidden:
+    - Cross-imports between widgets/, tools/, map-tools/
+
+    ## Domain
+    **Product**: Universal geospatial portal with an extension system.
+    The portal works as a constructor: developers build domain-specific
+    geo-applications by combining reusable extensions.
+
+    **Audience for all specs and design docs**: developers who maintain
+    the portal core or build extensions on top of it. End-user experience
+    is documented separately in a user guide — do not mix perspectives.
+
+    **Key entities**:
+    - **Widget** — reusable UI panel for displaying information or controls
+    - **Layer** — a unit of spatial data displayed on the map
+    - **Layer Tool** — action available in a layer's context menu
+    - **Map Tool** — map-wide interaction (measure, basemap switch, etc.)
+
+    **Core business rule**:
+    Layers have **roles** (display, attribute, report, etc.). A layer's roles
+    determine which tools and functionality are available for it. This is the
+    primary mechanism for organizing developer-facing extension contracts.
+
+    **Data types supported**:
+    - Raster: tile layers, WMS, optimized GeoTIFF
+    - Vector (2D + 3D): vector tiles with various styles
+    - Point cloud: streaming 3D point data
+
+rules:
+    proposal:
+        - Keep proposals concise; prefer bullet points over prose
+        - Always include a "Non-goals" section
+        - Reference existing specs in openspec/specs/ before proposing new abstractions
+
+    specs:
+        ## Purpose
+        # spec.md is the system contract: WHAT the system guarantees and WHY.
+        # Audience is exclusively core developers and extension developers.
+        # End-user observable behavior does NOT belong in spec.md.
+
+        ## Format
+        - Documents must be in English only
+        - >-
+            Use Given/When/Then format:
+            GIVEN — a developer-controlled precondition (registration, config, system state)
+            WHEN  — exactly one developer action or system event with a clear trigger
+            THEN  — a guarantee the system makes, verifiable at runtime without reading source code
+
+        ## Scenario quality
+        - Every THEN must be falsifiable: there must be a concrete way to assert it passed or failed
+        - >-
+            Forbidden words in THEN: "correctly", "properly", "as expected",
+            "not corrupted", "gracefully", "intermediate states" — replace
+            with specific measurable outcomes
+        - >-
+            Timing or performance constraints in THEN MUST include a concrete threshold:
+            milliseconds, render count, or "within one frame"
+        - >-
+            Scenarios that say "the user does X" are forbidden —
+            rewrite as "a developer registers X" or "the system receives X"
+        - >-
+            Implementation details are forbidden in scenarios:
+            do not name TypeScript types, store methods, MobX reactions, or file paths
+
+        ## Coverage requirements
+        # Every Requirement block MUST include all three:
+        - Contract / happy path — what the system guarantees when the extension contract is followed correctly
+        - Missing or empty state — what the system guarantees when optional data is absent
+        - >-
+            Boundary or violation — what the system does on duplicate registration,
+            invalid input, out-of-range value, or contract breach
+
+        ## Structure
+        - Each feature module MUST have its own spec.md file
+        - >-
+            Renaming or removing a scenario requires explicit justification —
+            scenarios are public contracts
+
+    design:
+        ## Purpose
+        # design.md is the architectural explanation: HOW the system implements its contracts.
+
+        ## Required sections
+        # Omit a section only with an explicit written reason in the document.
+        - Context     — what problem this module solves and where it sits in the architecture
+        - Patterns    — data flow, object model, key abstractions used
+        - Extension Points — how a developer extends or customizes this module
+        - >-
+            Trade-offs  — at minimum one decision justified with alternatives considered;
+            a design.md without Trade-offs is incomplete
+
+        ## Content rules
+        - Justify architectural decisions with alternatives considered
+        - Explicitly state which architecture layer each new component belongs to
+        - Reference source file paths instead of duplicating type definitions
+        - FORBIDDEN: copy-pasting TypeScript interfaces or types from source code
+        - >-
+            Child module design.md MUST reference the parent module design.md
+            for shared contracts instead of restating them
+        - >-
+            For new features only: include key contracts marked "to be implemented"
+            with a target file path
+
+    tasks:
+        ## Format
+        - Each task must be independently verifiable
+        - Order tasks by dependency (foundations first)
+
+        ## Acceptance Criteria
+        # Every task MUST include an Acceptance Criteria section.
+        - 1–3 checkable, falsifiable conditions
+        - >-
+            Not "works correctly" — use specific assertions:
+            function returns X, type error is thrown, component renders nothing
+
+        ## Scope
+        - One task = one cohesive change: one new function, one store method, one component
+        - If a task touches more than one public interface, split it

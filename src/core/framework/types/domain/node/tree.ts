@@ -56,7 +56,7 @@ export interface GroupNode extends TreeNodeBase {
 export interface LayerNode extends TreeNodeBase {
     type: LayerTreeNodeTypes.Layer;
 
-    /** LayerNode guarantees exactly one display role. */
+    /** LayerNode has at most one display role. */
     roles: LayerNodeRoles;
 }
 

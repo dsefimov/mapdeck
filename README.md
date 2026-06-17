@@ -19,15 +19,13 @@ Mapdeck is a universal geospatial visualization and analysis platform that conne
 
 ## Documentation
 
-Mapdeck uses **spec-driven development (SDD)** methodology. All specifications serve as the single source of truth for system behavior, interfaces, and constraints.
-
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full specification index, architecture overview, and extension guides.
+Mapdeck uses **spec-driven development (SDD)** methodology. All system contracts, architecture decisions, and extension guides live in `openspec/specs/` — each capability module has a `spec.md` (contracts in Given/When/Then) and `design.md` (architecture decisions).
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for contribution guidelines, including the spec-driven development workflow.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines, including the spec-driven development workflow.
 
 ---
 
