@@ -72,7 +72,6 @@ interface ProcessPayload {
     hasColor: boolean;
     wkt: string | null;
     coordinateOrigin: [number, number, number];
-    colorScheme: string;
     globalBounds: [number, number, number, number, number, number];
 }
 
@@ -217,7 +216,10 @@ export class CopcStreamingLoader {
 
     // Data buffers
     private _positions: Float32Array | null = null;
-    private _colors: Uint8Array | null = null;
+    private _colorsRgb: Uint8Array | null = null;
+    private _colorsElevation: Uint8Array | null = null;
+    private _colorsIntensity: Uint8Array | null = null;
+    private _colorsClassification: Uint8Array | null = null;
     private _intensities: Float32Array | null = null;
     private _classifications: Uint8Array | null = null;
 
@@ -276,7 +278,7 @@ export class CopcStreamingLoader {
         | null = null;
     private _needsTransform: boolean = false;
     private _workerPool: WorkerPool | null = null;
-    private _currentColorScheme: string = ColorScheme.RGB;
+    private _activeScheme: ColorScheme = ColorScheme.RGB;
 
     constructor(source: StreamingSource, options: StreamingLoaderOptions) {
         this._originalSource = source;
@@ -532,8 +534,11 @@ export class CopcStreamingLoader {
         this._positions = new Float32Array(budget * 3);
         this._intensities = new Float32Array(budget);
         this._classifications = new Uint8Array(budget);
-        // Always allocate colors — worker computes them for any color scheme
-        this._colors = new Uint8Array(budget * 4);
+        // Allocate all four color scheme buffers upfront
+        this._colorsRgb = new Uint8Array(budget * 4);
+        this._colorsElevation = new Uint8Array(budget * 4);
+        this._colorsIntensity = new Uint8Array(budget * 4);
+        this._colorsClassification = new Uint8Array(budget * 4);
     }
 
     private _parseNodeKey(key: string): NodeKey {
@@ -1020,6 +1025,20 @@ export class CopcStreamingLoader {
         return freedPoints;
     }
 
+    private _shiftColors(
+        writeOffset: number,
+        readOffset: number,
+        endOffset: number,
+    ): void {
+        const wo = writeOffset * 4;
+        const ro = readOffset * 4;
+        const eo = endOffset * 4;
+        this._colorsRgb?.copyWithin(wo, ro, eo);
+        this._colorsElevation?.copyWithin(wo, ro, eo);
+        this._colorsIntensity?.copyWithin(wo, ro, eo);
+        this._colorsClassification?.copyWithin(wo, ro, eo);
+    }
+
     /**
      * Compacts the pre-allocated buffers by shifting data from remaining loaded nodes
      * to fill gaps left by evicted nodes. Updates bufferStartIndex for all affected nodes.
@@ -1047,14 +1066,12 @@ export class CopcStreamingLoader {
                         (readOffset + node.pointCount) * 3,
                     );
                 }
-                // Shift color data
-                if (this._colors) {
-                    this._colors.copyWithin(
-                        writeOffset * 4,
-                        readOffset * 4,
-                        (readOffset + node.pointCount) * 4,
-                    );
-                }
+                // Shift color data (all four schemes)
+                this._shiftColors(
+                    writeOffset,
+                    readOffset,
+                    readOffset + node.pointCount,
+                );
                 // Shift intensity data
                 if (this._intensities) {
                     this._intensities.copyWithin(
@@ -1209,7 +1226,6 @@ export class CopcStreamingLoader {
             hasColor: this._hasColor,
             wkt: this._needsTransform ? (this._copc!.wkt ?? null) : null,
             coordinateOrigin: this._coordinateOrigin,
-            colorScheme: this._currentColorScheme,
             globalBounds: [
                 this._bounds.minX,
                 this._bounds.minY,
@@ -1226,7 +1242,7 @@ export class CopcStreamingLoader {
             !this._positions ||
             !this._intensities ||
             !this._classifications ||
-            !this._colors
+            !this._colorsRgb
         ) {
             throw new Error("Buffers not allocated");
         }
@@ -1246,7 +1262,10 @@ export class CopcStreamingLoader {
         const positionsBuf = this._positions!;
         const intensitiesBuf = this._intensities!;
         const classificationsBuf = this._classifications!;
-        const colorsBuf = this._colors!;
+        const colorsRgbBuf = this._colorsRgb!;
+        const colorsElevationBuf = this._colorsElevation!;
+        const colorsIntensityBuf = this._colorsIntensity!;
+        const colorsClassificationBuf = this._colorsClassification!;
 
         perfTracker.start("extract.raw");
         const N = node.pointCount;
@@ -1274,7 +1293,10 @@ export class CopcStreamingLoader {
             {
                 requestId: string;
                 positions: Float32Array;
-                colors: Uint8Array;
+                colorsRgb: Uint8Array;
+                colorsElevation: Uint8Array;
+                colorsIntensity: Uint8Array;
+                colorsClassification: Uint8Array;
                 intensities: Float32Array;
                 classifications: Uint8Array;
             }
@@ -1285,55 +1307,23 @@ export class CopcStreamingLoader {
         positionsBuf.set(result.positions, startIndex * 3);
         intensitiesBuf.set(result.intensities, startIndex);
         classificationsBuf.set(result.classifications, startIndex);
-        colorsBuf.set(result.colors, startIndex * 4);
+        colorsRgbBuf.set(result.colorsRgb, startIndex * 4);
+        colorsElevationBuf.set(result.colorsElevation, startIndex * 4);
+        colorsIntensityBuf.set(result.colorsIntensity, startIndex * 4);
+        colorsClassificationBuf.set(
+            result.colorsClassification,
+            startIndex * 4,
+        );
         perfTracker.end("extract.write");
     }
 
     /**
-     * Recomputes colors for all currently loaded points using a new color scheme.
-     * Sends existing buffer data to the worker, then updates the color buffer in-place.
+     * Switches the active color scheme instantly.
+     * All four schemes are precomputed — no worker calls needed.
      */
-    async recomputeColors(newScheme: string): Promise<void> {
-        this._currentColorScheme = newScheme;
-
-        if (
-            !this._workerPool ||
-            !this._colors ||
-            this._totalLoadedPoints === 0
-        ) {
-            return;
-        }
-
-        const pointCount = this._totalLoadedPoints;
-
-        // Copy existing data (not transfer — we need to keep the originals)
-        const positions = this._positions!.slice(0, pointCount * 3);
-        const intensities = this._intensities!.slice(0, pointCount);
-        const classifications = this._classifications!.slice(0, pointCount);
-
-        const result = await this._workerPool.post<
-            Record<string, unknown>,
-            { requestId: string; colors: Uint8Array }
-        >(
-            {
-                pointCount,
-                positions,
-                intensities,
-                classifications,
-                colorScheme: newScheme,
-                globalBounds: [
-                    this._bounds.minX,
-                    this._bounds.minY,
-                    this._bounds.minZ,
-                    this._bounds.maxX,
-                    this._bounds.maxY,
-                    this._bounds.maxZ,
-                ],
-            },
-            [positions.buffer, intensities.buffer, classifications.buffer],
-        );
-
-        this._colors.set(result.colors, 0);
+    switchScheme(scheme: ColorScheme): void {
+        this._activeScheme = scheme;
+        this._scheduleLayerUpdate();
     }
 
     private _scheduleLayerUpdate(): void {
@@ -1388,8 +1378,11 @@ export class CopcStreamingLoader {
             ],
         };
 
-        if (this._colors) {
-            data.colors = this._colors.subarray(0, pointCount * 4);
+        if (this._colorsRgb) {
+            data.colors = this._getActiveColorsBuffer().subarray(
+                0,
+                pointCount * 4,
+            );
         }
         if (this._intensities) {
             data.intensities = this._intensities.subarray(0, pointCount);
@@ -1404,6 +1397,20 @@ export class CopcStreamingLoader {
         return data;
     }
 
+    private _getActiveColorsBuffer(): Uint8Array {
+        switch (this._activeScheme) {
+            case ColorScheme.ELEVATION:
+                return this._colorsElevation!;
+            case ColorScheme.INTENSITY:
+                return this._colorsIntensity!;
+            case ColorScheme.CLASSIFICATION:
+                return this._colorsClassification!;
+            case ColorScheme.RGB:
+            default:
+                return this._colorsRgb!;
+        }
+    }
+
     destroy(): void {
         if (this._updateBatchTimeout) {
             clearTimeout(this._updateBatchTimeout);
@@ -1416,5 +1423,9 @@ export class CopcStreamingLoader {
         this._queuedKeys.clear();
         this._nodeCache.clear();
         this._loadedHierarchyKeys.clear();
+        this._colorsRgb = null;
+        this._colorsElevation = null;
+        this._colorsIntensity = null;
+        this._colorsClassification = null;
     }
 }

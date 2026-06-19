@@ -225,17 +225,10 @@ export class PointCloudAdapter implements LayerAdapter<
 
         if (this._canUpdateInPlace(prevConfig, config)) {
             if (prevConfig.colorScheme !== config.colorScheme) {
-                state.loader
-                    .recomputeColors(config.colorScheme ?? ColorScheme.RGB)
-                    .then(() =>
-                        this._updateDeckLayer(layerId, ctx.overlayManager),
-                    )
-                    .catch((err) => {
-                        logger.error(
-                            `PointCloudAdapter: Failed to recompute colors for layer "${layerId}"`,
-                            err,
-                        );
-                    });
+                state.loader.switchScheme(
+                    config.colorScheme ?? ColorScheme.RGB,
+                );
+                this._updateDeckLayer(layerId, ctx.overlayManager);
             } else {
                 this._updateDeckLayer(layerId, ctx.overlayManager);
             }

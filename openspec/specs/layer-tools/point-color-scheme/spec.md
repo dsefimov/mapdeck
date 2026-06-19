@@ -40,3 +40,51 @@ The system SHALL provide a layer tool bound to role `"point-cloud"` that control
 - **GIVEN** a module attempts to set the color scheme to a value not in the supported set
 - **WHEN** the configuration is validated
 - **THEN** the system SHALL fall back to `RGB`
+
+### Requirement: All color schemes precomputed at load time
+
+The point cloud streaming loader SHALL compute all four color schemes (RGB, elevation, intensity, classification) during initial node processing and retain them for the lifetime of the layer.
+
+#### Scenario: All schemes computed in a single worker pass
+
+- **GIVEN** a COPC node with `hasColor: true` is being processed
+- **WHEN** the worker computes colors for the node
+- **THEN** the worker SHALL return all four color arrays (RGB, elevation, intensity, classification) in a single result
+
+#### Scenario: Switching between any two schemes is instantaneous
+
+- **GIVEN** a point cloud layer with precomputed color buffers
+- **WHEN** the user switches from any scheme to any other scheme
+- **THEN** the switch SHALL complete synchronously (no worker call, no async delay)
+- **THEN** the rendering adapter SHALL immediately display the selected scheme
+
+#### Scenario: New nodes extend all four buffers
+
+- **GIVEN** a point cloud layer with precomputed color buffers
+- **AND** new nodes stream in during progressive loading
+- **WHEN** the new points finish processing
+- **THEN** all four color buffers SHALL include the new points at their respective offsets
+
+#### Scenario: All buffers released on destroy
+
+- **GIVEN** a point cloud layer with precomputed color buffers
+- **WHEN** the loader is destroyed
+- **THEN** all four color buffers SHALL be released
+
+### Requirement: RGB colors always available
+
+The loader SHALL always retain the points' original RGB colors when the source file contains color data, regardless of which scheme is active for display. Switching back to RGB SHALL restore the exact original colors.
+
+#### Scenario: RGB preserved across multiple scheme switches
+
+- **GIVEN** a point cloud with `hasColor: true`
+- **AND** the user switches through all four schemes in any order
+- **WHEN** the user selects the RGB scheme
+- **THEN** the displayed colors SHALL exactly match the original point colors from the source file
+
+#### Scenario: RGB remains intact during progressive loading
+
+- **GIVEN** a point cloud with `hasColor: true` is loading progressively
+- **AND** the user switches to elevation, then to classification during loading
+- **WHEN** loading completes and the user switches back to RGB
+- **THEN** all loaded points SHALL display their original RGB colors

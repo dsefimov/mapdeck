@@ -20,31 +20,18 @@ interface ProcessRequest {
     hasColor: boolean;
     wkt: string | null;
     coordinateOrigin: [number, number, number];
-    colorScheme: string;
     globalBounds: [number, number, number, number, number, number] | null;
 }
 
 interface ProcessResult {
     requestId: string;
     positions: Float32Array;
-    colors: Uint8Array;
+    colorsRgb: Uint8Array;
+    colorsElevation: Uint8Array;
+    colorsIntensity: Uint8Array;
+    colorsClassification: Uint8Array;
     intensities: Float32Array;
     classifications: Uint8Array;
-}
-
-interface ColorOnlyRequest {
-    requestId: string;
-    pointCount: number;
-    positions: Float32Array;
-    intensities: Float32Array;
-    classifications: Uint8Array;
-    colorScheme: string;
-    globalBounds: [number, number, number, number, number, number] | null;
-}
-
-interface ColorOnlyResult {
-    requestId: string;
-    colors: Uint8Array;
 }
 
 // --- Transformer cache (WKT → proj4 converter, created once) ---
@@ -89,56 +76,7 @@ function clampLatLng(lng: number, lat: number): [number, number] {
     ];
 }
 
-// --- Main processing function ---
-
-function process(req: ProcessRequest): ProcessResult {
-    const { pointCount, coordinateOrigin } = req;
-
-    // Step 1: coordinate transformation
-    const positions = new Float32Array(pointCount * 3);
-    const coordBuf: [number, number] = [0, 0];
-
-    if (req.wkt) {
-        const transform = getTransformer(req.wkt);
-        for (let i = 0; i < pointCount; i++) {
-            coordBuf[0] = req.rawX[i]!;
-            coordBuf[1] = req.rawY[i]!;
-            const [rawLng, rawLat] = transform(coordBuf);
-            const [lng, lat] = clampLatLng(rawLng, rawLat);
-            positions[i * 3] = lng - coordinateOrigin[0];
-            positions[i * 3 + 1] = lat - coordinateOrigin[1];
-            positions[i * 3 + 2] = req.rawZ[i]!;
-        }
-    } else {
-        for (let i = 0; i < pointCount; i++) {
-            positions[i * 3] = req.rawX[i]! - coordinateOrigin[0];
-            positions[i * 3 + 1] = req.rawY[i]! - coordinateOrigin[1];
-            positions[i * 3 + 2] = req.rawZ[i]!;
-        }
-    }
-
-    // Step 2: normalize intensities (0–1)
-    const intensities = new Float32Array(pointCount);
-    for (let i = 0; i < pointCount; i++) {
-        intensities[i] = req.rawIntensity[i]! / 65535;
-    }
-
-    // Step 3: classifications (copy as-is)
-    const classifications = new Uint8Array(req.rawClassification);
-
-    // Step 4: colors by scheme
-    const colors = computeColors(req, positions, intensities, classifications);
-
-    return {
-        requestId: req.requestId,
-        positions,
-        colors,
-        intensities,
-        classifications,
-    };
-}
-
-// --- Color computation ---
+// --- Classification color map ---
 
 const CLASSIFICATION_COLORS: Record<number, [number, number, number]> = {
     0: [128, 128, 128],
@@ -161,152 +99,199 @@ const CLASSIFICATION_COLORS: Record<number, [number, number, number]> = {
     18: [255, 0, 255],
 };
 
-function computeColors(
+// --- Main processing function ---
+
+function process(req: ProcessRequest): ProcessResult {
+    const { pointCount, coordinateOrigin } = req;
+    const N = pointCount;
+
+    // Step 1: coordinate transformation
+    const positions = new Float32Array(N * 3);
+    const coordBuf: [number, number] = [0, 0];
+
+    if (req.wkt) {
+        const transform = getTransformer(req.wkt);
+        for (let i = 0; i < N; i++) {
+            coordBuf[0] = req.rawX[i]!;
+            coordBuf[1] = req.rawY[i]!;
+            const [rawLng, rawLat] = transform(coordBuf);
+            const [lng, lat] = clampLatLng(rawLng, rawLat);
+            positions[i * 3] = lng - coordinateOrigin[0];
+            positions[i * 3 + 1] = lat - coordinateOrigin[1];
+            positions[i * 3 + 2] = req.rawZ[i]!;
+        }
+    } else {
+        for (let i = 0; i < N; i++) {
+            positions[i * 3] = req.rawX[i]! - coordinateOrigin[0];
+            positions[i * 3 + 1] = req.rawY[i]! - coordinateOrigin[1];
+            positions[i * 3 + 2] = req.rawZ[i]!;
+        }
+    }
+
+    // Step 2: normalize intensities (0–1)
+    const intensities = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+        intensities[i] = req.rawIntensity[i]! / 65535;
+    }
+
+    // Step 3: classifications (copy as-is)
+    const classifications = new Uint8Array(req.rawClassification);
+
+    // Step 4: all four color schemes in a single pass
+    const colors = computeAllColors(
+        req,
+        positions,
+        intensities,
+        classifications,
+    );
+
+    return {
+        requestId: req.requestId,
+        positions,
+        colorsRgb: colors.colorsRgb,
+        colorsElevation: colors.colorsElevation,
+        colorsIntensity: colors.colorsIntensity,
+        colorsClassification: colors.colorsClassification,
+        intensities,
+        classifications,
+    };
+}
+
+// --- Compute all four color schemes in a single interleaved loop ---
+
+function computeAllColors(
     req: ProcessRequest,
     positions: Float32Array,
     intensities: Float32Array,
     classifications: Uint8Array,
-): Uint8Array {
+): {
+    colorsRgb: Uint8Array;
+    colorsElevation: Uint8Array;
+    colorsIntensity: Uint8Array;
+    colorsClassification: Uint8Array;
+} {
     const N = req.pointCount;
+    const colorsRgb = new Uint8Array(N * 4);
+    const colorsElevation = new Uint8Array(N * 4);
+    const colorsIntensity = new Uint8Array(N * 4);
+    const colorsClassification = new Uint8Array(N * 4);
 
-    switch (req.colorScheme) {
-        case "rgb":
-            if (req.hasColor && req.rawR && req.rawG && req.rawB) {
-                return colorsFromRgb(req.rawR, req.rawG, req.rawB, N);
-            }
-            return defaultColors(N);
+    const hasRgb =
+        req.hasColor &&
+        req.rawR !== null &&
+        req.rawG !== null &&
+        req.rawB !== null;
 
-        case "intensity":
-            return colorsFromIntensity(intensities);
+    const elevParams = getElevationParams(req.globalBounds);
 
-        case "elevation":
-            return colorsFromElevation(positions, N, req.globalBounds);
-
-        case "classification":
-            return colorsFromClassification(classifications);
-
-        default:
-            return defaultColors(N);
-    }
-}
-
-function defaultColors(N: number): Uint8Array {
-    return new Uint8Array(N * 4).fill(255);
-}
-
-function colorsFromRgb(
-    rawR: Uint16Array,
-    rawG: Uint16Array,
-    rawB: Uint16Array,
-    N: number,
-): Uint8Array {
-    const colors = new Uint8Array(N * 4);
     for (let i = 0; i < N; i++) {
-        const r = rawR[i]!;
-        const g = rawG[i]!;
-        const b = rawB[i]!;
-        colors[i * 4] = r > 255 ? r >> 8 : r;
-        colors[i * 4 + 1] = g > 255 ? g >> 8 : g;
-        colors[i * 4 + 2] = b > 255 ? b >> 8 : b;
-        colors[i * 4 + 3] = 255;
+        const rgbChannels: [number, number, number] | null = hasRgb
+            ? [req.rawR![i]!, req.rawG![i]!, req.rawB![i]!]
+            : null;
+        writeRgbChannel(colorsRgb, i, rgbChannels);
+        writeIntensityChannel(colorsIntensity, i, intensities[i]!);
+        writeElevationChannel(
+            colorsElevation,
+            i,
+            positions[i * 3 + 2]!,
+            elevParams,
+        );
+        writeClassificationChannel(
+            colorsClassification,
+            i,
+            classifications[i]!,
+        );
     }
-    return colors;
+
+    return {
+        colorsRgb,
+        colorsElevation,
+        colorsIntensity,
+        colorsClassification,
+    };
 }
 
-function colorsFromIntensity(intensities: Float32Array): Uint8Array {
-    const N = intensities.length;
-    const colors = new Uint8Array(N * 4);
-    for (let i = 0; i < N; i++) {
-        const v = (intensities[i]! * 255) | 0;
-        colors[i * 4] = v;
-        colors[i * 4 + 1] = v;
-        colors[i * 4 + 2] = v;
-        colors[i * 4 + 3] = 255;
-    }
-    return colors;
-}
-
-function colorsFromElevation(
-    positions: Float32Array,
-    N: number,
+function getElevationParams(
     globalBounds: [number, number, number, number, number, number] | null,
-): Uint8Array {
+): { minZ: number; invRange: number } {
     const minZ = globalBounds ? globalBounds[2] : 0;
     const maxZ = globalBounds ? globalBounds[5] : 1;
-    const range = maxZ - minZ || 1;
-    const invRange = 1 / range;
-
-    const colors = new Uint8Array(N * 4);
-    for (let i = 0; i < N; i++) {
-        const t = (positions[i * 3 + 2]! - minZ) * invRange;
-        const tc = Math.max(0, Math.min(1, t));
-        colors[i * 4] = (tc * 255) | 0;
-        colors[i * 4 + 1] = 0;
-        colors[i * 4 + 2] = ((1 - tc) * 255) | 0;
-        colors[i * 4 + 3] = 255;
-    }
-    return colors;
+    const invRange = 1 / (maxZ - minZ || 1);
+    return { minZ, invRange };
 }
 
-function colorsFromClassification(classifications: Uint8Array): Uint8Array {
-    const N = classifications.length;
-    const colors = new Uint8Array(N * 4);
+function writeRgbChannel(
+    buf: Uint8Array,
+    i: number,
+    channels: [number, number, number] | null,
+): void {
+    const off = i * 4;
+    if (channels !== null) {
+        buf[off] = channels[0] > 255 ? channels[0] >> 8 : channels[0];
+        buf[off + 1] = channels[1] > 255 ? channels[1] >> 8 : channels[1];
+        buf[off + 2] = channels[2] > 255 ? channels[2] >> 8 : channels[2];
+    } else {
+        buf[off] = 255;
+        buf[off + 1] = 255;
+        buf[off + 2] = 255;
+    }
+    buf[off + 3] = 255;
+}
+
+function writeIntensityChannel(
+    buf: Uint8Array,
+    i: number,
+    intensity: number,
+): void {
+    const off = i * 4;
+    const v = (intensity * 255) | 0;
+    buf[off] = v;
+    buf[off + 1] = v;
+    buf[off + 2] = v;
+    buf[off + 3] = 255;
+}
+
+function writeElevationChannel(
+    buf: Uint8Array,
+    i: number,
+    z: number,
+    params: { minZ: number; invRange: number },
+): void {
+    const off = i * 4;
+    const t = (z - params.minZ) * params.invRange;
+    const tc = Math.max(0, Math.min(1, t));
+    buf[off] = (tc * 255) | 0;
+    buf[off + 1] = 0;
+    buf[off + 2] = ((1 - tc) * 255) | 0;
+    buf[off + 3] = 255;
+}
+
+function writeClassificationChannel(
+    buf: Uint8Array,
+    i: number,
+    cls: number,
+): void {
+    const off = i * 4;
     const fallback: [number, number, number] = [128, 128, 128];
-    for (let i = 0; i < N; i++) {
-        const rgb = CLASSIFICATION_COLORS[classifications[i]!] ?? fallback;
-        colors[i * 4] = rgb[0];
-        colors[i * 4 + 1] = rgb[1];
-        colors[i * 4 + 2] = rgb[2];
-        colors[i * 4 + 3] = 255;
-    }
-    return colors;
-}
-
-// --- Color-only recomputation (for in-place scheme switching) ---
-
-function computeColorsOnly(req: ColorOnlyRequest): ColorOnlyResult {
-    const N = req.pointCount;
-
-    let colors: Uint8Array;
-
-    switch (req.colorScheme) {
-        case "intensity":
-            colors = colorsFromIntensity(req.intensities);
-            break;
-        case "elevation":
-            colors = colorsFromElevation(req.positions, N, req.globalBounds);
-            break;
-        case "classification":
-            colors = colorsFromClassification(req.classifications);
-            break;
-        case "rgb":
-        default:
-            colors = defaultColors(N);
-            break;
-    }
-
-    return { requestId: req.requestId, colors };
+    const rgb = CLASSIFICATION_COLORS[cls] ?? fallback;
+    buf[off] = rgb[0];
+    buf[off + 1] = rgb[1];
+    buf[off + 2] = rgb[2];
+    buf[off + 3] = 255;
 }
 
 // --- Message handler ---
 
-self.onmessage = (e: MessageEvent<ProcessRequest | ColorOnlyRequest>) => {
-    const msg = e.data;
-
-    if ("rawX" in msg) {
-        // Full processing request
-        const result = process(msg as ProcessRequest);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (self as any).postMessage(result, [
-            result.positions.buffer,
-            result.colors.buffer,
-            result.intensities.buffer,
-            result.classifications.buffer,
-        ]);
-    } else {
-        // Color-only recompute request
-        const result = computeColorsOnly(msg as ColorOnlyRequest);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (self as any).postMessage(result, [result.colors.buffer]);
-    }
+self.onmessage = (e: MessageEvent<ProcessRequest>) => {
+    const result = process(e.data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (self as any).postMessage(result, [
+        result.positions.buffer,
+        result.colorsRgb.buffer,
+        result.colorsElevation.buffer,
+        result.colorsIntensity.buffer,
+        result.colorsClassification.buffer,
+        result.intensities.buffer,
+        result.classifications.buffer,
+    ]);
 };
