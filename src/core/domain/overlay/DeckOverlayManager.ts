@@ -1,7 +1,8 @@
-import type { Layer, PickingInfo } from "@deck.gl/core";
+import type { Layer, PickingInfo, Deck, Viewport } from "@deck.gl/core";
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import type maplibregl from "maplibre-gl";
 import { logger } from "@core/shared/diagnostics/logger";
+import type { FrustumPlanes } from "@core/domain/point-cloud/geometry";
 import { perfTracker } from "@core/shared/diagnostics/PerfTracker";
 import type { OverlayManager as IOverlayManager } from "@core/framework/types";
 import type { ManagedLayer, TypedOverlay, PickParams } from "./overlayTypes";
@@ -40,9 +41,6 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
 
     addLayer(layerId: string, layer: Layer): void {
         if (this.layers.has(layerId)) {
-            logger.warn(
-                `OverlayManager: Layer "${layerId}" already exists, overwriting`,
-            );
             this.removeLayer(layerId);
         }
 
@@ -134,6 +132,82 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
 
     getOverlay(): TypedOverlay | null {
         return this.overlay;
+    }
+
+    /**
+     * Get camera position [lng, lat, altitude] from deck.gl viewport.
+     * Uses the actual view matrix — authoritative for point cloud rendering.
+     * Returns null if deck or viewport is not yet initialized.
+     */
+    getCameraPosition(): [number, number, number] | null {
+        const overlay = this.overlay;
+        if (!overlay) return null;
+
+        // eslint-disable-next-line no-underscore-dangle
+        const deck = (overlay as unknown as { _deck?: Deck })._deck;
+        if (!deck) return null;
+
+        const viewports = deck.getViewports();
+        const vp = viewports[0] as Viewport | undefined;
+        if (!vp?.cameraPosition) return null;
+
+        const pos = vp.cameraPosition as [number, number, number];
+        if (typeof (vp as { unproject?: unknown }).unproject === "function") {
+            const result = (
+                vp as unknown as {
+                    unproject: (
+                        p: [number, number, number],
+                    ) => [number, number, number];
+                }
+            ).unproject(pos);
+            return result;
+        }
+
+        return pos;
+    }
+
+    /**
+     * Get the active deck.gl Viewport. Exposes the raw Viewport instance
+     * for coordinate projection (projectPosition) and center-offset access.
+     * Returns null if deck or viewport is not yet initialized.
+     */
+    getActiveViewport(): Viewport | null {
+        const overlay = this.overlay;
+        if (!overlay) return null;
+
+        // eslint-disable-next-line no-underscore-dangle
+        const deck = (overlay as unknown as { _deck?: Deck })._deck;
+        if (!deck) return null;
+
+        const viewports = deck.getViewports();
+        return (viewports[0] as Viewport | undefined) ?? null;
+    }
+
+    /**
+     * Get frustum planes from deck.gl viewport for 3D AABB culling.
+     * Returns null if deck or viewport is not yet initialized.
+     */
+    getFrustumPlanes(): FrustumPlanes | null {
+        const overlay = this.overlay;
+        if (!overlay) return null;
+
+        // eslint-disable-next-line no-underscore-dangle
+        const deck = (overlay as unknown as { _deck?: Deck })._deck;
+        if (!deck) return null;
+
+        const viewports = deck.getViewports();
+        const vp = viewports[0] as Viewport | undefined;
+        if (!vp || typeof vp.getFrustumPlanes !== "function") return null;
+
+        const raw = vp.getFrustumPlanes() as unknown as {
+            near: { distance: number; normal: [number, number, number] };
+            far: { distance: number; normal: [number, number, number] };
+            left: { distance: number; normal: [number, number, number] };
+            right: { distance: number; normal: [number, number, number] };
+            top: { distance: number; normal: [number, number, number] };
+            bottom: { distance: number; normal: [number, number, number] };
+        };
+        return raw;
     }
 
     pickObject(x: number, y: number, radius?: number): PickingInfo | null {

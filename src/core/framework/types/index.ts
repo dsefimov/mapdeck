@@ -121,6 +121,10 @@ export type {
     ExtraPointAttributes,
     CopcMetadata,
     DimensionInfo,
+    CandidateNode,
+    BudgetPlan,
+    EvictionPlan,
+    LoopState,
 } from "./data";
 
 export type { MeasurementPoint3D, VolumeMeasurements } from "./data";

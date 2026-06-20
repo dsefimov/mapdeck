@@ -7,12 +7,16 @@ import type {
 import { LayerRoles } from "@core/framework/types";
 import { isPointCloudConfig, ColorScheme } from "@core/framework/types";
 import type { DeckOverlayManager } from "@core/domain/overlay";
+import type { Layer } from "@deck.gl/core";
 import {
     type PointCloudData,
     type StreamingLoaderOptions,
-    type ViewportInfo,
 } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
+import {
+    DEFAULT_POINT_BUDGET,
+    DEFAULT_MAX_SCREEN_ERROR_PX,
+} from "@core/domain/point-cloud/streamingConfig";
 import { createCancellable } from "@core/shared/async";
 import { comparer } from "mobx";
 import { CopcStreamingLoader } from "@core/domain/point-cloud/CopcStreamingLoader";
@@ -40,7 +44,7 @@ export class PointCloudAdapter implements LayerAdapter<
 
     private static readonly DEFAULT_STREAMING_OPTIONS: StreamingLoaderOptions =
         {
-            pointBudget: 10_000_000,
+            pointBudget: DEFAULT_POINT_BUDGET,
             maxConcurrentRequests: 4,
             viewportDebounceMs: 150,
             maxOctreeDepth: 20,
@@ -114,15 +118,10 @@ export class PointCloudAdapter implements LayerAdapter<
     ): void {
         const { initTask: task, loader } = state;
         const { map, overlayManager } = ctx;
-        const opts = PointCloudAdapter.DEFAULT_STREAMING_OPTIONS;
 
         task.run(async (signal) => {
-            const initResult = await loader.initialize();
+            await loader.initialize();
             if (signal.aborted) return;
-
-            const bounds = initResult.bounds;
-            const spacingMeters =
-                initResult.spacingMeters ?? initResult.spacing;
 
             let firstRender = true;
 
@@ -137,29 +136,46 @@ export class PointCloudAdapter implements LayerAdapter<
                 this._updateDeckLayer(layerId, overlayManager);
             });
 
+            loader.setEffectiveBaseline({
+                maxScreenErrorPx: DEFAULT_MAX_SCREEN_ERROR_PX,
+                pointBudget: DEFAULT_POINT_BUDGET,
+            });
+
             const viewportManager = new ViewportManager(
                 map,
-                (viewport: ViewportInfo) => {
-                    loader.selectNodesForViewport(viewport).catch((err) => {
-                        logger.error(
-                            `PointCloudAdapter: Error selecting nodes for viewport on layer "${layerId}"`,
-                            err,
-                        );
-                    });
+                (...args) => {
+                    const [viewport, camera] = args;
+                    const viewportBounds: [number, number, number, number] = [
+                        viewport.bounds[0],
+                        viewport.bounds[1],
+                        viewport.bounds[2],
+                        viewport.bounds[3],
+                    ];
+                    loader
+                        .selectNodesSSE(camera, viewportBounds)
+                        .catch((err) => {
+                            logger.error(
+                                `PointCloudAdapter: Error selecting nodes for viewport on layer "${layerId}"`,
+                                err,
+                            );
+                        });
                 },
                 {
-                    debounceMs: opts.viewportDebounceMs,
-                    maxOctreeDepth: opts.maxOctreeDepth,
-                    spacing: spacingMeters,
-                    cloudBounds: bounds,
+                    debounceMs: 150,
+                    getCameraPosition: () =>
+                        ctx.overlayManager.getCameraPosition() ?? [0, 0, 0],
+                    getFrustumPlanes: () =>
+                        ctx.overlayManager.getFrustumPlanes(),
+                    getActiveViewport: () =>
+                        ctx.overlayManager.getActiveViewport(),
+                    onImmediateChange: (_viewport, camera) => {
+                        loader.setCameraSnapshot(camera);
+                    },
                 },
             );
 
             state.viewportManager = viewportManager;
             viewportManager.start();
-
-            const initialViewport = viewportManager.getCurrentViewport();
-            await loader.selectNodesForViewport(initialViewport);
         }).catch((error) => {
             logger.error(
                 `PointCloudAdapter: Failed to initialize COPC loader for layer "${layerId}"`,
@@ -228,9 +244,23 @@ export class PointCloudAdapter implements LayerAdapter<
                 state.loader.switchScheme(
                     config.colorScheme ?? ColorScheme.RGB,
                 );
-                this._updateDeckLayer(layerId, ctx.overlayManager);
-            } else {
-                this._updateDeckLayer(layerId, ctx.overlayManager);
+            }
+            // Visual-only update: update layer props in place, no destroy+create.
+            // Keeps in-flight loads alive and avoids abort cascade.
+            try {
+                const data = state.loader.getLoadedPointCloudData();
+                const layer = PointCloudLayerFactory.createLayer(
+                    layerId,
+                    data,
+                    config,
+                    state.dataVersion,
+                );
+                ctx.overlayManager.updateLayer(
+                    layerId,
+                    layer.props as Partial<Layer>,
+                );
+            } catch {
+                void 0;
             }
         } else {
             this.removeFromMap(layerId, ctx);

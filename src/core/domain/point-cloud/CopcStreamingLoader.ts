@@ -1,7 +1,3 @@
-// mapdeck/src/core/overlay/deck/loaders/CopcStreamingLoader.ts
-// COPC streaming loader with coordinate transformation support
-// Supports UTM and other projected coordinate systems with transformation to WGS84
-
 /* global navigator */
 import proj4 from "proj4";
 import { Copc, Hierarchy, Getter } from "copc";
@@ -12,7 +8,6 @@ import RBush from "rbush";
 import { logger } from "@core/shared/diagnostics/logger";
 import { perfTracker } from "@core/shared/diagnostics/PerfTracker";
 
-// Register default projected coordinate systems
 proj4.defs(
     "EPSG:3857",
     "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs",
@@ -23,13 +18,29 @@ import type {
     NodeKey,
     CachedNode,
     StreamingLoaderOptions,
-    ViewportInfo,
     StreamingSource,
     PointCloudData,
     PointCloudBounds,
+    EvictionPlan,
+    LoopState,
 } from "@core/framework/types";
 import { WorkerPool } from "./workers/WorkerPool";
 import { MinHeap } from "@core/shared/async/MinHeap";
+import { computeRootSpacing, computeGeometricError } from "./geometry";
+import { buildProjection } from "./geometry";
+import { traverseOctree } from "./traversal";
+import { computeBudgetPlan } from "./budget/computeBudgetPlan";
+import { computeEvictionPlan } from "./budget/computeEvictionPlan";
+import { shouldRetryAfterTruncation } from "./budget/shouldRetryAfterTruncation";
+import { computeVisibleCachedNodes } from "./render/computeVisibleCachedNodes";
+import {
+    DEFAULT_POINT_BUDGET,
+    DEFAULT_MAX_SCREEN_ERROR_PX,
+} from "./streamingConfig";
+import { HierarchyLoadTracker } from "./hierarchy/HierarchyLoadTracker";
+import type { OnNodesDiscovered } from "./hierarchy/HierarchyLoadTracker";
+import type { EffectiveBaseline } from "./adaptiveBudget";
+import type { CameraSnapshot } from "./geometry";
 
 /** Bounding box entry for rbush spatial index. */
 interface NodeBBox {
@@ -197,6 +208,15 @@ function buildBoundsFromCorners(
 }
 
 /**
+ * Input for a single request cycle. Packs all camera/viewport state needed
+ * to run traversal → budget → eviction → load.
+ */
+interface ViewportRequestInput {
+    cameraSnapshot: CameraSnapshot;
+    viewportBounds: [number, number, number, number];
+}
+
+/**
  * Simplified COPC streaming loader for EPSG:4326.
  * Assumes all data is already in WGS84 degrees, no coordinate transformations needed.
  */
@@ -209,21 +229,17 @@ export class CopcStreamingLoader {
     private static readonly ERROR_COPC_NOT_INITIALIZED =
         "Copc instance not initialized";
 
-    // Hierarchy and node management
-    private _loadedHierarchyKeys = new Set<string>();
+    private _hierarchyTracker: HierarchyLoadTracker | null = null;
     private _rootHierarchyPage: Hierarchy.Page | null = null;
     private _nodeCache = new Map<string, CachedNode>();
 
-    // Data buffers
-    private _positions: Float32Array | null = null;
-    private _colorsRgb: Uint8Array | null = null;
-    private _colorsElevation: Uint8Array | null = null;
-    private _colorsIntensity: Uint8Array | null = null;
-    private _colorsClassification: Uint8Array | null = null;
-    private _intensities: Float32Array | null = null;
-    private _classifications: Uint8Array | null = null;
+    private _renderPositions: Float32Array | null = null;
+    private _renderColors: Uint8Array | null = null;
+    private _renderCapacity = 0;
 
-    // Coordinate system (always EPSG:4326 degrees)
+    private _lastVisibleSetHash = "";
+    private _lastCameraSnapshot: CameraSnapshot | null = null;
+
     private _coordinateOrigin: [number, number, number] = [0, 0, 0];
     private _bounds: PointCloudBounds = {
         minX: 0,
@@ -234,20 +250,19 @@ export class CopcStreamingLoader {
         maxZ: 0,
     };
 
-    // Loading state
     private _loadingQueue = new MinHeap<CachedNode>(
         (a, b) => (a.priority ?? Infinity) - (b.priority ?? Infinity),
     );
-    private _queuedKeys = new Set<string>();
     private _activeRequests = 0;
     private _totalLoadedPoints = 0;
     private _totalLoadedNodes = 0;
     private _isInitialized = false;
 
-    // Eviction state
-    private _currentViewportCenter: [number, number] = [0, 0];
+    private _loopState: LoopState = "idle";
+    private _pendingInput: ViewportRequestInput | null = null;
+    /** Resolves when all active requests settle and the queue is empty — set by _drainQueue. */
+    private _drainResolve: (() => void) | null = null;
 
-    // Data characteristics
     private _hasColor = false;
     private _totalPointsInFile = 0;
     private _originalOctreeCube: [
@@ -260,25 +275,30 @@ export class CopcStreamingLoader {
     ] = [0, 0, 0, 0, 0, 0];
     private _spacing = 0;
 
-    // Node depth distribution tracking
     private _depthDistribution = new Map<number, number>();
     private _maxDepthInHierarchy = 0;
 
-    // Spatial index for fast viewport intersection queries
     private _spatialIndex = new RBush<NodeBBox>();
 
-    // Event handling
-    private _pendingLayerUpdate = false;
-    private _updateBatchTimeout: ReturnType<typeof setTimeout> | null = null;
     private _onPointsLoaded: ((data: PointCloudData) => void) | null = null;
 
-    // Coordinate transformation
     private _transformer:
         | ((coord: [number, number]) => [number, number])
         | null = null;
     private _needsTransform: boolean = false;
     private _workerPool: WorkerPool | null = null;
     private _activeScheme: ColorScheme = ColorScheme.RGB;
+
+    private _rootSpacing = 0;
+    private _geometricErrorByDepth: ((depth: number) => number) | null = null;
+    private _effectiveBaseline: EffectiveBaseline = {
+        maxScreenErrorPx: DEFAULT_MAX_SCREEN_ERROR_PX,
+        pointBudget: DEFAULT_POINT_BUDGET,
+    };
+    /** Monotonically incrementing frame counter for recency-based eviction. */
+    private _frameCounter = 0;
+    /** Keys of nodes currently in "error" state — O(1) lookup for retry. */
+    private _errorKeys = new Set<string>();
 
     constructor(source: StreamingSource, options: StreamingLoaderOptions) {
         this._originalSource = source;
@@ -498,7 +518,25 @@ export class CopcStreamingLoader {
         this._setupCoordinateTransformation();
         this._calculateBounds();
         this._setupCoordinateOrigin();
-        this._allocateBuffers();
+
+        // SSE: compute rootSpacing & geometricError function
+        if (this._copc) {
+            const header = this._copc.header;
+            this._rootSpacing = computeRootSpacing({
+                minX: header.min[0],
+                minY: header.min[1],
+                minZ: header.min[2],
+                maxX: header.max[0],
+                maxY: header.max[1],
+                maxZ: header.max[2],
+                spacing: this._spacing,
+                totalPoints: this._totalPointsInFile,
+            });
+            const rs = this._rootSpacing;
+            this._geometricErrorByDepth = (d: number) =>
+                computeGeometricError(rs, d);
+        }
+
         this._workerPool = new WorkerPool(
             () =>
                 new Worker(
@@ -510,6 +548,18 @@ export class CopcStreamingLoader {
                 ),
             CopcStreamingLoader.getWorkerPoolSize(),
         );
+
+        // Initialize hierarchy tracker with deduplication.
+        // _processSubtreeNodes is the callback — it only receives fresh (not-yet-registered)
+        // nodes from the tracker's per-node dedup layer, preventing RBush duplicates.
+        const onNodesDiscovered: OnNodesDiscovered = (subtree) => {
+            this._processSubtreeNodes(subtree);
+        };
+        this._hierarchyTracker = new HierarchyLoadTracker(
+            this._source,
+            onNodesDiscovered,
+        );
+
         const spacingMeters = this._calculateSpacingMeters();
         this._isInitialized = true;
 
@@ -529,119 +579,12 @@ export class CopcStreamingLoader {
         };
     }
 
-    private _allocateBuffers(): void {
-        const budget = this._options.pointBudget;
-        this._positions = new Float32Array(budget * 3);
-        this._intensities = new Float32Array(budget);
-        this._classifications = new Uint8Array(budget);
-        // Allocate all four color scheme buffers upfront
-        this._colorsRgb = new Uint8Array(budget * 4);
-        this._colorsElevation = new Uint8Array(budget * 4);
-        this._colorsIntensity = new Uint8Array(budget * 4);
-        this._colorsClassification = new Uint8Array(budget * 4);
-    }
-
     private _parseNodeKey(key: string): NodeKey {
         const parts = key.split("-").map(Number);
         if (parts.length !== 4) {
             throw new Error(`Invalid node key format: ${key}`);
         }
         return [parts[0]!, parts[1]!, parts[2]!, parts[3]!];
-    }
-
-    private async _ensureHierarchyLoaded(key: string): Promise<void> {
-        if (this._loadedHierarchyKeys.has(key)) {
-            return;
-        }
-
-        if (!this._rootHierarchyPage || !this._copc) {
-            throw new Error("Root hierarchy not loaded");
-        }
-
-        perfTracker.start("hierarchy.load");
-
-        // Clear depth distribution before loading new hierarchy
-        this._depthDistribution.clear();
-        this._maxDepthInHierarchy = 0;
-
-        // Load hierarchy recursively starting from root
-        await this._loadHierarchyRecursive(this._rootHierarchyPage);
-
-        perfTracker.end("hierarchy.load");
-        perfTracker.mark("hierarchy.complete", {
-            nodeCount: this._nodeCache.size,
-            maxDepth: this._maxDepthInHierarchy,
-        });
-
-        // Log hierarchy summary (DEV only — tree-shaken in production)
-        if (import.meta.env.DEV) {
-            const depthSummary: Record<string, number> = {};
-            this._depthDistribution.forEach((count, depth) => {
-                depthSummary[`depth_${depth}`] = count;
-            });
-
-            const nodeSizesByDepth: Record<
-                string,
-                {
-                    widthDeg: number;
-                    heightDeg: number;
-                    widthMeters: number;
-                    heightMeters: number;
-                }
-            > = {};
-
-            for (let depth = 0; depth <= this._maxDepthInHierarchy; depth++) {
-                const widthDeg =
-                    (this._bounds.maxX - this._bounds.minX) /
-                    Math.pow(2, depth);
-                const heightDeg =
-                    (this._bounds.maxY - this._bounds.minY) /
-                    Math.pow(2, depth);
-                const widthMetersSource =
-                    (this._originalOctreeCube[3] -
-                        this._originalOctreeCube[0]) /
-                    Math.pow(2, depth);
-                const heightMetersSource =
-                    (this._originalOctreeCube[4] -
-                        this._originalOctreeCube[1]) /
-                    Math.pow(2, depth);
-                nodeSizesByDepth[`depth_${depth}`] = {
-                    widthDeg,
-                    heightDeg,
-                    widthMeters: widthMetersSource,
-                    heightMeters: heightMetersSource,
-                };
-            }
-
-            const deepNodes: Array<{
-                key: string;
-                depth: number;
-                bounds: PointCloudBounds;
-            }> = [];
-            for (const node of this._nodeCache.values()) {
-                if (node.keyArray[0] >= this._maxDepthInHierarchy - 2) {
-                    deepNodes.push({
-                        key: node.key,
-                        depth: node.keyArray[0],
-                        bounds: node.boundsWgs84,
-                    });
-                    if (deepNodes.length >= 5) break;
-                }
-            }
-        }
-
-        this._loadedHierarchyKeys.add(key);
-    }
-
-    private async _loadHierarchyRecursive(page: Hierarchy.Page): Promise<void> {
-        // Load subtree for this page
-        const subtree = await Hierarchy.load(this._source, page);
-
-        // Process nodes in this subtree
-        this._processSubtreeNodes(subtree);
-
-        // Recursively load child pages
-        await this._loadChildPages(subtree);
     }
 
     private _processSubtreeNodes(subtree: Hierarchy.Subtree): void {
@@ -660,10 +603,11 @@ export class CopcStreamingLoader {
                 pointDataLength: (entry as Hierarchy.Node).pointDataLength,
                 bounds,
                 boundsWgs84,
-                bufferStartIndex: null,
             };
 
             this._nodeCache.set(key, cachedNode);
+            // Incremental RBush insert — replaces the old per-traversal rebuild.
+            // New nodes are added once (on hierarchy decode), never per camera movement.
             this._spatialIndex.insert({
                 minX: boundsWgs84.minX,
                 minY: boundsWgs84.minY,
@@ -682,18 +626,6 @@ export class CopcStreamingLoader {
                 this._maxDepthInHierarchy = depth;
             }
         }
-    }
-
-    private async _loadChildPages(subtree: Hierarchy.Subtree): Promise<void> {
-        // Parallel loading of child hierarchy pages — independent HTTP requests
-        const pages = Object.values(subtree.pages).filter(
-            Boolean,
-        ) as Hierarchy.Page[];
-        if (pages.length === 0) return;
-
-        await Promise.all(
-            pages.map((page) => this._loadHierarchyRecursive(page)),
-        );
     }
 
     private _calculateNodeBounds(keyArray: NodeKey): {
@@ -761,144 +693,11 @@ export class CopcStreamingLoader {
         return { bounds, boundsWgs84 };
     }
 
-    private _calculateNodePriority(
-        nodeBounds: PointCloudBounds,
-        viewport: ViewportInfo,
-    ): number {
-        const nodeCenterX = (nodeBounds.minX + nodeBounds.maxX) / 2;
-        const nodeCenterY = (nodeBounds.minY + nodeBounds.maxY) / 2;
-        const dx = nodeCenterX - viewport.center[0];
-        const dy = nodeCenterY - viewport.center[1];
-        return dx * dx + dy * dy; // squared distance
-    }
-
-    private _calculateTargetDepth(viewport: ViewportInfo): number {
-        // Calculate target depth, clamped to max depth available in hierarchy
-        let targetDepth = Math.min(
-            Math.max(viewport.targetDepth, 0),
-            this._options.maxOctreeDepth,
-        );
-
-        // Further clamp to actual max depth in hierarchy (if hierarchy is loaded)
-        if (this._maxDepthInHierarchy > 0) {
-            targetDepth = Math.min(targetDepth, this._maxDepthInHierarchy);
-        }
-        return targetDepth;
-    }
-
-    private _calculateBufferedBounds(
-        viewportBounds: [number, number, number, number],
-    ): [number, number, number, number] {
-        const [west, south, east, north] = viewportBounds;
-        const width = east - west;
-        const height = north - south;
-        const bufferX = width * 0.2;
-        const bufferY = height * 0.2;
-        const bufferedWest = west - bufferX;
-        const bufferedEast = east + bufferX;
-        const bufferedSouth = south - bufferY;
-        const bufferedNorth = north + bufferY;
-        return [bufferedWest, bufferedSouth, bufferedEast, bufferedNorth];
-    }
-
-    private _collectNodesForViewport(
-        targetDepth: number,
-        viewport: ViewportInfo,
-        bufferedBounds: [number, number, number, number],
-    ): CachedNode[] {
-        const [west, south, east, north] = bufferedBounds;
-
-        // Use spatial index to find all nodes intersecting the viewport
-        const candidates = this._spatialIndex.search({
-            minX: west,
-            minY: south,
-            maxX: east,
-            maxY: north,
-        });
-
-        const nodesToLoad: CachedNode[] = [];
-
-        for (const bbox of candidates) {
-            const node = this._nodeCache.get(bbox.key);
-            if (!node) continue;
-
-            const depth = node.keyArray[0];
-
-            // Skip nodes deeper than we need
-            if (depth > targetDepth + 1) {
-                continue;
-            }
-
-            // Skip already loaded/loading nodes
-            if (node.state === "loaded" || node.state === "loading") {
-                continue;
-            }
-
-            // Calculate priority: distance from center - depth * 0.0001
-            const distPriority = this._calculateNodePriority(
-                node.boundsWgs84,
-                viewport,
-            );
-            // Deeper nodes get higher priority (lower priority number)
-            node.priority = distPriority - depth * 0.0001;
-            nodesToLoad.push(node);
-        }
-
-        // Sort by priority (center-first, deeper nodes slightly preferred)
-        nodesToLoad.sort(
-            (a, b) => (a.priority || Infinity) - (b.priority || Infinity),
-        );
-        return nodesToLoad;
-    }
-
-    async selectNodesForViewport(viewport: ViewportInfo): Promise<void> {
-        if (!this._isInitialized || !this._rootHierarchyPage) {
-            throw new Error("Loader not initialized");
-        }
-
-        perfTracker.start("viewport.selection");
-
-        // Store current viewport center for eviction distance calculations
-        this._currentViewportCenter = viewport.center;
-
-        // Ensure hierarchy is loaded (idempotent — no-op after first call)
-        if (!this._loadedHierarchyKeys.has("0-0-0-0")) {
-            await this._ensureHierarchyLoaded("0-0-0-0");
-        }
-
-        const targetDepth = this._calculateTargetDepth(viewport);
-        const bufferedBounds = this._calculateBufferedBounds(viewport.bounds);
-        const nodesToLoad = this._collectNodesForViewport(
-            targetDepth,
-            viewport,
-            bufferedBounds,
-        );
-
-        perfTracker.end("viewport.selection");
-        perfTracker.mark("viewport.queued", {
-            targetDepth,
-            candidateCount: nodesToLoad.length,
-            zoom: viewport.zoom.toFixed(1),
-        });
-
-        // Add to queue
-        for (const node of nodesToLoad) {
-            this.queueNode(node);
-        }
-
-        // Start loading
-        this.loadQueuedNodes().catch((error) => {
-            logger.warn(
-                "CopcStreamingLoader: failed to load queued nodes",
-                error,
-            );
-        });
-    }
+    // SSE-driven traversal handles node selection (see selectNodesSSE).
 
     queueNode(node: CachedNode): void {
         if (node.state !== "pending" && node.state !== "error") return;
         if (node.retryAt && Date.now() < node.retryAt) return;
-        if (this._queuedKeys.has(node.key)) return;
 
         // Reset error state if node was in error
         if (node.state === "error") {
@@ -906,7 +705,6 @@ export class CopcStreamingLoader {
             delete node.error;
         }
 
-        this._queuedKeys.add(node.key);
         this._loadingQueue.push(node);
     }
 
@@ -916,190 +714,53 @@ export class CopcStreamingLoader {
             this._activeRequests < this._options.maxConcurrentRequests
         ) {
             const node = this._loadingQueue.pop()!;
-            this._queuedKeys.delete(node.key);
 
-            // Reserve buffer space synchronously to prevent race conditions
-            // between parallel _loadNode calls
-            if (
-                this._totalLoadedPoints + node.pointCount >
-                this._options.pointBudget
-            ) {
-                const freed = this._evictNodes(node.pointCount);
-                if (
-                    freed < node.pointCount &&
-                    this._totalLoadedPoints + node.pointCount >
-                        this._options.pointBudget
-                ) {
-                    // Still not enough space — skip this node
-                    logger.warn(
-                        `CopcStreamingLoader: pointBudget exceeded (${this._totalLoadedPoints}/${this._options.pointBudget}), ` +
-                            `skipping node ${node.key} (${node.pointCount} points). ` +
-                            `Freed ${freed} points via eviction.`,
-                    );
-                    continue;
-                }
-            }
-
-            // Assign buffer slot synchronously before async load
-            node.bufferStartIndex = this._totalLoadedPoints;
-            this._totalLoadedPoints += node.pointCount;
-
-            logger.debug(
-                `[BUDGET] loading node ${node.key} (${node.pointCount} pts), total: ${this._totalLoadedPoints}/${this._options.pointBudget}`,
-            );
-
-            // Start loading node (don't await, let multiple load in parallel)
             this._loadNode(node);
         }
     }
 
     /**
-     * Calculates squared distance from viewport center to the closest point
-     * on the node's bounding box. If the viewport center is inside the node's
-     * bounds, distance is 0. This ensures large top-level nodes that cover
-     * the viewport are never evicted.
+     * Re-enqueue expired error nodes. Limited to maxConcurrentRequests per call
+     * to prevent retry storms when many nodes fail simultaneously.
+     * Uses _errorKeys set for O(1) lookup instead of scanning all _nodeCache.
      */
-    private _nodeDistanceToViewport(node: CachedNode): number {
-        const cx = this._currentViewportCenter[0];
-        const cy = this._currentViewportCenter[1];
+    private _requeueExpiredErrors(): void {
+        const now = Date.now();
+        let enqueued = 0;
+        const maxEnqueue = this._options.maxConcurrentRequests;
 
-        // Distance from point to AABB: 0 if point is inside the box
-        const dx = Math.max(
-            0,
-            node.boundsWgs84.minX - cx,
-            cx - node.boundsWgs84.maxX,
-        );
-        const dy = Math.max(
-            0,
-            node.boundsWgs84.minY - cy,
-            cy - node.boundsWgs84.maxY,
-        );
+        for (const key of this._errorKeys) {
+            if (enqueued >= maxEnqueue) break;
 
-        return dx * dx + dy * dy;
-    }
-
-    /**
-     * Evicts loaded nodes to free up at least `requiredSpace` points in the buffer.
-     * Eviction strategy: remove nodes farthest from the current viewport center.
-     * After eviction, compacts the buffer to eliminate gaps.
-     * Returns the number of points freed.
-     */
-    private _evictNodes(requiredSpace: number): number {
-        // Collect all loaded nodes with their distance to viewport
-        const candidates: Array<{ node: CachedNode; distance: number }> = [];
-        for (const node of this._nodeCache.values()) {
-            if (node.state === "loaded" && node.bufferStartIndex !== null) {
-                candidates.push({
-                    node,
-                    distance: this._nodeDistanceToViewport(node),
-                });
+            const node = this._nodeCache.get(key);
+            if (!node || node.state !== "error") {
+                this._errorKeys.delete(key);
+                continue;
+            }
+            if (node.retryAt != null && now >= node.retryAt) {
+                node.state = "pending";
+                delete node.error;
+                this._errorKeys.delete(key);
+                this._loadingQueue.push(node);
+                enqueued++;
             }
         }
-
-        // Sort by distance descending (farthest first)
-        candidates.sort((a, b) => b.distance - a.distance);
-
-        let freedPoints = 0;
-        const evictedNodes: CachedNode[] = [];
-
-        for (const { node } of candidates) {
-            if (freedPoints >= requiredSpace) break;
-
-            freedPoints += node.pointCount;
-            node.state = "pending";
-            node.bufferStartIndex = null;
-            evictedNodes.push(node);
-        }
-
-        if (evictedNodes.length === 0) {
-            return 0;
-        }
-
-        // Compact buffers to eliminate gaps left by evicted nodes
-        this._compactBuffers();
-
-        logger.debug(
-            `Evicted ${evictedNodes.length} nodes (${freedPoints} points) to free buffer space`,
-        );
-
-        return freedPoints;
     }
 
-    private _shiftColors(
-        writeOffset: number,
-        readOffset: number,
-        endOffset: number,
-    ): void {
-        const wo = writeOffset * 4;
-        const ro = readOffset * 4;
-        const eo = endOffset * 4;
-        this._colorsRgb?.copyWithin(wo, ro, eo);
-        this._colorsElevation?.copyWithin(wo, ro, eo);
-        this._colorsIntensity?.copyWithin(wo, ro, eo);
-        this._colorsClassification?.copyWithin(wo, ro, eo);
-    }
-
-    /**
-     * Compacts the pre-allocated buffers by shifting data from remaining loaded nodes
-     * to fill gaps left by evicted nodes. Updates bufferStartIndex for all affected nodes.
-     */
-    private _compactBuffers(): void {
-        perfTracker.start("compact.buffers");
-
-        // Collect all loaded nodes sorted by their current bufferStartIndex
-        const loadedNodes = [...this._nodeCache.values()]
-            .filter((n) => n.state === "loaded" && n.bufferStartIndex !== null)
-            .sort(
-                (a, b) => (a.bufferStartIndex ?? 0) - (b.bufferStartIndex ?? 0),
-            );
-
-        let writeOffset = 0;
-
-        for (const node of loadedNodes) {
-            const readOffset = node.bufferStartIndex!;
-            if (readOffset !== writeOffset) {
-                // Shift position data
-                if (this._positions) {
-                    this._positions.copyWithin(
-                        writeOffset * 3,
-                        readOffset * 3,
-                        (readOffset + node.pointCount) * 3,
-                    );
-                }
-                // Shift color data (all four schemes)
-                this._shiftColors(
-                    writeOffset,
-                    readOffset,
-                    readOffset + node.pointCount,
-                );
-                // Shift intensity data
-                if (this._intensities) {
-                    this._intensities.copyWithin(
-                        writeOffset,
-                        readOffset,
-                        readOffset + node.pointCount,
-                    );
-                }
-                // Shift classification data
-                if (this._classifications) {
-                    this._classifications.copyWithin(
-                        writeOffset,
-                        readOffset,
-                        readOffset + node.pointCount,
-                    );
-                }
-            }
-            node.bufferStartIndex = writeOffset;
-            writeOffset += node.pointCount;
-        }
-
-        this._totalLoadedPoints = writeOffset;
-
-        perfTracker.end("compact.buffers");
-    }
-
+    // eslint-disable-next-line complexity
     private async _loadNode(node: CachedNode): Promise<void> {
         if (node.state === "loaded" || node.state === "loading") return;
+
+        // Budget is managed by _runCycle's batch eviction before drainQueue.
+        // This guard is a defensive check only — the cycle guarantees space is freed.
+        if (
+            this._totalLoadedPoints + node.pointCount >
+            this._effectiveBaseline.pointBudget
+        ) {
+            return;
+        }
+
+        this._totalLoadedPoints += node.pointCount;
 
         node.state = "loading";
         this._activeRequests++;
@@ -1122,22 +783,38 @@ export class CopcStreamingLoader {
             );
             perfTracker.end("node.fetch");
 
-            // Extract raw values on main thread, send to worker for processing
-            await this._extractAndProcessNode(
-                view,
-                node,
-                node.bufferStartIndex!,
-            );
+            if (node.state !== "loading") {
+                return;
+            }
+
+            // Extract raw values on main thread, send to worker for processing.
+            // Worker returns per-node typed arrays assigned directly to node.
+            await this._extractAndProcessNode(view, node);
 
             node.state = "loaded";
             this._totalLoadedNodes++;
 
-            this._scheduleLayerUpdate();
         } catch (error) {
+            // Release budget and per-node arrays on error.
+            if (node.state === "loading") {
+                this._totalLoadedPoints -= node.pointCount;
+                delete node.positions;
+                delete node.colorsRgb;
+                delete node.colorsElevation;
+                delete node.colorsIntensity;
+                delete node.colorsClassification;
+                delete node.intensities;
+                delete node.classifications;
+            }
             node.state = "error";
             node.error = error instanceof Error ? error.message : String(error);
+            this._errorKeys.add(node.key);
             const retryCount = node.retryCount ?? 0;
-            const delayMs = Math.min(1000 * Math.pow(2, retryCount), 60000);
+            const isCacheError =
+                typeof node.error === "string" &&
+                node.error.includes("ERR_CACHE_OPERATION_NOT_SUPPORTED");
+            const baseDelay = isCacheError ? 10000 : 1000;
+            const delayMs = Math.min(baseDelay * Math.pow(2, retryCount), 2000);
             node.retryAt = Date.now() + delayMs;
             node.retryCount = retryCount + 1;
             logger.warn(
@@ -1147,8 +824,16 @@ export class CopcStreamingLoader {
         } finally {
             perfTracker.endSpan(spanId, "node.load");
             this._activeRequests--;
-            // Continue loading more nodes
+
+            // Idle retry: when all requests settled and queue empty,
+            // re-enqueue error nodes whose retryAt has expired.
+            // Without this, failed nodes would stall until next camera movement.
+            if (this._activeRequests === 0 && this._loadingQueue.size === 0) {
+                this._requeueExpiredErrors();
+            }
+
             this.loadQueuedNodes();
+            this._signalDrainCheck();
         }
     }
 
@@ -1238,14 +923,6 @@ export class CopcStreamingLoader {
     }
 
     private _ensureNodeReadiness(): void {
-        if (
-            !this._positions ||
-            !this._intensities ||
-            !this._classifications ||
-            !this._colorsRgb
-        ) {
-            throw new Error("Buffers not allocated");
-        }
         if (!this._workerPool) {
             throw new Error("WorkerPool not initialized");
         }
@@ -1254,18 +931,10 @@ export class CopcStreamingLoader {
     private async _extractAndProcessNode(
         view: View,
         node: CachedNode,
-        startIndex: number,
     ): Promise<void> {
         this._ensureNodeReadiness();
 
         const workerPool = this._workerPool!;
-        const positionsBuf = this._positions!;
-        const intensitiesBuf = this._intensities!;
-        const classificationsBuf = this._classifications!;
-        const colorsRgbBuf = this._colorsRgb!;
-        const colorsElevationBuf = this._colorsElevation!;
-        const colorsIntensityBuf = this._colorsIntensity!;
-        const colorsClassificationBuf = this._colorsClassification!;
 
         perfTracker.start("extract.raw");
         const N = node.pointCount;
@@ -1303,71 +972,409 @@ export class CopcStreamingLoader {
         >(payload, transferList);
         perfTracker.end("worker.process");
 
-        perfTracker.start("extract.write");
-        positionsBuf.set(result.positions, startIndex * 3);
-        intensitiesBuf.set(result.intensities, startIndex);
-        classificationsBuf.set(result.classifications, startIndex);
-        colorsRgbBuf.set(result.colorsRgb, startIndex * 4);
-        colorsElevationBuf.set(result.colorsElevation, startIndex * 4);
-        colorsIntensityBuf.set(result.colorsIntensity, startIndex * 4);
-        colorsClassificationBuf.set(
-            result.colorsClassification,
-            startIndex * 4,
-        );
-        perfTracker.end("extract.write");
+        // Assign per-node typed arrays (Transferable from worker — zero-copy)
+        node.positions = result.positions;
+        node.colorsRgb = result.colorsRgb;
+        node.colorsElevation = result.colorsElevation;
+        node.colorsIntensity = result.colorsIntensity;
+        node.colorsClassification = result.colorsClassification;
+        node.intensities = result.intensities;
+        node.classifications = result.classifications;
     }
 
     /**
-     * Switches the active color scheme instantly.
-     * All four schemes are precomputed — no worker calls needed.
+     * Request a new load cycle. Called by selectNodesSSE (which is called by
+     * the adapter on viewport change).
+     *
+     * If no cycle is active, starts one immediately. If a cycle is already
+     * running, the input is saved and one follow-up cycle runs after the
+     * current one completes (collapsing any intermediate requests).
      */
-    switchScheme(scheme: ColorScheme): void {
-        this._activeScheme = scheme;
-        this._scheduleLayerUpdate();
+    private _requestCycle(input: ViewportRequestInput): void {
+        this._pendingInput = input;
+        if (this._loopState === "idle") {
+            void this._runNext();
+        } else {
+            this._loopState = "running-dirty";
+        }
     }
 
-    private _scheduleLayerUpdate(): void {
-        if (this._pendingLayerUpdate) {
+    /**
+     * FSM driver: runs the next cycle if there's a pending input.
+     * Transitions: idle → running → (running-dirty → running | idle).
+     */
+    private async _runNext(): Promise<void> {
+        if (!this._pendingInput) {
+            this._loopState = "idle";
+            return;
+        }
+        this._loopState = "running";
+        const input = this._pendingInput;
+        this._pendingInput = null;
+
+        await this._runCycle(input);
+
+        // Re-read loopState — _requestCycle may have set it to "running-dirty"
+        // during the await via another camera event. TS narrows the type after
+        // the "running" assignment above, so we cast to avoid false positive.
+        if ((this._loopState as LoopState) === "running-dirty") {
+            // A new request arrived while we were running — go again.
+            await this._runNext();
+        } else {
+            this._loopState = "idle";
+        }
+    }
+
+    /**
+     * A single load cycle: hierarchy → traversal → budget → eviction → load.
+     * Runs exactly once per call. Returns when the entire load batch completes.
+     */
+    // eslint-disable-next-line complexity, sonarjs/cognitive-complexity
+    private async _runCycle(input: ViewportRequestInput): Promise<void> {
+        const { cameraSnapshot, viewportBounds } = input;
+
+        const viewportHeight =
+            typeof window !== "undefined" ? window.innerHeight : 1080;
+        this._lastCameraSnapshot = {
+            ...cameraSnapshot,
+            screenHeightPx: viewportHeight,
+        };
+
+        if (!this._isInitialized || !this._rootHierarchyPage) {
+            throw new Error("Loader not initialized");
+        }
+        if (!this._geometricErrorByDepth) {
             return;
         }
 
-        this._pendingLayerUpdate = true;
-        this._updateBatchTimeout = setTimeout(() => {
-            this._performLayerUpdate();
-        }, 50);
+        if (!this._hierarchyTracker) {
+            return;
+        }
+        this._depthDistribution.clear();
+        this._maxDepthInHierarchy = 0;
+        await this._hierarchyTracker.ensureLoaded(
+            "0-0-0-0",
+            this._rootHierarchyPage,
+        );
+
+        let traversalResult = traverseOctree(
+            "0-0-0-0",
+            this._nodeCache,
+            this._spatialIndex,
+            this._lastCameraSnapshot,
+            viewportBounds,
+            this._effectiveBaseline.maxScreenErrorPx,
+            this._options.maxOctreeDepth,
+            this._geometricErrorByDepth,
+        );
+
+        // and re-traverse ONCE within this cycle (not recursively re-entering selectNodesSSE).
+        if (traversalResult.pendingHierarchyExpansions.length > 0) {
+            const MAX_HIERARCHY_EXPANSIONS = 32;
+            const expansions = traversalResult.pendingHierarchyExpansions.slice(
+                0,
+                MAX_HIERARCHY_EXPANSIONS,
+            );
+
+            const rootPages = new Map<string, typeof this._rootHierarchyPage>();
+            for (const key of expansions) {
+                rootPages.set(key, this._rootHierarchyPage);
+            }
+
+            const cacheSizeBefore = this._nodeCache.size;
+            const loaded = await this._hierarchyTracker.ensureLoadedMany(
+                expansions,
+                rootPages as Map<string, import("copc").Hierarchy.Page>,
+            );
+
+            if (loaded > 0 || this._nodeCache.size > cacheSizeBefore) {
+                traversalResult = traverseOctree(
+                    "0-0-0-0",
+                    this._nodeCache,
+                    this._spatialIndex,
+                    this._lastCameraSnapshot,
+                    viewportBounds,
+                    this._effectiveBaseline.maxScreenErrorPx,
+                    this._options.maxOctreeDepth,
+                    this._geometricErrorByDepth,
+                );
+            }
+        }
+
+        this._frameCounter++;
+        for (const candidate of traversalResult.candidates) {
+            const node = this._nodeCache.get(candidate.key);
+            if (node) {
+                node.lastSeenAt = this._frameCounter;
+                node.priority = -candidate.priority;
+                node.distanceToCamera = candidate.distanceToCamera;
+            }
+        }
+
+        const plan = computeBudgetPlan(
+            traversalResult.candidates,
+            this._nodeCache,
+            this._effectiveBaseline.pointBudget,
+            traversalResult.fallbacks,
+        );
+
+        logger.debug(
+            `[FSM] budget: accepted=${plan.accepted.length}, toLoad=${plan.toLoad.length}, deficit=${plan.deficit}`,
+        );
+
+        let freedPoints = 0;
+        if (plan.deficit > 0) {
+            const projector = buildProjection(
+                this._lastCameraSnapshot!.cameraPos[0],
+                this._lastCameraSnapshot!.cameraPos[1],
+            );
+            const [camXMeters, camYMeters] = projector.forward([
+                this._lastCameraSnapshot!.cameraPos[0],
+                this._lastCameraSnapshot!.cameraPos[1],
+            ]);
+            const cameraPosMeters: [number, number, number] = [
+                camXMeters,
+                camYMeters,
+                this._lastCameraSnapshot!.cameraPos[2],
+            ];
+
+            const evictionPlan = computeEvictionPlan(
+                this._nodeCache,
+                plan.deficit,
+                cameraPosMeters,
+                projector,
+            );
+            if (evictionPlan.keysToEvict.length > 0) {
+                this._applyEviction(evictionPlan, plan.toLoad);
+            }
+        }
+
+        const effectiveDeficit = Math.max(0, plan.deficit - freedPoints);
+        let finalToLoad = plan.toLoad;
+        if (effectiveDeficit > 0) {
+            // Not enough space was freed — truncate toLoad to what actually fits.
+            const occupiedAfterEviction = this._totalLoadedPoints;
+            const remainingBudget =
+                this._effectiveBaseline.pointBudget - occupiedAfterEviction;
+            const truncated: string[] = [];
+            let budgetLeft = Math.max(0, remainingBudget);
+            for (const key of plan.toLoad) {
+                const node = this._nodeCache.get(key);
+                if (node && node.pointCount <= budgetLeft) {
+                    truncated.push(key);
+                    budgetLeft -= node.pointCount;
+                }
+            }
+            finalToLoad = truncated;
+
+            logger.debug(
+                `[FSM] truncated: ${plan.toLoad.length} → ${finalToLoad.length} (budget left=${remainingBudget})`,
+            );
+        }
+
+        const enqueuedCount = this._enqueueNodes(finalToLoad, traversalResult);
+        if (enqueuedCount > 0) {
+            await this._drainQueue();
+        }
+
+        this._updateRenderAndNotify();
+
+        // schedule a retry. Skip if eviction freed zero points — further
+        // cycles with the same input would be futile.
+        if (
+            shouldRetryAfterTruncation(
+                finalToLoad.length,
+                plan.toLoad.length,
+                freedPoints,
+            )
+        ) {
+            logger.debug(
+                "[FSM] retry: schedule follow-up cycle for truncated nodes",
+            );
+            this._requestCycle(input);
+        }
     }
 
-    private _performLayerUpdate(): void {
-        this._pendingLayerUpdate = false;
-        if (this._onPointsLoaded) {
-            perfTracker.start("layer.update.prepare");
-            const data = this.getLoadedPointCloudData();
-            perfTracker.end("layer.update.prepare");
+    /**
+     * Enqueue a list of node keys for loading. Skips nodes already loading/loaded
+     * or on retry cooldown.
+     * @returns Number of nodes actually enqueued.
+     */
+    private _enqueueNodes(
+        keys: string[],
+        traversalResult: ReturnType<typeof traverseOctree>,
+    ): number {
+        let count = 0;
+        for (const key of keys) {
+            const node = this._nodeCache.get(key);
+            if (!node || node.state === "loading" || node.state === "loaded") {
+                continue;
+            }
+            if (node.retryAt && Date.now() < node.retryAt) continue;
+            if (node.state === "error") {
+                node.state = "pending";
+                delete node.error;
+            }
+            const candidate = traversalResult.candidates.find(
+                (c) => c.key === key,
+            );
+            node.priority = candidate ? -candidate.priority : -Infinity;
+            this.queueNode(node);
+            count++;
+        }
+        return count;
+    }
 
-            perfTracker.mark("points.delivered", {
-                pointCount: data.pointCount,
-                loadedNodes: this._totalLoadedNodes,
+    /**
+     * Drain the loading queue: starts up to maxConcurrentRequests parallel loads
+     * and returns a Promise that resolves when ALL in-flight requests complete
+     * AND the queue is empty.
+     *
+     * Uses an event-driven approach: _loadNode's finally block calls
+     * _signalDrainCheck after each load settles, which resolves the promise
+     * when _activeRequests === 0 and the queue is empty.
+     */
+    private async _drainQueue(): Promise<void> {
+        this.loadQueuedNodes();
+
+        if (this._activeRequests === 0 && this._loadingQueue.size === 0) {
+            return;
+        }
+
+        return new Promise<void>((resolve) => {
+            this._drainResolve = resolve;
+            // Check immediately in case loads settled synchronously
+            this._signalDrainCheck();
+        });
+    }
+
+    /** Called after each _loadNode settles. Checks if the drain is complete. */
+    private _signalDrainCheck(): void {
+        if (!this._drainResolve) return;
+        if (this._activeRequests === 0 && this._loadingQueue.size === 0) {
+            const resolve = this._drainResolve;
+            this._drainResolve = null;
+            resolve();
+        }
+    }
+
+    /**
+     * Apply eviction plan. Skips parents whose children are being loaded
+     * to prevent visual gaps during zoom transitions.
+     */
+    private _applyEviction(plan: EvictionPlan, toLoad: string[]): void {
+        const toLoadSet = new Set(toLoad);
+
+        for (const key of plan.keysToEvict) {
+            const node = this._nodeCache.get(key);
+            if (!node || node.state !== "loaded") continue;
+
+            // Defer eviction if children are loading or about to be loaded —
+            // parent stays visible until children replace it.
+            const childKeys = this._childKeysOf(key);
+            const hasChildLoading = childKeys.some((ck) => {
+                const child = this._nodeCache.get(ck);
+                return child?.state === "loading" || toLoadSet.has(ck);
             });
+            if (hasChildLoading) continue;
 
-            this._onPointsLoaded(data);
+            this._totalLoadedPoints -= node.pointCount;
+            this._totalLoadedNodes--;
+            node.state = "pending";
+            delete node.positions;
+            delete node.colorsRgb;
+            delete node.colorsElevation;
+            delete node.colorsIntensity;
+            delete node.colorsClassification;
+            delete node.intensities;
+            delete node.classifications;
+            this._errorKeys.delete(node.key);
         }
     }
 
-    setOnPointsLoaded(callback: (data: PointCloudData) => void): void {
-        this._onPointsLoaded = callback;
+    /** Compute the 8 child keys for an octree node key "D-X-Y-Z". */
+    private _childKeysOf(key: string): string[] {
+        const [d, x, y, z] = key.split("-").map(Number);
+        const dc = d! + 1;
+        const children: string[] = [];
+        for (let dx = 0; dx <= 1; dx++) {
+            for (let dy = 0; dy <= 1; dy++) {
+                for (let dz = 0; dz <= 1; dz++) {
+                    children.push(
+                        `${dc}-${x! * 2 + dx}-${y! * 2 + dy}-${z! * 2 + dz}`,
+                    );
+                }
+            }
+        }
+        return children;
     }
 
-    getLoadedPointCloudData(): PointCloudData {
-        const pointCount = this._totalLoadedPoints;
+    /**
+     * SSE-based node selection. Called by adapter with frustum footprint + camera position.
+     * Thin dispatcher — packs arguments and delegates to the FSM.
+     * The actual load cycle runs inside _runCycle.
+     */
+    async selectNodesSSE(
+        camera: CameraSnapshot,
+        viewportBounds: [number, number, number, number],
+    ): Promise<void> {
+        this._requestCycle({ cameraSnapshot: camera, viewportBounds });
+    }
 
-        if (!this._positions || pointCount === 0) {
-            throw new Error("No point data loaded");
+    /** Set the effective baseline for SSE-based LOD (maxScreenErrorPx, pointBudget). */
+    setEffectiveBaseline(baseline: EffectiveBaseline): void {
+        this._effectiveBaseline = baseline;
+    }
+
+    // ── Render pipeline ─────────────────────────────────────────────────────
+
+    /** Ensure the render buffer pool has at least `totalPoints` capacity. Grow-only, never shrinks. */
+    private _ensureRenderCapacity(totalPoints: number): void {
+        if (totalPoints <= this._renderCapacity) return;
+
+        const newCap = Math.max(
+            totalPoints,
+            this._renderCapacity * 2 || totalPoints,
+        );
+        this._renderPositions = new Float32Array(newCap * 3);
+        this._renderColors = new Uint8Array(newCap * 4);
+        this._renderCapacity = newCap;
+    }
+
+    /** Build a contiguous render buffer from visible cached nodes' per-node arrays. */
+    private _buildRenderBuffer(visibleKeys: string[]): PointCloudData | null {
+        const visibleNodes = visibleKeys
+            .map((k) => this._nodeCache.get(k)!)
+            .filter((n) => n.positions);
+
+        const totalPoints = visibleNodes.reduce((s, n) => s + n.pointCount, 0);
+        if (totalPoints === 0) return null;
+
+        logger.debug(
+            `[RENDER] tiles=${visibleNodes.length} points=${totalPoints.toLocaleString()}`,
+        );
+
+        this._ensureRenderCapacity(totalPoints);
+
+        const rp = this._renderPositions!;
+        const rc = this._renderColors!;
+        let writeOffset = 0;
+
+        // Sort by key for deterministic layout
+        visibleNodes.sort((a, b) => a.key.localeCompare(b.key));
+
+        for (const node of visibleNodes) {
+            const np = node.pointCount;
+            rp.set(node.positions!, writeOffset * 3);
+            this._setActiveColorsForNode(node, rc, writeOffset);
+            writeOffset += np;
         }
 
-        const data: PointCloudData = {
-            positions: this._positions.subarray(0, pointCount * 3),
+        return {
+            positions: rp.subarray(0, totalPoints * 3),
             coordinateOrigin: this._coordinateOrigin,
-            pointCount,
+            pointCount: totalPoints,
+            colors: rc.subarray(0, totalPoints * 4),
             bounds: [
                 this._bounds.minX,
                 this._bounds.minY,
@@ -1377,55 +1384,95 @@ export class CopcStreamingLoader {
                 this._bounds.maxZ,
             ],
         };
+    }
 
-        if (this._colorsRgb) {
-            data.colors = this._getActiveColorsBuffer().subarray(
-                0,
-                pointCount * 4,
-            );
+    /** Copy the active color scheme from a node's per-node array into the render buffer. */
+    private _setActiveColorsForNode(
+        node: CachedNode,
+        renderColors: Uint8Array,
+        writeOffset: number,
+    ): void {
+        let src: Uint8Array | undefined;
+        switch (this._activeScheme) {
+            case ColorScheme.ELEVATION:
+                src = node.colorsElevation;
+                break;
+            case ColorScheme.INTENSITY:
+                src = node.colorsIntensity;
+                break;
+            case ColorScheme.CLASSIFICATION:
+                src = node.colorsClassification;
+                break;
+            case ColorScheme.RGB:
+            default:
+                src = node.colorsRgb;
+                break;
         }
-        if (this._intensities) {
-            data.intensities = this._intensities.subarray(0, pointCount);
+        if (src) {
+            renderColors.set(src, writeOffset * 4);
         }
-        if (this._classifications) {
-            data.classifications = this._classifications.subarray(
-                0,
-                pointCount,
-            );
-        }
+    }
 
+    /** Single source of truth: current visible node keys given the last known camera snapshot. */
+    private _computeCurrentVisibleKeys(): string[] | null {
+        if (!this._lastCameraSnapshot || !this._geometricErrorByDepth)
+            return null;
+        return computeVisibleCachedNodes(
+            this._nodeCache,
+            this._lastCameraSnapshot,
+            this._geometricErrorByDepth,
+            this._effectiveBaseline.maxScreenErrorPx,
+        );
+    }
+
+    /** Recompute visible set and notify the adapter if it changed. */
+    private _updateRenderAndNotify(): void {
+        if (!this._onPointsLoaded) return;
+        const visibleKeys = this._computeCurrentVisibleKeys();
+        if (!visibleKeys) return;
+
+        const hash = visibleKeys.join(",");
+        if (hash === this._lastVisibleSetHash) return;
+        this._lastVisibleSetHash = hash;
+
+        const data = this._buildRenderBuffer(visibleKeys);
+        if (!data) return;
+
+        this._onPointsLoaded(data);
+    }
+
+    getLoadedPointCloudData(): PointCloudData {
+        const visibleKeys = this._computeCurrentVisibleKeys();
+        if (!visibleKeys) throw new Error("No point data loaded");
+        const data = this._buildRenderBuffer(visibleKeys);
+        if (!data) throw new Error("No point data loaded");
         return data;
     }
 
-    private _getActiveColorsBuffer(): Uint8Array {
-        switch (this._activeScheme) {
-            case ColorScheme.ELEVATION:
-                return this._colorsElevation!;
-            case ColorScheme.INTENSITY:
-                return this._colorsIntensity!;
-            case ColorScheme.CLASSIFICATION:
-                return this._colorsClassification!;
-            case ColorScheme.RGB:
-            default:
-                return this._colorsRgb!;
-        }
+    setOnPointsLoaded(callback: (data: PointCloudData) => void): void {
+        this._onPointsLoaded = callback;
+    }
+
+    switchScheme(scheme: ColorScheme): void {
+        this._activeScheme = scheme;
+        // Force render rebuild — visible set hasn't changed, but colors did
+        this._lastVisibleSetHash = "";
+        this._updateRenderAndNotify();
+    }
+
+    /** Public method for the adapter to trigger a render update on viewport change. */
+    setCameraSnapshot(snapshot: CameraSnapshot): void {
+        this._lastCameraSnapshot = snapshot;
+        this._updateRenderAndNotify();
     }
 
     destroy(): void {
-        if (this._updateBatchTimeout) {
-            clearTimeout(this._updateBatchTimeout);
-        }
         if (this._workerPool) {
             this._workerPool.dispose();
             this._workerPool = null;
         }
         this._loadingQueue.clear();
-        this._queuedKeys.clear();
         this._nodeCache.clear();
-        this._loadedHierarchyKeys.clear();
-        this._colorsRgb = null;
-        this._colorsElevation = null;
-        this._colorsIntensity = null;
-        this._colorsClassification = null;
+        this._hierarchyTracker?.clear();
     }
 }

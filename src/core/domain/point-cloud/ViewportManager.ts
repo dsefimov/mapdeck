@@ -1,6 +1,13 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
-import type { ViewportInfo, PointCloudBounds } from "@core/framework/types";
+import type { ViewportInfo } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
+import type {
+    CameraSnapshot,
+    FrustumPlanes,
+    ProjectToCommonSpace,
+    CenterOffset,
+} from "./geometry";
+import type { Viewport } from "@deck.gl/core";
 
 /**
  * Options for the ViewportManager
@@ -13,20 +20,25 @@ export interface ViewportManagerOptions {
     debounceMs?: number;
 
     /**
-     * Maximum octree depth to load
-     * @default 20
+     * External camera position provider. When provided, replaces the built-in
+     * altitude calculation with deck.gl's authoritative view-matrix position.
      */
-    maxOctreeDepth?: number;
+    getCameraPosition?: () => [number, number, number];
 
     /**
-     * Octree spacing value from COPC file (for accurate depth calculation)
+     * External frustum planes provider. When provided, enables 3D frustum
+     * culling via deck.gl Viewport.getFrustumPlanes().
      */
-    spacing: number;
+    getFrustumPlanes?: () => FrustumPlanes | null;
+
+    /** External Viewport provider for common-space projection and center offset. */
+    getActiveViewport?: () => Viewport | null;
 
     /**
-     * Point cloud bounds for distance calculation (in meters)
+     * Optional immediate (non-debounced) callback for render updates.
+     * Fires on every `move` event — keep it fast (frustum filter + lightweight copy).
      */
-    cloudBounds?: PointCloudBounds;
+    onImmediateChange?: ViewportChangeCallback;
 }
 
 /**
@@ -50,32 +62,35 @@ function debounce<T extends (...args: unknown[]) => void>(
 }
 
 /**
+ * Viewport change callback signature.
+ * Provides frustum planes, camera position, and FOV — everything
+ * needed for SSE-based traversal with proper 3D frustum culling.
+ */
+export type ViewportChangeCallback = (
+    viewport: ViewportInfo,
+    camera: CameraSnapshot,
+) => void;
+
+/**
  * Manages viewport state and triggers node loading based on map view changes.
- * Listens to MapLibre GL map events and calculates the appropriate octree
- * depth for the current zoom level and pitch.
+ * Listens to MapLibre GL map events, extracts frustum geometry and camera
+ * position, and fires a callback with everything needed for SSE traversal.
  */
 export class ViewportManager {
     private _map: MapLibreMap;
     private _debounceMs: number;
-    private _onViewportChange: (viewport: ViewportInfo) => void;
+    private _onViewportChange: ViewportChangeCallback;
+    private _onImmediateChange: ViewportChangeCallback | undefined;
     private _debouncedHandler: () => void;
+    private _immediateHandler: (() => void) | undefined;
     private _isActive: boolean = false;
+    private _getCameraPosition: (() => [number, number, number]) | undefined;
+    private _getFrustumPlanes: (() => FrustumPlanes | null) | undefined;
+    private _getActiveViewport: (() => Viewport | null) | undefined;
 
-    // Zoom to octree depth mapping configuration
-    private _maxOctreeDepth: number;
-    private _spacing: number;
-    private _cloudBounds: PointCloudBounds | null;
-
-    /**
-     * Creates a new ViewportManager instance.
-     *
-     * @param map - MapLibre GL map instance
-     * @param onViewportChange - Callback fired when viewport changes
-     * @param options - Configuration options
-     */
     constructor(
         map: MapLibreMap,
-        onViewportChange: (viewport: ViewportInfo) => void,
+        onViewportChange: ViewportChangeCallback,
         options?: ViewportManagerOptions,
     ) {
         this._map = map;
@@ -83,25 +98,29 @@ export class ViewportManager {
 
         const {
             debounceMs = 150,
-            maxOctreeDepth = 20,
-            spacing = 0,
-            cloudBounds = null,
+            getCameraPosition,
+            getFrustumPlanes,
+            getActiveViewport,
+            onImmediateChange,
         } = options || {};
 
         this._debounceMs = debounceMs;
-        this._maxOctreeDepth = maxOctreeDepth;
-        this._spacing = spacing;
-        this._cloudBounds = cloudBounds;
+        this._getCameraPosition = getCameraPosition;
+        this._getFrustumPlanes = getFrustumPlanes;
+        this._getActiveViewport = getActiveViewport;
+        this._onImmediateChange = onImmediateChange;
 
         this._debouncedHandler = debounce(
             () => this._handleViewportChange(),
             this._debounceMs,
         );
+
+        if (onImmediateChange) {
+            this._immediateHandler = () => this._handleImmediateChange();
+        }
     }
 
-    /**
-     * Starts listening to map viewport changes.
-     */
+    /** Start listening to map viewport changes. */
     start(): void {
         if (this._isActive) return;
         this._isActive = true;
@@ -110,13 +129,15 @@ export class ViewportManager {
         this._map.on("zoomend", this._debouncedHandler);
         this._map.on("pitchend", this._debouncedHandler);
 
-        // Trigger initial viewport calculation
+        if (this._immediateHandler) {
+            this._map.on("move", this._immediateHandler);
+        }
+
+        // Trigger initial calculation
         this._handleViewportChange();
     }
 
-    /**
-     * Stops listening to map viewport changes.
-     */
+    /** Stop listening to map viewport changes. */
     stop(): void {
         if (!this._isActive) return;
         this._isActive = false;
@@ -124,30 +145,20 @@ export class ViewportManager {
         this._map.off("moveend", this._debouncedHandler);
         this._map.off("zoomend", this._debouncedHandler);
         this._map.off("pitchend", this._debouncedHandler);
+
+        if (this._immediateHandler) {
+            this._map.off("move", this._immediateHandler);
+        }
     }
 
-    /**
-     * Gets the current viewport information.
-     *
-     * @returns ViewportInfo object with bounds, center, zoom, pitch, and targetDepth
-     */
+    /** Get current viewport info (bounds, center, zoom, pitch). */
     getCurrentViewport(): ViewportInfo {
         const bounds = this._map.getBounds();
         const center = this._map.getCenter();
         const zoom = this._map.getZoom();
         const pitch = this._map.getPitch();
 
-        const distanceToCloud = this._calculateDistanceToCloud(
-            center.lng,
-            center.lat,
-        );
-        const targetDepth = this._calculateTargetDepth(
-            zoom,
-            pitch,
-            distanceToCloud,
-        );
-
-        const viewportInfo: ViewportInfo = {
+        return {
             bounds: [
                 bounds.getWest(),
                 bounds.getSouth(),
@@ -157,114 +168,82 @@ export class ViewportManager {
             center: [center.lng, center.lat],
             zoom,
             pitch,
-            targetDepth,
-            distanceToCloud,
         };
-
-        return viewportInfo;
     }
 
-    /**
-     * Calculates target octree depth based on zoom level, pitch, and distance to cloud.
-     *
-     * Mapping strategy:
-     * - Zoom 0-10: depth 0-2 (overview)
-     * - Zoom 10-14: depth 2-6 (city level)
-     * - Zoom 14-18: depth 6-12 (block level)
-     * - Zoom 18+: depth 12+ (detail level)
-     *
-     * Pitch adjustment: higher pitch (3D view) reduces depth to avoid
-     * loading too many nodes in the distance.
-     *
-     * Distance adjustment: greater distance reduces depth to avoid
-     * loading unnecessary detail for distant clouds.
-     *
-     * @param zoom - Current map zoom level
-     * @param pitch - Current map pitch in degrees
-     * @param distanceToCloud - Distance from viewport center to cloud bounds in meters
-     * @returns Target octree depth
-     */
-    private _calculateTargetDepth(
-        zoom: number,
-        pitch: number,
-        distanceToCloud: number,
-    ): number {
-        const groundRes = 156543.03 / Math.pow(2, zoom);
-        let depth = Math.floor(Math.log2(this._spacing / groundRes));
-        depth = Math.max(0, depth);
-
-        const pitchRadians = (pitch * Math.PI) / 180;
-        const pitchFactor = Math.cos(pitchRadians);
-        const pitchReduction = Math.floor((1 - pitchFactor) * 3);
-        depth = Math.max(0, depth - pitchReduction);
-
-        const distanceKm = distanceToCloud / 1000;
-        if (distanceKm > 1) {
-            depth = Math.max(0, depth - Math.floor(Math.log2(distanceKm)));
-        }
-
-        depth = Math.min(depth, this._maxOctreeDepth);
-
-        logger.debug(`[DEPTH] zoom=${zoom}, depth=${depth}`);
-
-        return depth;
-    }
-
-    /**
-     * Handles viewport change events.
-     */
-    private _handleViewportChange(): void {
-        if (!this._isActive) return;
-        const viewport = this.getCurrentViewport();
-        this._onViewportChange(viewport);
-    }
-
-    /**
-     * Forces a viewport update (e.g., after initial data load or fly animation).
-     */
+    /** Force a viewport update (e.g., after initial data load or fly animation). */
     forceUpdate(): void {
         this._handleViewportChange();
     }
 
-    /**
-     * Calculates distance from viewport center to point cloud bounds.
-     * Returns distance in meters. If cloud bounds not available, returns 0.
-     */
-    private _calculateDistanceToCloud(lng: number, lat: number): number {
-        if (!this._cloudBounds) {
-            return 0;
-        }
-
-        // Calculate distance from viewport center to the nearest point of cloud bounds
-        // Simple 2D Euclidean distance in meters (approximation)
-        // Convert lat/lng to meters using approximate conversion
-        const metersPerDegreeLat = 111320; // meters per degree latitude
-        const metersPerDegreeLng = 111320 * Math.cos((lat * Math.PI) / 180);
-
-        const cloudCenterX =
-            (this._cloudBounds.minX + this._cloudBounds.maxX) / 2;
-        const cloudCenterY =
-            (this._cloudBounds.minY + this._cloudBounds.maxY) / 2;
-
-        const dx = (lng - cloudCenterX) * metersPerDegreeLng;
-        const dy = (lat - cloudCenterY) * metersPerDegreeLat;
-
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    /**
-     * Checks if the viewport manager is currently active.
-     *
-     * @returns True if listening for viewport changes
-     */
+    /** Check if the viewport manager is currently active. */
     isActive(): boolean {
         return this._isActive;
     }
 
-    /**
-     * Destroys the viewport manager and removes all event listeners.
-     */
+    /** Destroy the viewport manager and remove all event listeners. */
     destroy(): void {
         this.stop();
+    }
+
+    private _handleViewportChange(): void {
+        if (!this._isActive) return;
+        const state = this._computeViewportState();
+        if (!state) return;
+
+        const [viewportInfo] = state;
+        logger.debug(
+            `[VIEWPORT] bounds=${viewportInfo.bounds.map((v) =>
+                v.toFixed(4),
+            )}, zoom=${viewportInfo.zoom.toFixed(1)}`,
+        );
+
+        this._onViewportChange(...state);
+    }
+
+    /** Non-debounced handler: same frustum computation, separate callback. */
+    private _handleImmediateChange(): void {
+        if (!this._isActive || !this._onImmediateChange) return;
+        const state = this._computeViewportState();
+        if (!state) return;
+        this._onImmediateChange(...state);
+    }
+
+    /** Compute frustum & camera state shared between debounced and immediate handlers. */
+    // eslint-disable-next-line complexity
+    private _computeViewportState(): Parameters<ViewportChangeCallback> | null {
+        const cameraPos = this._getCameraPosition?.();
+        if (!cameraPos) return null;
+
+        const frustumPlanes = this._getFrustumPlanes?.();
+        if (!frustumPlanes) return null;
+
+        const vp = this._getActiveViewport?.();
+        if (!vp) return null;
+
+        const [cx = 0, cy = 0, cz = 0] = vp.center ?? [];
+        const centerOffset: CenterOffset = [cx, cy, cz];
+
+        const projectToCommonSpace: ProjectToCommonSpace = (lng, lat, alt) =>
+            vp.projectPosition([lng, lat, alt]) as [number, number, number];
+
+        const viewportInfo = this.getCurrentViewport();
+        const fovRadians =
+            (((this._map as { getFov?: () => number }).getFov?.() ?? 60) *
+                Math.PI) /
+            180;
+
+        return [
+            viewportInfo,
+            {
+                frustumPlanes,
+                cameraPos,
+                fovRadians,
+                projectToCommonSpace,
+                centerOffset,
+                screenHeightPx:
+                    typeof window !== "undefined" ? window.innerHeight : 1080,
+            },
+        ];
     }
 }

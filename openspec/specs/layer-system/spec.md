@@ -40,7 +40,7 @@ The system SHALL provide a configuration structure for each display role. Every 
 
 - **GIVEN** a layer has role `"point-cloud"`
 - **WHEN** a configuration is created with default values
-- **THEN** the configuration SHALL include point size (default 1), color scheme (default RGB), and optional intensity and classification filter fields
+- **THEN** the configuration SHALL include point size (default 1), color scheme (default RGB), optional intensity and classification filter fields, `maxScreenErrorPx` (default 2, configurable), and `pointBudget` (optional override of the adaptive device-based budget)
 
 #### Scenario: GeoJSON configuration
 

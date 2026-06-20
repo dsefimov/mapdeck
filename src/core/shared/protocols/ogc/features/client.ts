@@ -12,6 +12,7 @@ export interface OgcFeaturesParams {
  * Fetch a page of features from an OGC API Features endpoint.
  * Uses offset/limit pagination as per OGC API - Features spec.
  */
+// eslint-disable-next-line complexity
 export async function fetchOgcFeaturesPage(
     params: OgcFeaturesParams,
     signal?: AbortSignal,

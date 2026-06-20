@@ -86,8 +86,24 @@ export interface CachedNode {
     boundsWgs84: PointCloudBounds;
     /** Distance from viewport center (for priority queue) - lower = higher priority */
     priority?: number;
-    /** Points array slice start index in the main buffer */
-    bufferStartIndex: number | null;
+    /** Per-node position data (pointCount × 3, Float32). Only set when state === "loaded". */
+    positions?: Float32Array;
+    /** Per-node pre-computed color data for the RGB scheme (pointCount × 4, RGBA, Uint8). */
+    colorsRgb?: Uint8Array;
+    /** Per-node pre-computed color data for the elevation scheme. */
+    colorsElevation?: Uint8Array;
+    /** Per-node pre-computed color data for the intensity scheme. */
+    colorsIntensity?: Uint8Array;
+    /** Per-node pre-computed color data for the classification scheme. */
+    colorsClassification?: Uint8Array;
+    /** Per-node intensity data (pointCount, Float32 0-1). Undefined if no intensity channel. */
+    intensities?: Float32Array;
+    /** Per-node classification data (pointCount, Uint8). Undefined if no classification channel. */
+    classifications?: Uint8Array;
+    /** Monotonically incrementing traversal-frame counter — last time this node appeared in candidates */
+    lastSeenAt?: number;
+    /** Euclidean distance from camera to node AABB (meters), updated each traversal */
+    distanceToCamera?: number;
     /** Error message if state is 'error' */
     error?: string;
     /** Timestamp (ms) before which this node should not be retried */
@@ -108,10 +124,6 @@ export interface ViewportInfo {
     zoom: number;
     /** Current pitch (tilt angle in degrees) */
     pitch: number;
-    /** Target octree depth based on zoom and pitch */
-    targetDepth: number;
-    /** Distance from viewport center to point cloud bounds (in meters) */
-    distanceToCloud: number;
 }
 
 /**
@@ -178,3 +190,44 @@ export interface CopcMetadata {
     };
     dimensions: DimensionInfo[];
 }
+
+/** Candidate node produced by SSE traversal — carries pre-computed metrics for priority/budget. */
+export interface CandidateNode {
+    key: string;
+    screenError: number;
+    screenProjectedArea: number;
+    priority: number;
+    distanceToCamera: number;
+}
+
+/**
+ * Result of budget planning: which nodes to accept, which to load, and how many
+ * additional points need to be freed before loading can begin.
+ */
+export interface BudgetPlan {
+    /** Node keys accepted for this cycle (order by priority descending). */
+    accepted: string[];
+    /** Node keys to load (accepted but not yet in memory). */
+    toLoad: string[];
+    /** Additional points that need to be freed before toLoad can start. */
+    deficit: number;
+}
+
+/**
+ * Result of eviction planning: which nodes to evict and how many points that frees.
+ */
+export interface EvictionPlan {
+    /** Node keys to evict. */
+    keysToEvict: string[];
+    /** Total points that will be freed by evicting these nodes. */
+    freedPoints: number;
+}
+
+/**
+ * State of the request loop FSM.
+ * - `idle`: no active cycle, ready to start.
+ * - `running`: a cycle is in progress.
+ * - `running-dirty`: a cycle is in progress AND a new request arrived — one more cycle
+ *   will run after the current one completes.
+ */
+export type LoopState = "idle" | "running" | "running-dirty";

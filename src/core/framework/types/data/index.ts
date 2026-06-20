@@ -19,5 +19,9 @@ export type {
     ExtraPointAttributes,
     CopcMetadata,
     DimensionInfo,
+    CandidateNode,
+    BudgetPlan,
+    EvictionPlan,
+    LoopState,
 } from "./streaming";
 export type { MeasurementPoint3D, VolumeMeasurements } from "./measurement";
