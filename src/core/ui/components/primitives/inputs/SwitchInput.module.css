@@ -1,0 +1,48 @@
+.switch {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.track {
+    position: relative;
+    width: calc(var(--icon-lg) + var(--space-xs));
+    height: calc(var(--icon-sm) + var(--space-xs));
+    border-radius: var(--radius-lg);
+    background: var(--color-border);
+    transition: background-color var(--transition-fast);
+}
+
+.thumb {
+    position: absolute;
+    top: var(--space-xs);
+    left: var(--space-xs);
+    width: calc(var(--icon-sm) - var(--space-xs));
+    height: calc(var(--icon-sm) - var(--space-xs));
+    border-radius: 50%;
+    background: var(--color-background);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--transition-fast);
+}
+
+.checked .track {
+    background: var(--color-primary);
+}
+
+.checked .thumb {
+    transform: translateX(calc(var(--icon-lg) - var(--icon-sm)));
+}
+
+.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}

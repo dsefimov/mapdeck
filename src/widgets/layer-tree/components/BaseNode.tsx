@@ -6,6 +6,7 @@ import { isGroupNode, isLayerNode } from "@core/framework/types";
 import { LayerRoles, type LayerRole } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
 import { useRootStore } from "@core/framework/store";
+import { SwitchInput } from "@core/ui/components/primitives/inputs";
 import { LAYER_TREE_ID } from "..";
 import styles from "./Widget.module.css";
 
@@ -30,33 +31,6 @@ function ExpandButton({
             title={isExtended ? collapseLabel : expandLabel}
         >
             <Icon name={isExtended ? "not-collapsed" : "collapsed"} />
-        </button>
-    );
-}
-
-interface EyeButtonProps {
-    readonly iconName: IconName;
-    readonly isVisible: boolean;
-    readonly hideLabel: string;
-    readonly showLabel: string;
-    readonly onClick: (e: React.MouseEvent) => void;
-}
-
-function EyeButton({
-    iconName,
-    isVisible,
-    hideLabel,
-    showLabel,
-    onClick,
-}: EyeButtonProps) {
-    return (
-        <button
-            className={styles.layerTree__actionButton}
-            onClick={onClick}
-            aria-label={isVisible ? hideLabel : showLabel}
-            title={isVisible ? hideLabel : showLabel}
-        >
-            <Icon name={iconName} />
         </button>
     );
 }
@@ -148,7 +122,6 @@ interface NodeFlags {
     hasReports: boolean;
     showExpandButton: boolean;
     layerTypeIcon: IconName;
-    eyeIconName: IconName;
 }
 
 function getLayerTypeIconForNode(node: TreeNode): IconName {
@@ -166,19 +139,11 @@ function getLayerTypeIconForNode(node: TreeNode): IconName {
     return "layers";
 }
 
-function getEyeIconName(
-    hasEyeIcon: boolean,
-    nodeVisibility: boolean,
-): IconName {
-    return hasEyeIcon && nodeVisibility ? "eye-open" : "eye-closed";
-}
-
 function createClickHandlers(
     node: TreeNode,
     flags: NodeFlags,
     callbacks: {
         onToggleExpansion?: BaseNodeProps["onToggleExpansion"];
-        onToggleVisibility?: BaseNodeProps["onToggleVisibility"];
         onZoom?: BaseNodeProps["onZoom"];
     },
 ) {
@@ -187,15 +152,6 @@ function createClickHandlers(
             e.stopPropagation();
             if (flags.isGroup && callbacks.onToggleExpansion) {
                 callbacks.onToggleExpansion(node.id);
-            }
-        },
-        handleEyeClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
-            if (flags.hasEyeIcon && callbacks.onToggleVisibility) {
-                logger.debug(
-                    `Calling onToggleVisibility(${node.id}, ${!flags.nodeVisibility})`,
-                );
-                callbacks.onToggleVisibility(node.id, !flags.nodeVisibility);
             }
         },
         handleZoomClick: (e: React.MouseEvent) => {
@@ -232,7 +188,6 @@ function getNodeFlags(
         showExpandButton:
             shouldShowExpandArrow && isGroup && !!onToggleExpansion,
         layerTypeIcon: getLayerTypeIconForNode(node),
-        eyeIconName: getEyeIconName(hasEyeIcon, nodeVisibility),
     };
 }
 
@@ -263,8 +218,6 @@ interface NodeLabels {
     readonly typeIconLabel: string;
     readonly collapseLabel: string;
     readonly expandLabel: string;
-    readonly hideLabel: string;
-    readonly showLabel: string;
     readonly zoomToExtentLabel: string;
 }
 
@@ -283,8 +236,6 @@ function getNodeLabels(
                 : d["aria.layerType"]!,
         collapseLabel: d["aria.collapse"]!,
         expandLabel: d["aria.expand"]!,
-        hideLabel: d["aria.hideLayer"]!,
-        showLabel: d["aria.showLayer"]!,
         zoomToExtentLabel: d["aria.zoomToExtent"]!,
     };
 }
@@ -319,7 +270,6 @@ const BaseNode: (props: BaseNodeProps) => React.ReactNode = observer(
 
         const handlers = createClickHandlers(node, flags, {
             onToggleExpansion,
-            onToggleVisibility,
             onZoom,
         });
 
@@ -347,12 +297,15 @@ const BaseNode: (props: BaseNodeProps) => React.ReactNode = observer(
                     )}
 
                     {flags.hasEyeIcon && (
-                        <EyeButton
-                            iconName={flags.eyeIconName}
-                            isVisible={flags.nodeVisibility}
-                            hideLabel={labels.hideLabel}
-                            showLabel={labels.showLabel}
-                            onClick={handlers.handleEyeClick}
+                        <SwitchInput
+                            id={`visibility-${node.id}`}
+                            checked={flags.nodeVisibility}
+                            onChange={(checked) => {
+                                logger.debug(
+                                    `Calling onToggleVisibility(${node.id}, ${checked})`,
+                                );
+                                onToggleVisibility?.(node.id, checked);
+                            }}
                         />
                     )}
 

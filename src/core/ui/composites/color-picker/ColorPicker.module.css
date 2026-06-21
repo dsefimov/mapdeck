@@ -4,14 +4,6 @@
     gap: var(--space-sm);
 }
 
-.label {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-semibold);
-    color: var(--color-text-sec);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
 .row {
     display: flex;
     align-items: center;
@@ -19,8 +11,8 @@
 }
 
 .swatch {
-    width: 28px;
-    height: 28px;
+    width: calc(var(--icon-lg) + var(--space-xs));
+    height: calc(var(--icon-lg) + var(--space-xs));
     border-radius: var(--radius-sm);
     border: var(--border-sm) solid var(--color-border);
     flex-shrink: 0;
@@ -33,8 +25,8 @@
     border-radius: var(--radius-sm);
     background: var(--color-background);
     color: var(--color-text);
-    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
     font-size: var(--font-size-xs);
+    font-family: inherit;
     outline: none;
 }
 
@@ -44,24 +36,29 @@
 
 .sliderWrapper {
     position: relative;
-    height: 1rem;
+    height: var(--icon-sm);
+    padding: var(--space-xs);
+    background: var(--color-border);
+    border-radius: var(--radius-lg);
+    box-sizing: content-box;
+    overflow: hidden;
 }
 
 .hueCanvas {
     display: block;
     width: 100%;
-    height: 1rem;
-    border-radius: var(--radius-md);
+    height: 100%;
+    border-radius: var(--radius-lg);
     cursor: pointer;
 }
 
 .hueThumb {
     position: absolute;
-    top: -3px;
-    width: 12px;
-    height: 22px;
-    border: var(--border-md) solid #fff;
-    border-radius: 3px;
+    top: var(--border-sm);
+    width: calc(var(--icon-sm) - var(--space-xs));
+    height: calc(var(--icon-sm) + 2 * var(--space-xs) - var(--border-md));
+    border: var(--border-md) solid var(--color-background);
+    border-radius: var(--radius-xs);
     background: transparent;
     pointer-events: none;
     box-shadow: var(--shadow-sm);

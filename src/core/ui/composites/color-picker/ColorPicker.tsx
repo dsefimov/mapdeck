@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
+import { InputLabel } from "@core/ui/components/primitives/inputs";
 import styles from "./ColorPicker.module.css";
 
 export interface ColorPickerProps {
@@ -147,10 +148,13 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
     const currentHue = hexToHue(value);
     const thumbPercent = (currentHue / 360) * 100;
+    const hueInputId = `${label.replace(/\s+/g, "-").toLowerCase()}-hue`;
 
     return (
         <div className={styles.container}>
-            <label className={styles.label}>{label}</label>
+            <InputLabel variant="caption" htmlFor={hueInputId}>
+                {label}
+            </InputLabel>
             <div className={styles.row}>
                 <div
                     className={styles.swatch}
@@ -170,9 +174,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
             <div className={styles.sliderWrapper}>
                 <canvas
                     ref={canvasRef}
+                    id={hueInputId}
                     className={styles.hueCanvas}
-                    width={200}
-                    height={16}
                     onMouseDown={handlePointerDown}
                     role="slider"
                     aria-label={`${label} hue`}

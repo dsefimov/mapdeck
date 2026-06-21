@@ -29,8 +29,9 @@
     --color-error: #d32f2f;
 
     /* ═══════════════════════════════════════════
-     3. SPACING (strictly 3 values)
+     3. SPACING (strictly 4 values)
      ═══════════════════════════════════════════ */
+    --space-xs: 0.25rem; /*  4px — tight padding, inner gaps */
     --space-sm: 0.5rem; /*  8px — inner padding, compact lists */
     --space-md: 1rem; /* 16px — main grid step, panel paddings */
     --space-lg: 2rem; /* 32px — outer margins, sections */
@@ -48,6 +49,7 @@
     --font-semibold: 600;
     --line-tight: 1.25;
     --line-normal: 1.5;
+    --letter-spacing-caption: 0.04em; /* uppercase labels */
 
     /* ═══════════════════════════════════════════
      5. BORDERS AND RADIUS
@@ -55,8 +57,10 @@
     --border-sm: 1px;
     --border-md: 2px;
     --border-lg: 4px;
+    --radius-xs: 0.125rem; /* 2px  — slider track, tiny elements */
     --radius-sm: 0.25rem; /* 4px  — inputs, small cards */
-    --radius-md: 0.5rem; /* 8px  — panels, modals, toolbars */
+    --radius-md: 6px; /* 8px  — panels, modals, toolbars */
+    --radius-lg: 12px;
 
     /* ═══════════════════════════════════════════
      6. SHADOWS AND Z-INDEX (gray-based)

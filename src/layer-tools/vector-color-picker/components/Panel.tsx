@@ -4,7 +4,8 @@ import { useRootStore } from "@core/framework/store";
 import { isLayerNode, LayerRoles } from "@core/framework/types";
 import type { TreeNode, VectorLayerConfig } from "@core/framework/types";
 import { logger } from "@core/shared/diagnostics/logger";
-import { ColorPicker } from "@core/ui/components/color-picker/ColorPicker";
+import { ColorPicker } from "@core/ui/composites/color-picker/ColorPicker";
+import { InputLabel, SliderInput } from "@core/ui/components/primitives/inputs";
 import { VECTOR_COLOR_PICKER_ID } from "./Tool";
 import styles from "./Panel.module.css";
 
@@ -78,13 +79,8 @@ export const VectorColorPickerComponent: (
         );
     };
 
-    const handleOpacityChange = (
-        event: React.ChangeEvent<HTMLInputElement>,
-    ): void => {
-        const newOpacity = parseFloat(event.target.value);
-        if (!isNaN(newOpacity)) {
-            updateOpacity(newOpacity);
-        }
+    const handleOpacityChange = (newOpacity: number): void => {
+        updateOpacity(newOpacity);
     };
 
     return (
@@ -100,22 +96,18 @@ export const VectorColorPickerComponent: (
                 onChange={(color) => updatePaint({ "line-color": color })}
             />
             <div className={styles.opacitySection}>
-                <label className={styles.opacityLabel}>
-                    {dict["label.opacity"] ?? "Opacity"}
-                </label>
-                <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.01"
+                <InputLabel variant="caption" htmlFor="opacity">
+                    {dict["label.opacity"] ?? "Opacity"}:{" "}
+                    {Math.round(opacity * 100)}%
+                </InputLabel>
+                <SliderInput
+                    id="opacity"
+                    min={0}
+                    max={1}
+                    step={0.01}
                     value={opacity}
                     onChange={handleOpacityChange}
-                    className={styles.opacitySlider}
-                    aria-label={dict["label.opacity"] ?? "Opacity"}
                 />
-                <span className={styles.opacityValue}>
-                    {Math.round(opacity * 100)}%
-                </span>
             </div>
         </div>
     );

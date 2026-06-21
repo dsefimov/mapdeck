@@ -10,6 +10,7 @@ import type { PointCloudLayerConfig } from "@core/framework/types";
 import { useDebounce } from "@core/framework/hooks";
 import { formatDict } from "@core/framework/i18n";
 import { logger } from "@core/shared/diagnostics/logger";
+import { InputLabel, SliderInput } from "@core/ui/components/primitives/inputs";
 import { POINT_SIZE_SLIDER_ID } from "./Tool";
 import styles from "./Panel.module.css";
 
@@ -64,9 +65,7 @@ export const PointSizeSliderComponent: (
     const debounced = useDebounce(applyPointSizeUpdate, DEBOUNCE_DELAY_MS);
 
     const handlePointSizeChange = useCallback(
-        (event: React.ChangeEvent<HTMLInputElement>) => {
-            const newPointSize = parseFloat(event.target.value);
-
+        (newPointSize: number) => {
             if (isNaN(newPointSize)) {
                 return;
             }
@@ -87,16 +86,16 @@ export const PointSizeSliderComponent: (
 
     return (
         <div className={styles.pointSizeSliderContainer}>
-            <label className={styles.pointSizeLabel}>
+            <InputLabel htmlFor="pointSize">
                 {formatDict(dict["label.pointSize"]!, {
                     value: displayPointSize.toFixed(1),
                 })}
                 {debounced.isPending && (
                     <span className={styles.debouncingIndicator}>...</span>
                 )}
-            </label>
-            <input
-                type="range"
+            </InputLabel>
+            <SliderInput
+                id="pointSize"
                 min={POINT_SIZE_MIN}
                 max={POINT_SIZE_MAX}
                 step={POINT_SIZE_STEP}
@@ -105,8 +104,6 @@ export const PointSizeSliderComponent: (
                 onPointerUp={handlePointerUp}
                 onMouseUp={handlePointerUp}
                 onTouchEnd={handlePointerUp}
-                className={styles.pointSizeSlider}
-                aria-label={dict["aria.pointSize"]}
             />
         </div>
     );

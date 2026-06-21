@@ -1,0 +1,58 @@
+.slider {
+    width: 100%;
+    height: var(--border-lg);
+    border-radius: var(--radius-xs);
+    appearance: none;
+    outline: none;
+    cursor: pointer;
+    margin-bottom: var(--space-sm);
+    background: linear-gradient(
+        to right,
+        var(--color-primary) 0%,
+        var(--color-primary) var(--slider-fill, 0%),
+        var(--color-border) var(--slider-fill, 0%),
+        var(--color-border) 100%
+    );
+}
+
+.slider::-webkit-slider-thumb {
+    appearance: none;
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    border-radius: 50%;
+    background: var(--color-background);
+    cursor: pointer;
+    border: var(--border-sm) solid var(--color-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+.slider::-moz-range-thumb {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    border-radius: 50%;
+    background: var(--color-background);
+    cursor: pointer;
+    border: var(--border-sm) solid var(--color-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Firefox draws progress natively via ::-moz-range-progress;
+   the linear-gradient above only renders correctly in WebKit/Blink.
+   Override the flat background there and use the native track instead. */
+@supports (-moz-appearance: none) {
+    .slider {
+        background: var(--color-border);
+    }
+
+    .slider::-moz-range-progress {
+        height: var(--border-lg);
+        border-radius: var(--radius-xs);
+        background: var(--color-primary);
+    }
+
+    .slider::-moz-range-track {
+        height: var(--border-lg);
+        border-radius: var(--radius-xs);
+        background: var(--color-border);
+    }
+}

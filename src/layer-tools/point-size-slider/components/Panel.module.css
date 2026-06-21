@@ -1,49 +1,5 @@
-.pointSizeLabel {
-    display: block;
-    margin-bottom: var(--space-sm);
-    font-size: var(--font-size-md);
-    font-weight: var(--font-regular);
-    color: var(--color-text);
-    user-select: none;
+.pointSizeSliderContainer {
 }
 
-.pointSizeSlider {
-    width: 100%;
-    height: 4px;
-    border-radius: 2px;
-    background: var(--color-border);
-    outline: none;
-    appearance: none;
-    cursor: pointer;
-    margin-bottom: var(--space-sm);
-}
-
-.pointSizeSlider::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--color-primary);
-    cursor: pointer;
-    border: 2px solid var(--color-background);
-    box-shadow: var(--shadow-sm);
-    transition: background-color var(--transition-fast);
-}
-
-.pointSizeSlider::-webkit-slider-thumb:hover {
-    background: color-mix(in srgb, var(--color-primary) 85%, black);
-}
-
-.pointSizeSlider::-moz-range-thumb {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--color-primary);
-    cursor: pointer;
-    border: 2px solid var(--color-background);
-    box-shadow: var(--shadow-sm);
-}
-
-.pointSizeSlider::-moz-range-thumb:hover {
-    background: color-mix(in srgb, var(--color-primary) 85%, black);
+.debouncingIndicator {
 }
