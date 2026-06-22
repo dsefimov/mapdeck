@@ -3,36 +3,9 @@
 // Runs off the main thread to prevent UI freezes during large point cloud loads.
 
 import proj4 from "proj4";
-
-// --- Types (inlined — Worker cannot import from @core module aliases) ---
-
-interface ProcessRequest {
-    requestId: string;
-    pointCount: number;
-    rawX: Float64Array;
-    rawY: Float64Array;
-    rawZ: Float32Array;
-    rawIntensity: Uint16Array;
-    rawClassification: Uint8Array;
-    rawR: Uint16Array | null;
-    rawG: Uint16Array | null;
-    rawB: Uint16Array | null;
-    hasColor: boolean;
-    wkt: string | null;
-    coordinateOrigin: [number, number, number];
-    globalBounds: [number, number, number, number, number, number] | null;
-}
-
-interface ProcessResult {
-    requestId: string;
-    positions: Float32Array;
-    colorsRgb: Uint8Array;
-    colorsElevation: Uint8Array;
-    colorsIntensity: Uint8Array;
-    colorsClassification: Uint8Array;
-    intensities: Float32Array;
-    classifications: Uint8Array;
-}
+import { extractProjcsFromWkt } from "../geometry/crs";
+import { clampLatLng } from "../geometry/wgs84";
+import type { ProcessRequest, ProcessResult } from "./pointProcessing.types";
 
 // --- Transformer cache (WKT → proj4 converter, created once) ---
 
@@ -50,30 +23,11 @@ function getTransformer(
     if (!proj4.defs("EPSG:4326")) {
         proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
     }
-    const converter = proj4(extractProjcs(wkt), "EPSG:4326");
+    const converter = proj4(extractProjcsFromWkt(wkt), "EPSG:4326");
     const fn = (coord: [number, number]) =>
         converter.forward(coord) as [number, number];
     transformerCache.set(wkt, fn);
     return fn;
-}
-
-function extractProjcs(wkt: string): string {
-    if (!wkt.startsWith("COMPD_CS[")) return wkt;
-    const start = wkt.indexOf("PROJCS[");
-    if (start === -1) return wkt;
-    let depth = 0;
-    for (let i = start; i < wkt.length; i++) {
-        if (wkt[i] === "[") depth++;
-        if (wkt[i] === "]" && --depth === 0) return wkt.substring(start, i + 1);
-    }
-    return wkt;
-}
-
-function clampLatLng(lng: number, lat: number): [number, number] {
-    return [
-        Math.max(-180, Math.min(180, lng)),
-        Math.max(-90, Math.min(90, lat)),
-    ];
 }
 
 // --- Classification color map ---
@@ -105,7 +59,6 @@ function process(req: ProcessRequest): ProcessResult {
     const { pointCount, coordinateOrigin } = req;
     const N = pointCount;
 
-    // Step 1: coordinate transformation
     const positions = new Float32Array(N * 3);
     const coordBuf: [number, number] = [0, 0];
 
@@ -128,16 +81,13 @@ function process(req: ProcessRequest): ProcessResult {
         }
     }
 
-    // Step 2: normalize intensities (0–1)
     const intensities = new Float32Array(N);
     for (let i = 0; i < N; i++) {
         intensities[i] = req.rawIntensity[i]! / 65535;
     }
 
-    // Step 3: classifications (copy as-is)
     const classifications = new Uint8Array(req.rawClassification);
 
-    // Step 4: all four color schemes in a single pass
     const colors = computeAllColors(
         req,
         positions,
@@ -185,20 +135,30 @@ function computeAllColors(
     const elevParams = getElevationParams(req.globalBounds);
 
     for (let i = 0; i < N; i++) {
-        const rgbChannels: [number, number, number] | null = hasRgb
-            ? [req.rawR![i]!, req.rawG![i]!, req.rawB![i]!]
-            : null;
-        writeRgbChannel(colorsRgb, i, rgbChannels);
-        writeIntensityChannel(colorsIntensity, i, intensities[i]!);
+        const off = i * 4;
+        if (hasRgb) {
+            const r = req.rawR![i]!;
+            const g = req.rawG![i]!;
+            const b = req.rawB![i]!;
+            colorsRgb[off] = r > 255 ? r >> 8 : r;
+            colorsRgb[off + 1] = g > 255 ? g >> 8 : g;
+            colorsRgb[off + 2] = b > 255 ? b >> 8 : b;
+        } else {
+            colorsRgb[off] = 255;
+            colorsRgb[off + 1] = 255;
+            colorsRgb[off + 2] = 255;
+        }
+        colorsRgb[off + 3] = 255;
+        writeIntensityChannel(colorsIntensity, off, intensities[i]!);
         writeElevationChannel(
             colorsElevation,
-            i,
+            off,
             positions[i * 3 + 2]!,
             elevParams,
         );
         writeClassificationChannel(
             colorsClassification,
-            i,
+            off,
             classifications[i]!,
         );
     }
@@ -220,30 +180,11 @@ function getElevationParams(
     return { minZ, invRange };
 }
 
-function writeRgbChannel(
-    buf: Uint8Array,
-    i: number,
-    channels: [number, number, number] | null,
-): void {
-    const off = i * 4;
-    if (channels !== null) {
-        buf[off] = channels[0] > 255 ? channels[0] >> 8 : channels[0];
-        buf[off + 1] = channels[1] > 255 ? channels[1] >> 8 : channels[1];
-        buf[off + 2] = channels[2] > 255 ? channels[2] >> 8 : channels[2];
-    } else {
-        buf[off] = 255;
-        buf[off + 1] = 255;
-        buf[off + 2] = 255;
-    }
-    buf[off + 3] = 255;
-}
-
 function writeIntensityChannel(
     buf: Uint8Array,
-    i: number,
+    off: number,
     intensity: number,
 ): void {
-    const off = i * 4;
     const v = (intensity * 255) | 0;
     buf[off] = v;
     buf[off + 1] = v;
@@ -253,11 +194,10 @@ function writeIntensityChannel(
 
 function writeElevationChannel(
     buf: Uint8Array,
-    i: number,
+    off: number,
     z: number,
     params: { minZ: number; invRange: number },
 ): void {
-    const off = i * 4;
     const t = (z - params.minZ) * params.invRange;
     const tc = Math.max(0, Math.min(1, t));
     buf[off] = (tc * 255) | 0;
@@ -268,10 +208,9 @@ function writeElevationChannel(
 
 function writeClassificationChannel(
     buf: Uint8Array,
-    i: number,
+    off: number,
     cls: number,
 ): void {
-    const off = i * 4;
     const fallback: [number, number, number] = [128, 128, 128];
     const rgb = CLASSIFICATION_COLORS[cls] ?? fallback;
     buf[off] = rgb[0];

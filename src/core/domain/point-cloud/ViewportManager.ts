@@ -1,13 +1,16 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { ViewportInfo } from "@core/framework/types";
-import { logger } from "@core/shared/diagnostics/logger";
-import type {
-    CameraSnapshot,
-    FrustumPlanes,
-    ProjectToCommonSpace,
-    CenterOffset,
-} from "./geometry";
+import type { CameraSnapshot, FrustumPlanes } from "./geometry";
 import type { Viewport } from "@deck.gl/core";
+import { buildCameraSnapshot } from "./geometry/buildCameraSnapshot";
+import { debounce } from "@core/shared/async/debounce";
+
+/** Unified provider for viewport-dependent state. */
+export interface ViewportStateProvider {
+    getCameraPosition(): [number, number, number];
+    getFrustumPlanes(): FrustumPlanes | null;
+    getActiveViewport(): Viewport | null;
+}
 
 /**
  * Options for the ViewportManager
@@ -19,46 +22,14 @@ export interface ViewportManagerOptions {
      */
     debounceMs?: number;
 
-    /**
-     * External camera position provider. When provided, replaces the built-in
-     * altitude calculation with deck.gl's authoritative view-matrix position.
-     */
-    getCameraPosition?: () => [number, number, number];
-
-    /**
-     * External frustum planes provider. When provided, enables 3D frustum
-     * culling via deck.gl Viewport.getFrustumPlanes().
-     */
-    getFrustumPlanes?: () => FrustumPlanes | null;
-
-    /** External Viewport provider for common-space projection and center offset. */
-    getActiveViewport?: () => Viewport | null;
+    /** Unified provider for camera position, frustum planes, and viewport. */
+    provider?: ViewportStateProvider;
 
     /**
      * Optional immediate (non-debounced) callback for render updates.
      * Fires on every `move` event — keep it fast (frustum filter + lightweight copy).
      */
     onImmediateChange?: ViewportChangeCallback;
-}
-
-/**
- * Debounces a function call
- */
-function debounce<T extends (...args: unknown[]) => void>(
-    fn: T,
-    delay: number,
-): (...args: Parameters<T>) => void {
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    return (...args: Parameters<T>) => {
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-        }
-        timeoutId = setTimeout(() => {
-            fn(...args);
-            timeoutId = null;
-        }, delay);
-    };
 }
 
 /**
@@ -84,9 +55,7 @@ export class ViewportManager {
     private _debouncedHandler: () => void;
     private _immediateHandler: (() => void) | undefined;
     private _isActive: boolean = false;
-    private _getCameraPosition: (() => [number, number, number]) | undefined;
-    private _getFrustumPlanes: (() => FrustumPlanes | null) | undefined;
-    private _getActiveViewport: (() => Viewport | null) | undefined;
+    private _provider: ViewportStateProvider | undefined;
 
     constructor(
         map: MapLibreMap,
@@ -96,18 +65,10 @@ export class ViewportManager {
         this._map = map;
         this._onViewportChange = onViewportChange;
 
-        const {
-            debounceMs = 150,
-            getCameraPosition,
-            getFrustumPlanes,
-            getActiveViewport,
-            onImmediateChange,
-        } = options || {};
+        const { debounceMs = 150, provider, onImmediateChange } = options || {};
 
         this._debounceMs = debounceMs;
-        this._getCameraPosition = getCameraPosition;
-        this._getFrustumPlanes = getFrustumPlanes;
-        this._getActiveViewport = getActiveViewport;
+        this._provider = provider;
         this._onImmediateChange = onImmediateChange;
 
         this._debouncedHandler = debounce(
@@ -191,13 +152,6 @@ export class ViewportManager {
         const state = this._computeViewportState();
         if (!state) return;
 
-        const [viewportInfo] = state;
-        logger.debug(
-            `[VIEWPORT] bounds=${viewportInfo.bounds.map((v) =>
-                v.toFixed(4),
-            )}, zoom=${viewportInfo.zoom.toFixed(1)}`,
-        );
-
         this._onViewportChange(...state);
     }
 
@@ -210,40 +164,31 @@ export class ViewportManager {
     }
 
     /** Compute frustum & camera state shared between debounced and immediate handlers. */
-    // eslint-disable-next-line complexity
     private _computeViewportState(): Parameters<ViewportChangeCallback> | null {
-        const cameraPos = this._getCameraPosition?.();
+        if (!this._provider) return null;
+
+        const cameraPos = this._provider.getCameraPosition();
         if (!cameraPos) return null;
 
-        const frustumPlanes = this._getFrustumPlanes?.();
+        const frustumPlanes = this._provider.getFrustumPlanes();
         if (!frustumPlanes) return null;
 
-        const vp = this._getActiveViewport?.();
+        const vp = this._provider.getActiveViewport();
         if (!vp) return null;
 
-        const [cx = 0, cy = 0, cz = 0] = vp.center ?? [];
-        const centerOffset: CenterOffset = [cx, cy, cz];
-
-        const projectToCommonSpace: ProjectToCommonSpace = (lng, lat, alt) =>
-            vp.projectPosition([lng, lat, alt]) as [number, number, number];
-
         const viewportInfo = this.getCurrentViewport();
-        const fovRadians =
-            (((this._map as { getFov?: () => number }).getFov?.() ?? 60) *
-                Math.PI) /
-            180;
+        const fovDegrees =
+            (this._map as { getFov?: () => number }).getFov?.() ?? 60;
 
-        return [
-            viewportInfo,
-            {
-                frustumPlanes,
-                cameraPos,
-                fovRadians,
-                projectToCommonSpace,
-                centerOffset,
-                screenHeightPx:
-                    typeof window !== "undefined" ? window.innerHeight : 1080,
-            },
-        ];
+        const camera = buildCameraSnapshot({
+            cameraPos,
+            frustumPlanes,
+            viewport: vp,
+            fovDegrees,
+            screenHeightPx:
+                typeof window !== "undefined" ? window.innerHeight : 1080,
+        });
+
+        return [viewportInfo, camera];
     }
 }

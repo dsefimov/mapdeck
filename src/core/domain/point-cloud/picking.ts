@@ -2,7 +2,6 @@
  * Shared picking utilities for Deck.gl point cloud picking.
  * Extracted from ruler-3d/coordinates.ts for reuse across map tools.
  */
-import { logger } from "@core/shared/diagnostics/logger";
 import type { LayerAdapterFactory } from "@core/domain/adapters";
 import { LayerRoles } from "@core/framework/types";
 import type { MeasurementPoint3D, PointCloudData } from "@core/framework/types";
@@ -329,15 +328,11 @@ export function getPointFromPickingInfo(
     try {
         const cloudData = getCloudData(mainLayerId, adapterFactory);
         if (!cloudData) {
-            logger.warn(`picking: No loaded data for layer: ${mainLayerId}`);
             return null;
         }
 
         const globalPointIndex = calculateGlobalIndex(pointIndex, chunkIndex);
         if (!isValidPointIndex(globalPointIndex, cloudData.pointCount)) {
-            logger.warn(
-                `picking: Invalid point index ${globalPointIndex} for layer ${mainLayerId}`,
-            );
             return null;
         }
 
@@ -354,9 +349,6 @@ export function getPointFromPickingInfo(
         }
 
         if (!coords) {
-            logger.warn(
-                `picking: Failed to get coordinates for point ${globalPointIndex}`,
-            );
             return null;
         }
 
@@ -372,8 +364,7 @@ export function getPointFromPickingInfo(
             coordinateOrigin: cloudData.coordinateOrigin,
             attributes,
         };
-    } catch (error) {
-        logger.error("picking: Failed to get point from picking info", error);
+    } catch {
         return null;
     }
 }

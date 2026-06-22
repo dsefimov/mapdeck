@@ -1,10 +1,6 @@
 // Logger — most widely used utility
 export { logger } from "./diagnostics/logger";
 
-// Performance instrumentation (no-op when disabled, removable from prod builds)
-export { perfTracker, PerfTracker } from "./diagnostics/PerfTracker";
-export type { PerfReport } from "./diagnostics/PerfTracker";
-
 // Debounce
 export { debounce } from "./async/debounce";
 

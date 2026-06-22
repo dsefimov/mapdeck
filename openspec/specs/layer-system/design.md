@@ -188,7 +188,7 @@ Deck.gl renders volumetric data (point clouds, 3D vectors) as a WebGL overlay on
 
 COPC (Cloud Optimized Point Cloud) files are loaded progressively using viewport-based LOD.
 
-**CopcStreamingLoader** (`src/core/domain/overlay/deck/loaders/CopcStreamingLoader.ts`) streams COPC.LAZ files: initializes by fetching COPC metadata and octree hierarchy, selects nodes for the current viewport via `selectNodesForViewport()`, queues and loads nodes with configurable concurrency (max 4), and emits `PointCloudData` via `onPointsLoaded` callback. Configurable with `pointBudget` (default 10M), `viewportDebounceMs` (150), `minDetailZoom` (10), `maxOctreeDepth` (20).
+**CopcStreamingLoader** (`src/core/domain/overlay/deck/loaders/CopcStreamingLoader.ts`) streams COPC.LAZ files: initializes by fetching COPC metadata and octree hierarchy, selects nodes for the current viewport via `selectNodesForViewport()`, queues and loads nodes with configurable concurrency (max 4), and emits `PointCloudData` via `onPointsLoaded` callback. Configurable with `pointBudget` (default 40M), `viewportDebounceMs` (150), `minDetailZoom` (10), `maxOctreeDepth` (20).
 
 **ViewportManager** (`src/core/domain/overlay/deck/ViewportManager.ts`) listens to MapLibre events and calculates target octree depth dynamically from COPC spacing and ground resolution, with adjustments for pitch and camera distance. Lifecycle: `start()` / `stop()` / `destroy()`.
 

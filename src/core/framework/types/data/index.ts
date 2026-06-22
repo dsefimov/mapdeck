@@ -5,12 +5,13 @@ export {
     hasClassification,
     ColorScheme,
 } from "./pointCloud";
+export { LoopState } from "./streaming";
 export type {
     CopcLoadingMode,
     NodeKey,
     StreamingLoaderOptions,
     StreamingSource,
-    PointCloudBounds,
+    BBox3D,
     NodeState,
     CachedNode,
     ViewportInfo,
@@ -22,6 +23,5 @@ export type {
     CandidateNode,
     BudgetPlan,
     EvictionPlan,
-    LoopState,
 } from "./streaming";
 export type { MeasurementPoint3D, VolumeMeasurements } from "./measurement";

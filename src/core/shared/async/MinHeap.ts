@@ -3,9 +3,9 @@
 // Used for priority queue in point cloud node loading.
 
 export class MinHeap<T> {
-    private heap: T[] = [];
+    protected heap: T[] = [];
 
-    constructor(private readonly compare: (a: T, b: T) => number) {}
+    constructor(protected readonly compare: (a: T, b: T) => number) {}
 
     get size(): number {
         return this.heap.length;
@@ -35,7 +35,7 @@ export class MinHeap<T> {
         this.heap = [];
     }
 
-    private _bubbleUp(i: number): void {
+    protected _bubbleUp(i: number): void {
         while (i > 0) {
             const parent = (i - 1) >> 1;
             if (this.compare(this.heap[i]!, this.heap[parent]!) < 0) {
@@ -48,7 +48,7 @@ export class MinHeap<T> {
         }
     }
 
-    private _sinkDown(i: number): void {
+    protected _sinkDown(i: number): void {
         const n = this.heap.length;
         while (true) {
             let smallest = i;

@@ -1,2 +1,5 @@
 export { computeBudgetPlan } from "./computeBudgetPlan";
-export { computeEvictionPlan } from "./computeEvictionPlan";
+export { computeOccupiedBudget } from "./computeOccupiedBudget";
+export { buildParentChildMap } from "./buildParentChildMap";
+export { reserveSiblingBlock } from "./reserveSiblingBlock";
+export { truncateToPlan } from "./truncateToPlan";

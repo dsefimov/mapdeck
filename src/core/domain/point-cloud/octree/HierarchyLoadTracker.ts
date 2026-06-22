@@ -28,6 +28,9 @@ export class HierarchyLoadTracker {
     /** Individual node keys already delivered to `onNodesDiscovered`. */
     private _registeredNodeKeys = new Set<string>();
 
+    /** Per-node hierarchy page — populated during _registerNodesOnce. */
+    readonly pageByKey = new Map<string, Hierarchy.Page>();
+
     /**
      * @param source - Copc source (URL string or Getter).
      * @param onNodesDiscovered - Callback for newly discovered nodes (nodeCache + rbush mutations).
@@ -105,6 +108,7 @@ export class HierarchyLoadTracker {
         this._loadedKeys.clear();
         this._inFlight.clear();
         this._registeredNodeKeys.clear();
+        this.pageByKey.clear();
     }
 
     private async _loadRecursive(page: Hierarchy.Page): Promise<void> {
@@ -131,6 +135,11 @@ export class HierarchyLoadTracker {
             this._registeredNodeKeys.add(key);
             freshNodes[key] = entry;
             hasFreshNodes = true;
+        }
+
+        // Store per-node hierarchy pages for expansion queries.
+        for (const [childKey, page] of Object.entries(subtree.pages)) {
+            if (page) this.pageByKey.set(childKey, page);
         }
 
         if (hasFreshNodes) {

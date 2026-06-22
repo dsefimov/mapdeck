@@ -112,7 +112,7 @@ export type {
     NodeKey,
     StreamingLoaderOptions,
     StreamingSource,
-    PointCloudBounds,
+    BBox3D,
     NodeState,
     CachedNode,
     ViewportInfo,
@@ -124,8 +124,8 @@ export type {
     CandidateNode,
     BudgetPlan,
     EvictionPlan,
-    LoopState,
 } from "./data";
+export { LoopState } from "./data";
 
 export type { MeasurementPoint3D, VolumeMeasurements } from "./data";
 

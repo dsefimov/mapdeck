@@ -12,7 +12,6 @@ import {
     type PointCloudData,
     type StreamingLoaderOptions,
 } from "@core/framework/types";
-import { logger } from "@core/shared/diagnostics/logger";
 import {
     DEFAULT_POINT_BUDGET,
     DEFAULT_MAX_SCREEN_ERROR_PX,
@@ -21,8 +20,8 @@ import { createCancellable } from "@core/shared/async";
 import { comparer } from "mobx";
 import { CopcStreamingLoader } from "@core/domain/point-cloud/CopcStreamingLoader";
 import { ViewportManager } from "@core/domain/point-cloud/ViewportManager";
-import { PointCloudLayerFactory } from "@core/domain/point-cloud/PointCloudLayerFactory";
-import { perfTracker } from "@core/shared/diagnostics/PerfTracker";
+import { createPointCloudLayer } from "@core/domain/point-cloud/PointCloudLayerFactory";
+import { createLazPerf } from "laz-perf";
 
 interface PointCloudLayerState {
     loader: CopcStreamingLoader;
@@ -49,6 +48,17 @@ export class PointCloudAdapter implements LayerAdapter<
             viewportDebounceMs: 150,
             maxOctreeDepth: 20,
             maxSubtreesPerViewport: 60,
+            maximumRequests: 6,
+            maximumRequestsPerServer: 4,
+            maximumTiles: 200,
+            baseScreenSpaceError: 512,
+            skipScreenSpaceErrorFactor: 16,
+            skipLevels: 1,
+            progressiveResolutionHeightFraction: 0.3,
+            dynamicScreenSpaceError: false,
+            dynamicScreenSpaceErrorDensity: 2.0e-4,
+            dynamicScreenSpaceErrorFactor: 24.0,
+            dynamicScreenSpaceErrorHeightFalloff: 0.25,
         };
 
     private _layers = new Map<string, PointCloudLayerState>();
@@ -80,9 +90,19 @@ export class PointCloudAdapter implements LayerAdapter<
                 );
             }
 
+            const lazPerfPromise = createLazPerf({
+                locateFile: (path: string) => {
+                    if (path.endsWith(".wasm")) {
+                        return "/laz-perf.wasm";
+                    }
+                    return path;
+                },
+            });
+
             const loader = new CopcStreamingLoader(
                 sourceRef,
                 PointCloudAdapter.DEFAULT_STREAMING_OPTIONS,
+                lazPerfPromise,
             );
 
             const task = createCancellable();
@@ -103,10 +123,6 @@ export class PointCloudAdapter implements LayerAdapter<
             const state = this._layers.get(layerId);
             state?.loader.destroy();
             this._layers.delete(layerId);
-            logger.error(
-                `PointCloudAdapter: Failed to add layer "${layerId}"`,
-                error,
-            );
             throw error;
         }
     }
@@ -123,15 +139,7 @@ export class PointCloudAdapter implements LayerAdapter<
             await loader.initialize();
             if (signal.aborted) return;
 
-            let firstRender = true;
-
             loader.setOnPointsLoaded((data: PointCloudData) => {
-                if (firstRender) {
-                    firstRender = false;
-                    perfTracker.mark("first-points-rendered", {
-                        pointCount: data.pointCount,
-                    });
-                }
                 state.data = data;
                 this._updateDeckLayer(layerId, overlayManager);
             });
@@ -151,23 +159,18 @@ export class PointCloudAdapter implements LayerAdapter<
                         viewport.bounds[2],
                         viewport.bounds[3],
                     ];
-                    loader
-                        .selectNodesSSE(camera, viewportBounds)
-                        .catch((err) => {
-                            logger.error(
-                                `PointCloudAdapter: Error selecting nodes for viewport on layer "${layerId}"`,
-                                err,
-                            );
-                        });
+                    loader.selectNodesSSE(camera, viewportBounds);
                 },
                 {
                     debounceMs: 150,
-                    getCameraPosition: () =>
-                        ctx.overlayManager.getCameraPosition() ?? [0, 0, 0],
-                    getFrustumPlanes: () =>
-                        ctx.overlayManager.getFrustumPlanes(),
-                    getActiveViewport: () =>
-                        ctx.overlayManager.getActiveViewport(),
+                    provider: {
+                        getCameraPosition: () =>
+                            ctx.overlayManager.getCameraPosition() ?? [0, 0, 0],
+                        getFrustumPlanes: () =>
+                            ctx.overlayManager.getFrustumPlanes(),
+                        getActiveViewport: () =>
+                            ctx.overlayManager.getActiveViewport(),
+                    },
                     onImmediateChange: (_viewport, camera) => {
                         loader.setCameraSnapshot(camera);
                     },
@@ -176,11 +179,7 @@ export class PointCloudAdapter implements LayerAdapter<
 
             state.viewportManager = viewportManager;
             viewportManager.start();
-        }).catch((error) => {
-            logger.error(
-                `PointCloudAdapter: Failed to initialize COPC loader for layer "${layerId}"`,
-                error,
-            );
+        }).catch(() => {
             this._layers.delete(layerId);
         });
     }
@@ -222,17 +221,11 @@ export class PointCloudAdapter implements LayerAdapter<
         const { config } = descriptor;
 
         if (!isPointCloudConfig(config)) {
-            logger.warn(
-                `PointCloudAdapter: Cannot update non-point-cloud config for layer "${layerId}"`,
-            );
             return;
         }
 
         const state = this._layers.get(layerId);
         if (!state) {
-            logger.warn(
-                `PointCloudAdapter: No state found for layer "${layerId}"`,
-            );
             return;
         }
 
@@ -249,7 +242,7 @@ export class PointCloudAdapter implements LayerAdapter<
             // Keeps in-flight loads alive and avoids abort cascade.
             try {
                 const data = state.loader.getLoadedPointCloudData();
-                const layer = PointCloudLayerFactory.createLayer(
+                const layer = createPointCloudLayer(
                     layerId,
                     data,
                     config,
@@ -298,16 +291,13 @@ export class PointCloudAdapter implements LayerAdapter<
         const { config, data, dataVersion } = state;
 
         if (!data) {
-            logger.warn(
-                `PointCloudAdapter: No data available for layer "${layerId}"`,
-            );
             return;
         }
 
         try {
             state.dataVersion = dataVersion + 1;
 
-            const layer = PointCloudLayerFactory.createLayer(
+            const layer = createPointCloudLayer(
                 layerId,
                 data,
                 config,
@@ -315,27 +305,21 @@ export class PointCloudAdapter implements LayerAdapter<
             );
 
             overlayManager.addLayer(layerId, layer);
-        } catch (error) {
-            logger.error(
-                `PointCloudAdapter: Failed to update deck.gl layer for "${layerId}"`,
-                error,
-            );
+        } catch {
+            void 0;
         }
     }
 
     dispose(): void {
-        for (const [layerId, state] of this._layers) {
+        for (const state of this._layers.values()) {
             try {
                 state.initTask.cancel();
                 if (state.viewportManager) {
                     state.viewportManager.destroy();
                 }
                 state.loader.destroy();
-            } catch (error) {
-                logger.error(
-                    `PointCloudAdapter: Error disposing layer "${layerId}"`,
-                    error,
-                );
+            } catch {
+                void 0;
             }
         }
         this._layers.clear();

@@ -1,4 +1,4 @@
-// mapdeck/mapdeck/src/shared/types/point-cloud.ts
+import type { BBox3D } from "./streaming";
 
 /**
  * Minimal point cloud data structure for deck.gl visualization
@@ -39,9 +39,8 @@ export interface PointCloudData {
 
     /**
      * Bounding box of the point cloud in absolute WGS84 coordinates (degrees)
-     * Format: [minLng, minLat, minZ, maxLng, maxLat, maxZ]
      */
-    bounds: [number, number, number, number, number, number];
+    bounds: BBox3D;
 }
 
 /**

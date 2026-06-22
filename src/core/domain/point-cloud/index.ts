@@ -4,12 +4,16 @@ export type {
     StreamingSource,
     StreamingLoaderOptions,
     ViewportInfo,
+    CandidateNode,
 } from "@core/framework/types";
 
 export { ViewportManager } from "./ViewportManager";
-export type { ViewportManagerOptions } from "./ViewportManager";
+export type {
+    ViewportManagerOptions,
+    ViewportStateProvider,
+} from "./ViewportManager";
 
-export { PointCloudLayerFactory } from "./PointCloudLayerFactory";
+export { createPointCloudLayer } from "./PointCloudLayerFactory";
 
 export {
     parseChunkInfo,
@@ -22,36 +26,15 @@ export {
 
 export { WorkerPool } from "./workers/WorkerPool";
 
-// New SSE-based pure functions
 export {
-    computeRootSpacing,
-    computeGeometricError,
-    buildProjection,
-    projectNodeBoundsToCommonSpace,
-    projectAabbToMeters,
-    computeDistanceToCamera,
-    computeScreenError,
-    lngLatToWebMercator,
-    isAabbInFrustumPlanes,
-    computeBoundingSphereRadius,
-    computeScreenProjectedArea,
-    computeGroundResolution,
-    MIN_GROUND_RES,
-    type BBox3D,
     type CameraSnapshot,
-    type RootSpacingInput,
     type FrustumPlane,
     type FrustumPlanes,
 } from "./geometry";
 
-export {
-    traverseOctree,
-    computeMaxDepthForNode,
-    type CandidateNode,
-    type TraversalResult,
-} from "./traversal";
+export { traverseOctree, type TraversalResult } from "./traversal";
 
-export { computeBudgetPlan, computeEvictionPlan } from "./budget";
+export { computeBudgetPlan } from "./budget";
 
 export type { BudgetPlan, EvictionPlan } from "@core/framework/types";
 
@@ -60,6 +43,13 @@ export { computeVisibleCachedNodes } from "./render";
 export {
     HierarchyLoadTracker,
     type OnNodesDiscovered,
-} from "./hierarchy/HierarchyLoadTracker";
+} from "./octree/HierarchyLoadTracker";
 
-export { type DeviceTier, type EffectiveBaseline } from "./adaptiveBudget";
+export { type EffectiveBaseline } from "./streamingConfig";
+
+export {
+    priorityNormalizeAndClamp,
+    type PriorityBounds,
+} from "./priority/normalization";
+
+export { TileEvictionManager } from "./eviction/TileEvictionManager";

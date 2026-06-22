@@ -3,7 +3,6 @@ import { MapboxOverlay } from "@deck.gl/mapbox";
 import type maplibregl from "maplibre-gl";
 import { logger } from "@core/shared/diagnostics/logger";
 import type { FrustumPlanes } from "@core/domain/point-cloud/geometry";
-import { perfTracker } from "@core/shared/diagnostics/PerfTracker";
 import type { OverlayManager as IOverlayManager } from "@core/framework/types";
 import type { ManagedLayer, TypedOverlay, PickParams } from "./overlayTypes";
 
@@ -114,10 +113,8 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
         Promise.resolve().then(() => {
             this._updatePending = false;
             if (this.overlay) {
-                perfTracker.start("overlay.setProps");
                 const activeLayers = this.getActiveLayers();
                 this.overlay.setProps({ layers: activeLayers });
-                perfTracker.end("overlay.setProps");
             }
         });
     }

@@ -45,12 +45,44 @@ export interface StreamingLoaderOptions {
      * Increase this for large datasets with many subtrees
      */
     maxSubtreesPerViewport: number;
+
+    /**
+     * Fraction of pointBudget at which LRU eviction starts.
+     * Range: (0, 1). Default: 0.8 (evict when 80% of budget is occupied).
+     * Lower = more aggressive eviction, less re-loading thrash.
+     */
+    evictionThresholdRatio?: number;
+    /** Max simultaneous in-flight requests. Default: 6 (lower than Cesium's 50 — COPC loads large data). */
+    maximumRequests?: number;
+    /** Max per-server in-flight requests. Default: 4. */
+    maximumRequestsPerServer?: number;
+    /** Max total cached tiles (count, not bytes). Default: 200. */
+    maximumTiles?: number;
+    /** SSE threshold above which tiles are in base traversal. Default: 1024. */
+    baseScreenSpaceError?: number;
+    /** Divisor for skip SSE ratio check. Default: 16. */
+    skipScreenSpaceErrorFactor?: number;
+    /** Minimum depth difference for skip traversal. Default: 1. */
+    skipLevels?: number;
+    /** When true, all tiles use skip traversal (no base). Default: false. */
+    immediatelyLoadDesiredLevelOfDetail?: boolean;
+    /** Height fraction for progressive SSE. Values ≤0 or >0.5 disable. Default: 0.3. */
+    progressiveResolutionHeightFraction?: number;
+    /** Enable dynamic SSE fog decay. Default: false. */
+    dynamicScreenSpaceError?: boolean;
+    /** Fog density for dynamic SSE. Default: 2.0e-4. */
+    dynamicScreenSpaceErrorDensity?: number;
+    /** Factor applied to fog reduction. Default: 24.0. */
+    dynamicScreenSpaceErrorFactor?: number;
+    /**
+     * Fraction of tileset's own height range for dynamic SSE heightClose.
+     * Tileset-relative, NOT based on Earth circumference. Default: 0.25.
+     */
+    dynamicScreenSpaceErrorHeightFalloff?: number;
 }
 
-/**
- * Bounding box for point cloud data in WGS84 degrees (EPSG:4326)
- */
-export type PointCloudBounds = {
+/** 3D axis-aligned bounding box. */
+export type BBox3D = {
     minX: number;
     minY: number;
     minZ: number;
@@ -63,6 +95,15 @@ export type PointCloudBounds = {
  * State of a node in the streaming cache
  */
 export type NodeState = "pending" | "loading" | "loaded" | "error" | "subtree";
+
+/** Node in the LRU doubly-linked list (TileCache). */
+export interface CacheListNode<T = unknown> {
+    item: T;
+    prev: CacheListNode<T> | null;
+    next: CacheListNode<T> | null;
+    /** O(1) protected-zone flag — true when right of sentinel. */
+    isProtected?: boolean;
+}
 
 /**
  * Cached node data
@@ -81,9 +122,9 @@ export interface CachedNode {
     /** Length of point data in bytes */
     pointDataLength: number;
     /** Bounding box in source CRS (WGS84 degrees) */
-    bounds: PointCloudBounds;
+    bounds: BBox3D;
     /** Bounding box in WGS84 (same as bounds for EPSG:4326) */
-    boundsWgs84: PointCloudBounds;
+    boundsWgs84: BBox3D;
     /** Distance from viewport center (for priority queue) - lower = higher priority */
     priority?: number;
     /** Per-node position data (pointCount × 3, Float32). Only set when state === "loaded". */
@@ -110,6 +151,41 @@ export interface CachedNode {
     retryAt?: number;
     /** Number of consecutive retries for exponential backoff */
     retryCount?: number;
+
+    /** Whether this tile is a progressive-resolution SSE leaf. */
+    _priorityProgressiveResolution?: boolean;
+    /** Whether this is a progressive-resolution screen-space error leaf (for skip traversal). */
+    _priorityProgressiveResolutionScreenSpaceErrorLeaf?: boolean;
+    /** Screen-space error at progressive resolution height fraction. */
+    _screenSpaceErrorProgressiveResolution?: number;
+    /** Whether this tile should be selected for rendering this frame. */
+    _shouldSelect?: boolean;
+    /** Selection depth (ancestor stack depth at selection time). For preorder traversal. */
+    _selectionDepth?: number;
+    /** Whether this child was the minimum foveatedFactor child (for multi-level priority chains). */
+    _wasMinPriorityChild?: boolean;
+    /** LRU cache linked list node. */
+    cacheNode?: CacheListNode<CachedNode>;
+    /** Whether tile has unloaded renderable content. */
+    hasUnloadedRenderableContent?: boolean;
+    /** Whether content is available (for skip traversal descent). */
+    contentAvailable?: boolean;
+    /** Parent reference for ancestor chain propagation. */
+    parent?: CachedNode | null;
+    /** Children array for octree traversal. */
+    children?: CachedNode[];
+    /** Whether the tile is visible (in frustum). */
+    isVisible?: boolean;
+    /** Screen-space error for this tile (pixels). */
+    screenSpaceError?: number;
+    /** Frame number this tile was selected (for stencil-avoidance in render list). */
+    _selectedFrame?: number;
+    /** Whether the tile was selected last frame. */
+    _wasSelectedLastFrame?: boolean;
+    /** Frame number this tile was visited (for touch dedup). */
+    _visitedFrame?: number;
+    /** Frame number this tile was touched (for touch dedup). */
+    _touchedFrame?: number;
 }
 
 /**
@@ -195,7 +271,6 @@ export interface CopcMetadata {
 export interface CandidateNode {
     key: string;
     screenError: number;
-    screenProjectedArea: number;
     priority: number;
     distanceToCamera: number;
 }
@@ -225,9 +300,13 @@ export interface EvictionPlan {
 
 /**
  * State of the request loop FSM.
- * - `idle`: no active cycle, ready to start.
- * - `running`: a cycle is in progress.
- * - `running-dirty`: a cycle is in progress AND a new request arrived — one more cycle
+ * - `Idle`: no active cycle, ready to start.
+ * - `Running`: a cycle is in progress.
+ * - `Dirty`: a cycle is in progress AND a new request arrived — one more cycle
  *   will run after the current one completes.
  */
-export type LoopState = "idle" | "running" | "running-dirty";
+export enum LoopState {
+    Idle = "Idle",
+    Running = "Running",
+    Dirty = "Dirty",
+}
