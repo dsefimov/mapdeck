@@ -55,7 +55,7 @@ export class LayerTreeViewModel {
         return this.rootStore.treeStore;
     }
 
-    /** Flat row list in tree order. See the layer-tree-view-model spec. */
+    /** Flat row list in tree order. */
     get visibleRows(): VisibleRow[] {
         const state = this.treeStore.treeState;
         const rows: VisibleRow[] = [];

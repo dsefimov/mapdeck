@@ -1,5 +1,5 @@
 /**
- * Bootstrap-time rule (C12): every protocol id a layer tool is bound to must
+ * Bootstrap-time rule: every protocol id a layer tool is bound to must
  * be registered. A typo would otherwise bind silently to nothing — the tool
  * never appears on any node.
  */

@@ -61,8 +61,8 @@ describe("mapAssetsToProtocols — per-slot selection", () => {
     });
 
     it("resolves slots independently — a tie keeps the earlier asset", () => {
-        // Consciously pinned (C18 rework): with equal fitness the earlier
-        // asset wins each slot, even when it already renders.
+        // Consciously pinned: with equal fitness the earlier asset wins
+        // each slot, even when it already renders.
         const result = map({
             first: asset({ roles: ["ogc-feature-api"] }),
             second: asset({ roles: ["wfs"] }),

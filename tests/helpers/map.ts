@@ -62,8 +62,8 @@ export async function toggleLayer(
 /**
  * Enable the point-cloud layer and fly the camera to it, then wait for the
  * streaming engine to actually pull node data: N successful range requests.
- * Per the owner's decision the assertion stops here — the basemap makes
- * pixel-level rendering checks meaningless.
+ * The assertion stops at network activity — the basemap makes pixel-level
+ * rendering checks meaningless.
  */
 export async function loadPointCloud(
     page: Page,

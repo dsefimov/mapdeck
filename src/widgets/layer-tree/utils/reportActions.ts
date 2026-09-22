@@ -4,7 +4,7 @@ import { logger } from "@core/lib/logger";
 /**
  * Open a report in a new tab. `opener` is nulled so the report page
  * cannot reach back into the app via `window.opener`.
- * Best-effort by design (the error matrix): a URL-less report only logs.
+ * Best-effort by design: a URL-less report only logs.
  */
 export function openReport(url: string, label: string): void {
     if (!url) {
