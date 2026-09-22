@@ -1,9 +1,8 @@
 /**
- * Placeholder features for layers no feature provider can serve — the
- * generic replacement for the per-protocol hardcoding that used to live in
- * WmsFeatureProvider. Registration declares which protocols ARE served; every
- * other visible layer yields one honest "not available" feature, so adding a
- * protocol touches only its own registration line, never a sibling provider.
+ * Placeholder features for layers no feature provider can serve.
+ * Registration declares which protocols ARE served; every other visible layer
+ * yields one honest "not available" feature, so adding a protocol touches only
+ * its own registration line, never a sibling provider.
  */
 import type {
     Feature,

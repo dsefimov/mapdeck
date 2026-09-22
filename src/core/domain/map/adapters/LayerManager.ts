@@ -35,10 +35,9 @@ export interface LayerManagerDeps {
 }
 
 /**
- * Modern adapter-based Layer Manager
- *
- * Uses Protocol system: delegates operations to appropriate adapters
- * via ProtocolRegistry and its Protocol.getLayerAdapter() method.
+ * Adapter-based Layer Manager: delegates operations to the appropriate
+ * adapter per protocol via ProtocolRegistry and its
+ * Protocol.getLayerAdapter() method.
  */
 export class LayerManager {
     private readonly deps: LayerManagerDeps;

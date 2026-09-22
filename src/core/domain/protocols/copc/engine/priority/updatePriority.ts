@@ -15,9 +15,8 @@ import type { PriorityBounds } from "./normalization";
 import type { CachedNode } from "../../types";
 
 /**
- * Per-node priority metadata stored via WeakMap side-car.
- * Replaces _distanceToCamera, _foveatedFactor, _depth,
- * _priorityReverseScreenSpaceError, _priority on the public CachedNode type.
+ * Per-node priority metadata stored via a WeakMap side-car — keeps traversal
+ * bookkeeping off the public CachedNode type.
  */
 export interface PriorityState {
     priority: number;

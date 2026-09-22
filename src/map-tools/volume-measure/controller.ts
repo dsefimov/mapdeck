@@ -75,7 +75,7 @@ export class VolumeMeasureController extends MapInteractionController<VolumeAtta
     /**
      * Commits the boundary and runs the computation pipeline. A boundary
      * with fewer than three points returns to the drawing phase with no
-     * results — the guard the effect-based sync used to apply.
+     * results.
      */
     completeBoundary(): void {
         this.store.commitDrawing();

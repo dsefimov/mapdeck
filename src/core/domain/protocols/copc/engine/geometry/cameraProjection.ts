@@ -1,8 +1,7 @@
 /**
  * Camera projection shared state: the per-traversal local projection and the
- * per-node screen-space error composed over it. Used by both the octree
- * traversal and the SSE LOD filter — the two hot paths that previously
- * duplicated this composition inline.
+ * per-node screen-space error composed over it. Shared by the octree
+ * traversal and the SSE LOD filter — the two hot paths.
  */
 
 import type proj4 from "proj4";

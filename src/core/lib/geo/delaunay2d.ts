@@ -2,7 +2,7 @@
  * 2D Delaunay triangulation, delegated to `delaunator` (O(n log n),
  * robust to duplicates and collinear input) behind a plain PointXY/Triangle
  * interface — cloud-scale sets (tens of thousands of points) triangulate in
- * milliseconds, which the previous in-house O(n²) implementation could not.
+ * milliseconds.
  */
 
 import Delaunator from "delaunator";

@@ -321,8 +321,8 @@ export class CopcStreamingLoader {
         const cachedNode = buildCachedNode(key, keyArray, entry, nodeBounds);
 
         this._nodeCache.set(key, cachedNode);
-        // Incremental RBush insert — replaces the old per-traversal rebuild.
-        // New nodes are added once (on hierarchy decode), never per camera movement.
+        // Incremental RBush insert: new nodes are added once (on hierarchy
+        // decode), never per camera movement.
         this._spatialIndex.insert(
             toNodeBBoxEntry(key, nodeBounds.boundsWgs84),
         );

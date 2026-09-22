@@ -220,7 +220,7 @@ export class WmsFeatureProvider implements FeatureProvider {
 
             // A pixel query hits the topmost feature; the panel shows one
             // feature per layer — stacking all hits' properties into one
-            // record (the old Object.assign) silently corrupted it.
+            // record would silently corrupt it.
             if (Array.isArray(features)) {
                 const first = features[0];
                 const parsed = first ? parseFeature(first) : null;

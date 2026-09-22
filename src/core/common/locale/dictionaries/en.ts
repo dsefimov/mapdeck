@@ -9,8 +9,8 @@ const core = {
     "error.retry": "Retry",
     "error.renderTitle": "Something went wrong",
 
-    // ContextMenu — retired: the kit takes the header from its host
-    // (map-viewer's own locale carries "contextMenu.header").
+    // The kit's ContextMenu takes its header from its host — map-viewer's
+    // own locale carries "contextMenu.header".
 
     // WidgetShell close button
     "aria.close": "Close",

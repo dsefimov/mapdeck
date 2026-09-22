@@ -16,8 +16,8 @@ type InsidePoints = ThinnedPoints;
 /**
  * Typed tool state of the volume measure: the drawing phase and the cached
  * (expensive) computation results. Survives panel remounts via the
- * instance-state container — replacing the stringly-typed metadata bag
- * (ADR-0002, case-2 state). Mutations go through the action methods.
+ * instance-state container (ADR-0002, case-2 state). Mutations go through
+ * the action methods.
  */
 export class VolumeMeasureState {
     phase: typeof PHASE_DRAWING | typeof PHASE_COMPLETE = PHASE_DRAWING;

@@ -16,8 +16,8 @@ export type LoadNodeFn = (
  *
  * A node key is queued, in flight, or neither — never twice. The in-flight
  * map owns one AbortController per dispatched load; cancelStale aborts loads
- * the camera no longer wants instead of letting them finish onto a reset
- * state, which used to start a second parallel load for the same node.
+ * the camera no longer wants — a stale load settling onto a reset state would
+ * race a second parallel load for the same node.
  */
 export class NodeLoader {
     private readonly _queue = new MinHeap<CachedNode>(

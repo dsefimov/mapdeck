@@ -97,8 +97,8 @@ function processNode(
 }
 
 /**
- * Visit nodes during octree traversal using iterative DFS with explicit stack.
- * Preserves identical DFS pre-order as the original recursive version.
+ * Visit nodes during octree traversal: iterative DFS with an explicit stack,
+ * in deterministic DFS pre-order.
  */
 export function visitNode(
     rootKey: string,

@@ -58,8 +58,7 @@ function readPositiveNumber(
     if (typeof value !== "number" || Number.isNaN(value)) {
         throw new Error(`Layer config "${key}" must be a number.`);
     }
-    // A type-correct but non-positive value is dropped, not fatal — the
-    // previous per-site behavior.
+    // A type-correct but non-positive value is dropped, not fatal.
     return value > 0 ? value : undefined;
 }
 
