@@ -1,0 +1,22 @@
+{
+    "stac_version": "1.0.0",
+    "type": "Feature",
+    "id": "demotiles-countries",
+    "bbox": [-180.0, -85.05, 180.0, 85.05],
+    "properties": {
+        "title": "Countries (MapLibre demotiles)",
+        "description": "Country polygons from the Natural Earth dataset via MapLibre's public demo tiles. Fill layer up to zoom 6.",
+        "datetime": "2024-01-01T00:00:00Z"
+    },
+    "assets": {
+        "tiles": {
+            "href": "https://demotiles.maplibre.org/tiles/{z}/{x}/{y}.pbf",
+            "roles": ["vector-tile"],
+            "title": "MapLibre demo tiles",
+            "type": "application/vnd.mapbox-vector-tile",
+            "vector:layer": "countries",
+            "vector:layer-type": "fill",
+            "vector:max-zoom": 6
+        }
+    }
+}

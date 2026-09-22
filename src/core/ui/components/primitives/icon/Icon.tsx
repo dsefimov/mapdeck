@@ -1,11 +1,12 @@
 import React from "react";
-import { logger } from "@core/shared/diagnostics/logger";
+import { logger } from "@core/lib/logger";
 import { cn } from "@core/ui/utils/cn";
-import iconRegistry from "../../../icons/registry";
+import iconRegistry, { isIconName } from "../../../icons/registry";
 import type { IconName } from "../../../icons/registry";
 import styles from "./Icon.module.css";
 
 export type { IconName };
+export { isIconName };
 
 export interface IconProps {
     /** Name of the icon to display */
@@ -14,19 +15,17 @@ export interface IconProps {
     className?: string;
     /** Title / accessibility label for the icon */
     title?: string;
-    /** Click handler */
-    onClick?: () => void;
 }
 
 /**
  * Icon component for consistent SVG rendering throughout the application.
  * Icon size is determined entirely by the parent container's CSS.
+ * Interactive icons use IconButton — a clickable img is not accessible.
  */
 export const Icon: (props: IconProps) => React.ReactNode = ({
     name,
     className,
     title,
-    onClick,
 }) => {
     const src = iconRegistry[name];
 
@@ -41,7 +40,6 @@ export const Icon: (props: IconProps) => React.ReactNode = ({
             alt={title || ""}
             title={title}
             className={cn(styles.icon, className)}
-            onClick={onClick}
             aria-hidden={!title || undefined}
         />
     );

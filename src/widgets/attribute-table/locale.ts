@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/framework/types";
+import type { SupportedLanguage, TranslationDict } from "@core/contracts";
 
 export const attributeTableTranslations: Partial<
     Record<SupportedLanguage, TranslationDict>

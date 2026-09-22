@@ -1,22 +1,20 @@
 .button {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-8);
     width: 100%;
     flex: 1;
     min-width: 0;
-    padding: var(--space-sm);
+    padding: var(--space-8);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    background-color: var(--color-background);
-    font-family: inherit;
-    font-size: var(--font-size-md);
+    background-color: var(--color-bg);
     transition: background-color var(--transition-fast);
 }
 
 .button:hover {
-    background: var(--color-secondary);
+    background: var(--color-hover);
 }
 
 .icon {
@@ -28,7 +26,4 @@
 .label {
     flex: 1;
     text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }

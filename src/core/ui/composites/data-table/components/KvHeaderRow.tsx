@@ -1,7 +1,7 @@
 import React from "react";
-import type { TranslationDict } from "@core/framework/types";
+import { Text } from "@core/ui/components/primitives/text/Text";
 import type { SortDirection } from "../types";
-import { getSortIndicator } from "../utils";
+import { getAriaSort, getSortIndicator } from "../utils";
 import styles from "../AttributeTable.module.css";
 
 interface KvHeaderRowProps {
@@ -11,10 +11,46 @@ interface KvHeaderRowProps {
     showFilters: boolean;
     filters: Record<string, string>;
     onFilterChange: (column: string, value: string) => void;
-    dict: TranslationDict;
+    dict: Record<string, string>;
 }
 
-export const KvHeaderRow: React.FC<KvHeaderRowProps> = React.memo(
+interface SortableCellProps {
+    column: string;
+    caption: string;
+    sortColumn: string | null;
+    sortDirection: SortDirection;
+    onSort: (column: string) => void;
+}
+
+const SortableCell = ({
+    column,
+    caption,
+    sortColumn,
+    sortDirection,
+    onSort,
+}: SortableCellProps) => (
+    <th
+        className={styles.sortableHeader}
+        aria-sort={getAriaSort(sortColumn === column, sortDirection)}
+    >
+        <button
+            type="button"
+            className={styles.sortButton}
+            onClick={() => onSort(column)}
+        >
+            <Text variant="caption">
+                {caption}
+                {sortColumn === column && (
+                    <span className={styles.sortIndicator} aria-hidden="true">
+                        {getSortIndicator(sortDirection)}
+                    </span>
+                )}
+            </Text>
+        </button>
+    </th>
+);
+
+export const KvHeaderRow = React.memo<KvHeaderRowProps>(
     ({
         sortColumn,
         sortDirection,
@@ -26,28 +62,20 @@ export const KvHeaderRow: React.FC<KvHeaderRowProps> = React.memo(
     }) => (
         <>
             <tr>
-                <th
-                    className={styles.sortableHeader}
-                    onClick={() => onSort("attribute")}
-                >
-                    {dict["attributeTable.attribute"] ?? "Attribute"}
-                    {sortColumn === "attribute" && (
-                        <span className={styles.sortIndicator}>
-                            {getSortIndicator(sortDirection)}
-                        </span>
-                    )}
-                </th>
-                <th
-                    className={styles.sortableHeader}
-                    onClick={() => onSort("value")}
-                >
-                    {dict["attributeTable.value"] ?? "Value"}
-                    {sortColumn === "value" && (
-                        <span className={styles.sortIndicator}>
-                            {getSortIndicator(sortDirection)}
-                        </span>
-                    )}
-                </th>
+                <SortableCell
+                    column="attribute"
+                    caption={dict["dataTable.attribute"] ?? "Attribute"}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                />
+                <SortableCell
+                    column="value"
+                    caption={dict["dataTable.value"] ?? "Value"}
+                    sortColumn={sortColumn}
+                    sortDirection={sortDirection}
+                    onSort={onSort}
+                />
             </tr>
             {showFilters && (
                 <tr>
@@ -55,9 +83,8 @@ export const KvHeaderRow: React.FC<KvHeaderRowProps> = React.memo(
                         <input
                             type="text"
                             className={styles.filterInput}
-                            placeholder={
-                                dict["attributeTable.filterAttributes"]
-                            }
+                            placeholder={dict["dataTable.filterAttributes"]}
+                            aria-label={dict["dataTable.filterAttributes"]}
                             value={filters.attribute ?? ""}
                             onChange={(e) =>
                                 onFilterChange("attribute", e.target.value)
@@ -68,7 +95,8 @@ export const KvHeaderRow: React.FC<KvHeaderRowProps> = React.memo(
                         <input
                             type="text"
                             className={styles.filterInput}
-                            placeholder={dict["attributeTable.filterValues"]}
+                            placeholder={dict["dataTable.filterValues"]}
+                            aria-label={dict["dataTable.filterValues"]}
                             value={filters.value ?? ""}
                             onChange={(e) =>
                                 onFilterChange("value", e.target.value)

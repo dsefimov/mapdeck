@@ -1,0 +1,31 @@
+{
+    "id": "autzen-pointcloud",
+    "type": "Collection",
+    "stac_version": "1.0.0",
+    "title": "Point Cloud — Autzen COPC",
+    "description": "Classified aerial LiDAR of the Autzen Stadium area (Eugene, Oregon, US) as a Cloud-Optimized Point Cloud. Streamed over HTTP range requests from a public S3 bucket; projected CRS (NAD83 / Oregon GIC Lambert, US feet) is reprojected client-side.",
+    "license": "various",
+    "providers": [
+        {
+            "name": "Hobu Inc.",
+            "roles": ["host"],
+            "url": "https://copc.io"
+        }
+    ],
+    "extent": {
+        "spatial": {
+            "bbox": [[-123.074987, 44.049719, -123.057836, 44.062885]]
+        },
+        "temporal": {
+            "interval": [["2010-01-01T00:00:00Z", null]]
+        }
+    },
+    "links": [
+        {
+            "rel": "item",
+            "href": "/collections/pointcloud/item-autzen.json",
+            "type": "application/geo+json",
+            "title": "Autzen Stadium LiDAR"
+        }
+    ]
+}

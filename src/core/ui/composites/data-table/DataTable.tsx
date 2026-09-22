@@ -1,11 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useMemo, type ReactNode } from "react";
 import { LoadingScreen } from "@core/ui/components";
+import { Text } from "@core/ui/components/primitives/text/Text";
 import { formatValue } from "./utils";
 import { useSortMode } from "./hooks/useSortMode";
 import { useFilterState } from "./hooks/useFilterState";
 import { useDataPipeline } from "./hooks/useDataPipeline";
 import { useVirtualWindow } from "./hooks/useVirtualWindow";
-import { EmptyState } from "./components/EmptyState";
+import { EmptyState } from "@core/ui/components/feedback/empty-state/EmptyState";
 import { TableControls } from "./components/TableControls";
 import { ColumnarHeaderRow } from "./components/ColumnarHeaderRow";
 import { ColumnarRow } from "./components/ColumnarRow";
@@ -15,7 +16,6 @@ import styles from "./AttributeTable.module.css";
 
 export { type DataTableProps, type GeometryColumnConfig } from "./types";
 
-// ── ColumnarVisibleRows ──────────────────────────────────────────────────────
 
 interface ColumnarVisibleRowsProps {
     sortedData: Record<string, unknown>[];
@@ -28,7 +28,7 @@ interface ColumnarVisibleRowsProps {
     dict: Record<string, string>;
 }
 
-export const ColumnarVisibleRows = React.memo<ColumnarVisibleRowsProps>(
+const ColumnarVisibleRows = React.memo<ColumnarVisibleRowsProps>(
     ({
         sortedData,
         startIndex,
@@ -59,7 +59,6 @@ export const ColumnarVisibleRows = React.memo<ColumnarVisibleRowsProps>(
 );
 ColumnarVisibleRows.displayName = "ColumnarVisibleRows";
 
-// ── KvVisibleRows ────────────────────────────────────────────────────────────
 
 interface KvVisibleRowsProps {
     sortedKvEntries: [string, unknown][];
@@ -68,20 +67,23 @@ interface KvVisibleRowsProps {
     dict: Record<string, string>;
 }
 
-export const KvVisibleRows = React.memo<KvVisibleRowsProps>(
+const KvVisibleRows = React.memo<KvVisibleRowsProps>(
     ({ sortedKvEntries, startIndex, endIndex, dict }) => {
         const sliced = sortedKvEntries.slice(startIndex, endIndex);
         return sliced.map(([key, value], index) => (
             <tr key={`${key}-${startIndex + index}`}>
-                <td>{key}</td>
-                <td>{formatValue(value, dict)}</td>
+                <td>
+                    <Text variant="body">{key}</Text>
+                </td>
+                <td>
+                    <Text variant="body">{formatValue(value, dict)}</Text>
+                </td>
             </tr>
         ));
     },
 );
 KvVisibleRows.displayName = "KvVisibleRows";
 
-// ── DataTableBody ─────────────────────────────────────────────────────────
 
 interface DataTableBodyProps {
     isColumnar: boolean;
@@ -205,7 +207,32 @@ const DataTableBody = React.memo<DataTableBodyProps>(
 );
 DataTableBody.displayName = "DataTableBody";
 
-// ── DataTable ──────────────────────────────────────────────────────────────
+interface TableEmptyProps {
+    readonly header?: string | undefined;
+    readonly dict: Record<string, string>;
+    readonly onRefresh: (() => void) | (() => Promise<void>) | undefined;
+}
+
+/** Empty-table placeholder with an optional retry action. */
+function TableEmpty({ header, dict, onRefresh }: TableEmptyProps): ReactNode {
+    return (
+        <>
+            {header && <Text variant="title">{header}</Text>}
+            <div className={styles.tableContainer}>
+                <EmptyState
+                    message={dict["dataTable.noData"]}
+                    {...(onRefresh &&
+                        dict["dataTable.retry"] && {
+                            action: {
+                                label: dict["dataTable.retry"],
+                                onClick: onRefresh,
+                            },
+                        })}
+                />
+            </div>
+        </>
+    );
+}
 
 export const DataTable = React.memo<DataTableProps>((props) => {
     const {
@@ -260,22 +287,13 @@ export const DataTable = React.memo<DataTableProps>((props) => {
 
     if (rowCount === 0 && !loading) {
         return (
-            <>
-                {header && <div className={styles.header}>{header}</div>}
-                <div className={styles.tableContainer}>
-                    <EmptyState
-                        header={header}
-                        onRefresh={onRefresh}
-                        dict={dict}
-                    />
-                </div>
-            </>
+            <TableEmpty header={header} dict={dict} onRefresh={onRefresh} />
         );
     }
 
     return (
         <>
-            {header && <div className={styles.header}>{header}</div>}
+            {header && <Text variant="title">{header}</Text>}
             <div className={styles.tableContainer}>
                 <TableControls
                     showFilters={showFilters}

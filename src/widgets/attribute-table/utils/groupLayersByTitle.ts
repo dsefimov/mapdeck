@@ -1,10 +1,12 @@
 import type { AttributeLayerInfo } from "./index";
 
+/** Layers split by their group title: named groups plus the ungrouped rest. */
 export interface GroupedLayers {
     groups: Map<string, AttributeLayerInfo[]>;
     ungrouped: AttributeLayerInfo[];
 }
 
+/** Split layers into groups keyed by group title; layers without one go to `ungrouped`. */
 export function groupLayersByTitle(
     layers: readonly AttributeLayerInfo[],
 ): GroupedLayers {

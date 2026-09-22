@@ -18,8 +18,20 @@ const iconRegistry = {
     "attribute-table": new URL("./attribute-table.svg", import.meta.url).href,
     "settings-sliders": new URL("./settings-sliders.svg", import.meta.url).href,
     "file-download": new URL("./file-download.svg", import.meta.url).href,
+    search: new URL("./search.svg", import.meta.url).href,
+    "angle-down": new URL("./angle-down.svg", import.meta.url).href,
+    close: new URL("./close.svg", import.meta.url).href,
 } as const;
 
 export type IconName = keyof typeof iconRegistry;
+
+/**
+ * Type guard for icon names arriving as plain strings — the extension
+ * contracts carry `icon: string` (ui and contracts must not import each
+ * other), so consumers validate before rendering.
+ */
+export function isIconName(value: string): value is IconName {
+    return value in iconRegistry;
+}
 
 export default iconRegistry;

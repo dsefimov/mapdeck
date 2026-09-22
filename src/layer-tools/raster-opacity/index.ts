@@ -1,1 +1,1 @@
-export { rasterOpacityTool } from "./components/Tool";
+export { RasterOpacityTool } from "./components/Tool";

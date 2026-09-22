@@ -3,46 +3,15 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
-    padding: var(--space-sm);
-    gap: var(--space-sm);
+    padding: var(--space-10);
+    gap: var(--space-10);
 }
 
 .layerSelector {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-10);
     flex-shrink: 0;
-}
-
-.layerSelectorLabel {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-semibold);
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.layerSelect {
-    width: 100%;
-    padding: var(--space-sm);
-    border: var(--border-sm) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-background);
-    color: var(--color-text);
-    font-size: var(--font-size-md);
-    cursor: pointer;
-    transition: border-color var(--transition-fast);
-}
-
-.layerSelect:hover {
-    border-color: var(--color-primary);
-}
-
-.layerSelect:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 var(--space-sm)
-        color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
 .tableArea {

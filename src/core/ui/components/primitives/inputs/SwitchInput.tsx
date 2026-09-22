@@ -10,7 +10,7 @@ export interface SwitchInputProps {
     className?: string;
 }
 
-export const SwitchInput: React.FC<SwitchInputProps> = ({
+export const SwitchInput: (props: SwitchInputProps) => React.ReactNode = ({
     id,
     checked,
     onChange,
@@ -30,6 +30,7 @@ export const SwitchInput: React.FC<SwitchInputProps> = ({
             <input
                 id={id}
                 type="checkbox"
+                role="switch"
                 checked={checked}
                 onChange={(e) => onChange(e.target.checked)}
                 disabled={disabled}

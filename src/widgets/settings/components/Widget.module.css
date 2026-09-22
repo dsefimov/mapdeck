@@ -1,53 +1,37 @@
-/* Settings widget styles */
 .settings {
-    padding: var(--space-sm);
+    padding: var(--space-8);
 }
 
-/* Settings group - container for each widget/tools settings */
 .settings__group {
-    padding: var(--space-sm);
+    padding: var(--space-8);
 }
 
 .settings__group:last-child {
     margin-bottom: 0;
 }
 
-/* Group content */
 .settings__group_content {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md);
+    gap: var(--space-16);
 }
 
-/* Group title - simple heading, not highlighted */
-.settings__group_title {
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-semibold);
-    color: var(--color-text);
-    margin-bottom: var(--space-sm);
+/* Group header — title with the reset-all control */
+.settings__group_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-8);
 }
 
-/* Setting label */
-.settings__item_label {
-    display: block;
-    margin-bottom: var(--space-sm);
+/* Setting item — Field with 8px gap instead of the default 10 */
+.settings__item {
+    gap: var(--space-8);
 }
 
-/* Checkbox */
 .settings__item_checkbox {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-8);
     cursor: pointer;
-}
-
-/* Error state */
-.settings__item_input--error {
-    border-color: var(--color-error);
-}
-
-.settings__item_error {
-    margin-top: var(--space-sm);
-    font-size: var(--font-size-xs);
-    color: var(--color-error);
 }

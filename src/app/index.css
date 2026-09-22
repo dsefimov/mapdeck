@@ -1,5 +1,23 @@
-@import "../core/ui/styles/theme.css";
-@import "../core/ui/styles/vendor-overrides.css";
+@import "../core/ui/theme/theme.css";
+@import "../core/ui/theme/tool-tokens.css";
+@import "../core/ui/theme/vendor-overrides.css";
+
+/* Roboto is loaded from src/core/ui/fonts/ (bundled by Vite) */
+@font-face {
+    font-family: "Roboto";
+    src: url("../core/ui/fonts/Roboto.ttf") format("truetype");
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto";
+    src: url("../core/ui/fonts/Roboto-Italic.ttf") format("truetype");
+    font-weight: 400 700;
+    font-style: italic;
+    font-display: swap;
+}
 
 * {
     box-sizing: border-box;
@@ -17,6 +35,8 @@ body,
 
 body {
     font-family: var(--font-family);
+    /* base text — base (12px); all sizes come from the xl/base/xs scale */
+    font-size: var(--font-size-base);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }

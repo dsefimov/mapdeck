@@ -1,0 +1,88 @@
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        border-color var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* ── Variants ───────────────────────────────────────────────────── */
+
+.ghost {
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-secondary);
+}
+
+.ghost:hover:not(:disabled) {
+    background-color: var(--color-hover);
+    color: var(--color-text);
+}
+
+.ghostActive {
+    color: var(--color-accent);
+}
+
+/* Tile: bordered box sized by its own padding, not a fixed square. */
+.tile {
+    padding: var(--space-8);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.tile:hover:not(:disabled) {
+    background-color: var(--color-hover);
+}
+
+.tileActive {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-on-accent);
+}
+
+/* ── Sizes ──────────────────────────────────────────────────────── */
+
+.ghost.sm,
+.tile.sm .placeholder {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+}
+
+.ghost.md {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+}
+
+.ghost.sm .icon,
+.tile.sm .icon {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+}
+
+.ghost.md .icon,
+.tile.md .icon {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+}
+
+.placeholder {
+    display: block;
+}

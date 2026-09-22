@@ -1,1 +1,1 @@
-export { pointSizeTool } from "./components/Tool";
+export { PointSizeSliderTool } from "./components/Tool";

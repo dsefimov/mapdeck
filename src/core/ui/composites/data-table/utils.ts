@@ -1,22 +1,27 @@
-import type { TranslationDict } from "@core/framework/types";
 import type { SortDirection } from "./types";
 import { GLOBAL_FILTER_KEY } from "./constants";
 
-// ── Formatting ───────────────────────────────────────────────────────────────
+/** Localized strings — structural, so callers may pass any dictionary. */
+type Dict = Record<string, string>;
+
 
 function formatNumber(value: number): string {
     if (Math.abs(value) >= 1_000_000) return value.toExponential(4);
     return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
-function formatBoolean(value: boolean, dict: TranslationDict): string {
+function formatBoolean(value: boolean, dict: Dict): string {
     return value
-        ? (dict["attributeTable.yes"] ?? "Yes")
-        : (dict["attributeTable.no"] ?? "No");
+        ? (dict["dataTable.yes"] ?? "Yes")
+        : (dict["dataTable.no"] ?? "No");
 }
 
-export function formatValue(value: unknown, dict: TranslationDict): string {
-    if (value == null) return dict["attributeTable.nullValue"] ?? "";
+/**
+ * Render a cell value for display: booleans and nulls localized through the
+ * dictionary, large numbers exponentiated, arrays joined, objects JSON-pretty-printed.
+ */
+export function formatValue(value: unknown, dict: Dict): string {
+    if (value == null) return dict["dataTable.nullValue"] ?? "";
     if (typeof value === "boolean") return formatBoolean(value, dict);
     if (typeof value === "number") return formatNumber(value);
     if (typeof value === "string") return value;
@@ -25,14 +30,30 @@ export function formatValue(value: unknown, dict: TranslationDict): string {
     return String(value);
 }
 
+/** Sort-direction arrow for a column header; empty string when unsorted. */
 export function getSortIndicator(direction: SortDirection): string {
     if (direction === "asc") return " ↑";
     if (direction === "desc") return " ↓";
     return "";
 }
 
-// ── Comparison ───────────────────────────────────────────────────────────────
+/**
+ * aria-sort value for a column header: the direction when the column is
+ * the active sort key, absent otherwise (per the WAI-ARIA table pattern).
+ */
+export function getAriaSort(
+    isActive: boolean,
+    direction: SortDirection,
+): "ascending" | "descending" | undefined {
+    if (!isActive) return undefined;
+    return direction === "asc" ? "ascending" : "descending";
+}
 
+
+/**
+ * Total-order comparison for mixed cell values: nulls sort last, numbers
+ * numerically, everything else by localized string.
+ */
 export function compareValues(a: unknown, b: unknown): number {
     if (a === b) return 0;
     if (a == null) return 1;
@@ -41,12 +62,15 @@ export function compareValues(a: unknown, b: unknown): number {
     return String(a).localeCompare(String(b));
 }
 
-// ── Filtering ────────────────────────────────────────────────────────────────
 
+/**
+ * Whether a row passes the active filters: a global filter matches any cell;
+ * per-column filters match their own cell (case-insensitive substrings).
+ */
 export function applyRowFilters(
     row: Record<string, unknown>,
     filters: Record<string, string>,
-    dict: TranslationDict,
+    dict: Dict,
 ): boolean {
     const globalFilter = filters[GLOBAL_FILTER_KEY]?.toLowerCase();
 
@@ -66,14 +90,20 @@ export function applyRowFilters(
         });
 }
 
-// ── KV sorting ───────────────────────────────────────────────────────────────
 
+/**
+ * Flatten rows into `[attribute, value]` pairs (reserved `_`-keys dropped)
+ * and sort them: alphabetically by attribute, or by the selected column
+ * when a key-value sort is active.
+ */
 export function applyKvSorting(
     rows: Record<string, unknown>[],
     sortColumn?: string | null,
     sortDirection?: SortDirection,
 ): [string, unknown][] {
-    // flatMap + filter already produces a new array — no extra copy needed
+    // flatMap + filter already produces a new array — no extra copy needed.
+    // The `_` prefix is the FeatureRow reserved-key convention (ADR-0013) —
+    // ui cannot import the contract, so the convention is restated here.
     const entries = rows
         .flatMap(Object.entries)
         .filter(([key]) => !key.startsWith("_"));

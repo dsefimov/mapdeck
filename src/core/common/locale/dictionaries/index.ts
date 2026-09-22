@@ -1,0 +1,1 @@
+export { coreTranslations } from "./en";

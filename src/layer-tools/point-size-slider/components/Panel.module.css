@@ -1,5 +1,3 @@
-.pointSizeSliderContainer {
-}
-
 .debouncingIndicator {
+    color: var(--color-text-muted);
 }

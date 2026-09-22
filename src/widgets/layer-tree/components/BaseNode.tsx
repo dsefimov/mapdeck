@@ -1,12 +1,12 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { Icon, type IconName } from "@core/ui/components";
-import type { TreeNode, GroupNode } from "@core/framework/types";
-import { isGroupNode, isLayerNode } from "@core/framework/types";
-import { LayerRoles, type LayerRole } from "@core/framework/types";
-import { logger } from "@core/shared/diagnostics/logger";
-import { useRootStore } from "@core/framework/store";
+import { Icon, IconButton, Text, type IconName } from "@core/ui/components";
+import type { TreeNode } from "@core/contracts";
+import { isGroupNode, isLayerNode } from "@core/contracts";
+import { typedDict } from "@core/lib/text";
+import { useRootStore } from "@core/shell";
 import { SwitchInput } from "@core/ui/components/primitives/inputs";
+import type { LayerTreeLocaleKey } from "../locale";
 import { LAYER_TREE_ID } from "..";
 import styles from "./Widget.module.css";
 
@@ -14,7 +14,7 @@ interface ExpandButtonProps {
     readonly isExtended: boolean;
     readonly collapseLabel: string;
     readonly expandLabel: string;
-    readonly onClick: (e: React.MouseEvent) => void;
+    readonly onClick: () => void;
 }
 
 function ExpandButton({
@@ -24,14 +24,12 @@ function ExpandButton({
     onClick,
 }: ExpandButtonProps) {
     return (
-        <button
-            className={styles.layerTree__expandButton}
+        <IconButton
+            icon={isExtended ? "not-collapsed" : "collapsed"}
+            label={isExtended ? collapseLabel : expandLabel}
             onClick={onClick}
-            aria-label={isExtended ? collapseLabel : expandLabel}
-            title={isExtended ? collapseLabel : expandLabel}
-        >
-            <Icon name={isExtended ? "not-collapsed" : "collapsed"} />
-        </button>
+            className={styles.layerTree__nodeButton}
+        />
     );
 }
 
@@ -51,8 +49,10 @@ function TypeIcon({ iconName, label }: TypeIconProps) {
 interface ActionButtonProps {
     readonly iconName: IconName;
     readonly label: string;
-    readonly onClick: (e: React.MouseEvent) => void;
+    readonly onClick: () => void;
     readonly disabled?: boolean;
+    /** Active state (menu open) — highlighted with the accent */
+    readonly active?: boolean;
 }
 
 function ActionButton({
@@ -60,81 +60,41 @@ function ActionButton({
     label,
     onClick,
     disabled = false,
+    active = false,
 }: ActionButtonProps) {
     return (
-        <button
-            className={styles.layerTree__actionButton}
+        <IconButton
+            icon={iconName}
+            label={label}
             onClick={onClick}
-            aria-label={label}
-            title={label}
             disabled={disabled}
-        >
-            <Icon name={iconName} />
-        </button>
+            active={active}
+            className={styles.layerTree__nodeButton}
+        />
     );
 }
 
-interface MoreButtonProps {
-    readonly isActive: boolean;
-    readonly disabled: boolean;
-    readonly icon: IconName;
-    readonly label: string;
-    readonly onClick: (e: React.MouseEvent) => void;
-}
-
-function MoreButton({
-    isActive,
-    disabled,
-    icon,
-    label,
-    onClick,
-}: MoreButtonProps) {
-    return (
-        <button
-            className={`${styles.layerTree__actionButton} ${
-                isActive ? styles.layerTree__actionButtonActive : ""
-            }`}
-            onClick={onClick}
-            aria-label={label}
-            title={label}
-            disabled={disabled}
-        >
-            <Icon name={icon} />
-        </button>
-    );
-}
-
-const LAYER_ROLE_ICON: Record<LayerRole, IconName> = {
-    [LayerRoles.RASTER]: "raster",
-    [LayerRoles.VECTOR]: "vector",
-    [LayerRoles.POINT_CLOUD]: "point-cloud",
-    [LayerRoles.GEOJSON]: "vector", // Reuse vector icon for GeoJSON
+const PROTOCOL_ICON: Record<string, IconName> = {
+    wms: "raster",
+    xyz: "raster",
+    cog: "raster",
+    copc: "point-cloud",
+    "vector-tile": "vector",
+    "geojson-tiled": "vector",
+    wfs: "vector",
+    "ogc-features": "vector",
 };
 
 interface NodeFlags {
     isGroup: boolean;
-    isLayer: boolean;
-    isExtended: boolean;
-    nodeVisibility: boolean;
-    hasEyeIcon: boolean;
     hasZoom: boolean;
-    hasMore: boolean;
-    hasReports: boolean;
     showExpandButton: boolean;
     layerTypeIcon: IconName;
 }
 
 function getLayerTypeIconForNode(node: TreeNode): IconName {
     if (isLayerNode(node)) {
-        const displayRole = node.roles.display;
-        if (!displayRole) return "layers";
-        if (displayRole.render.config) {
-            return (
-                LAYER_ROLE_ICON[displayRole.render.config.role as LayerRole] ??
-                "raster"
-            );
-        }
-        return "raster";
+        return PROTOCOL_ICON[node.renderer.protocolId] ?? "layers";
     }
     return "layers";
 }
@@ -148,14 +108,12 @@ function createClickHandlers(
     },
 ) {
     return {
-        handleExpandClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
+        handleExpandClick: () => {
             if (flags.isGroup && callbacks.onToggleExpansion) {
                 callbacks.onToggleExpansion(node.id);
             }
         },
-        handleZoomClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
+        handleZoomClick: () => {
             if (flags.hasZoom && callbacks.onZoom) {
                 callbacks.onZoom(node.id);
             }
@@ -170,21 +128,11 @@ function getNodeFlags(
     onToggleExpansion?: BaseNodeProps["onToggleExpansion"],
 ): NodeFlags {
     const isGroup = isGroupNode(node);
-    const isLayer = isLayerNode(node);
-    const nodeVisibility = isGroup || isLayer ? node.isVisible : false;
-    const hasEyeIcon = isGroup || isLayer;
-    const hasReports = node.roles.reports.length > 0;
     const shouldShowExpandArrow = showExpandArrow ?? isGroup;
 
     return {
         isGroup,
-        isLayer,
-        isExtended: isGroup ? (node as GroupNode).isExtended : false,
-        nodeVisibility,
-        hasEyeIcon,
-        hasZoom: (isGroup || isLayer) && !!onZoom,
-        hasMore: true,
-        hasReports,
+        hasZoom: !!onZoom,
         showExpandButton:
             shouldShowExpandArrow && isGroup && !!onToggleExpansion,
         layerTypeIcon: getLayerTypeIconForNode(node),
@@ -192,24 +140,22 @@ function getNodeFlags(
 }
 
 export interface BaseNodeProps {
-    /** The tree node to render */
     node: TreeNode;
-    /** Depth level for indentation (0 = root) */
     depth?: number;
-    /** Callback when expansion state changes (groups only) */
+    isExpanded?: boolean;
     onToggleExpansion?: ((nodeId: string) => void) | undefined;
-    /** Callback when visibility changes (groups and layers only) */
     onToggleVisibility?:
         | ((nodeId: string, visible: boolean) => void)
         | undefined;
-    /** Callback for zoom action (groups and layers only) */
+    onOpenMenu?: ((nodeId: string) => void) | undefined;
     onZoom?: ((nodeId: string) => void) | undefined;
-    /** Whether to show expand/collapse arrow (defaults to true for groups) */
     showExpandArrow?: boolean;
-    /** Whether the more button should be disabled (e.g., no tools available) */
     moreButtonDisabled?: boolean;
-    /** Whether the more options panel is currently open for this node */
     isMorePanelOpen?: boolean;
+    /** Render-error message — shows an indicator on the row when present. */
+    renderError?: string | undefined;
+    /** Reason the node cannot render — mutes the row and disables its actions. */
+    unsupported?: string | undefined;
 }
 
 interface NodeLabels {
@@ -223,36 +169,107 @@ interface NodeLabels {
 
 function getNodeLabels(
     flags: NodeFlags,
-    d: Record<string, string | undefined>,
+    d: Record<LayerTreeLocaleKey, string>,
 ): NodeLabels {
     return {
         moreBtnIcon: flags.isGroup ? "report" : "settings-sliders",
         moreBtnLabel: flags.isGroup
-            ? d["aria.reports"]!
-            : d["aria.moreOptions"]!,
+            ? d["aria.reports"]
+            : d["aria.moreOptions"],
         typeIconLabel:
             flags.layerTypeIcon === "report"
-                ? d["aria.reportDocument"]!
-                : d["aria.layerType"]!,
-        collapseLabel: d["aria.collapse"]!,
-        expandLabel: d["aria.expand"]!,
-        zoomToExtentLabel: d["aria.zoomToExtent"]!,
+                ? d["aria.reportDocument"]
+                : d["aria.layerType"],
+        collapseLabel: d["aria.collapse"],
+        expandLabel: d["aria.expand"],
+        zoomToExtentLabel: d["aria.zoomToExtent"],
     };
+}
+
+interface NodeActionsProps {
+    readonly flags: NodeFlags;
+    readonly labels: NodeLabels;
+    readonly renderError?: string | undefined;
+    /** Unsupported rows keep their affordances visible but inert. */
+    readonly controlsDisabled: boolean;
+    readonly moreButtonDisabled: boolean;
+    readonly isMorePanelOpen: boolean;
+    readonly zoomDisabled: boolean;
+    readonly onZoomClick: () => void;
+    readonly onMoreClick: () => void;
+}
+
+/** Right-section controls: error badge, zoom, and the menu opener. */
+function NodeActions({
+    flags,
+    labels,
+    renderError,
+    controlsDisabled,
+    moreButtonDisabled,
+    isMorePanelOpen,
+    zoomDisabled,
+    onZoomClick,
+    onMoreClick,
+}: NodeActionsProps) {
+    return (
+        <div className={styles.layerTree__rightSection}>
+            {renderError && (
+                <span
+                    className={styles.layerTree__errorBadge}
+                    title={renderError}
+                >
+                    !
+                </span>
+            )}
+
+            {flags.hasZoom && (
+                <ActionButton
+                    iconName="zoom"
+                    label={labels.zoomToExtentLabel}
+                    onClick={onZoomClick}
+                    disabled={zoomDisabled}
+                />
+            )}
+
+            <ActionButton
+                iconName={labels.moreBtnIcon}
+                label={labels.moreBtnLabel}
+                onClick={onMoreClick}
+                disabled={moreButtonDisabled || controlsDisabled}
+                active={isMorePanelOpen}
+            />
+        </div>
+    );
+}
+
+function rowClassName(unsupported?: string | undefined): string {
+    return [
+        styles.layerTree__nodeContainer,
+        unsupported && styles.layerTree__nodeUnsupported,
+    ]
+        .filter(Boolean)
+        .join(" ");
 }
 
 const BaseNode: (props: BaseNodeProps) => React.ReactNode = observer(
     ({
         node,
         depth = 0,
+        isExpanded = false,
         onToggleExpansion,
         onToggleVisibility,
+        onOpenMenu,
         onZoom,
         showExpandArrow,
         moreButtonDisabled = false,
         isMorePanelOpen = false,
+        renderError,
+        unsupported,
     }) => {
         const rootStore = useRootStore();
-        const d = rootStore.localeStore.t(LAYER_TREE_ID);
+        const d = typedDict<LayerTreeLocaleKey>(
+            rootStore.localeStore.t(LAYER_TREE_ID),
+        );
         const flags = getNodeFlags(
             node,
             onZoom,
@@ -260,85 +277,70 @@ const BaseNode: (props: BaseNodeProps) => React.ReactNode = observer(
             onToggleExpansion,
         );
 
-        // Placeholder nodes (no display role) get no action buttons
-        const isPlaceholder = isLayerNode(node) && !node.roles.display;
-        if (isPlaceholder) {
-            flags.hasEyeIcon = false;
-            flags.hasZoom = false;
-            flags.hasMore = false;
-        }
 
         const handlers = createClickHandlers(node, flags, {
             onToggleExpansion,
             onZoom,
         });
 
-        const handleMoreClick = (e: React.MouseEvent) => {
-            e.stopPropagation();
-            rootStore.treeStore.togglePanel(node.id);
+        const handleMoreClick = () => {
+            onOpenMenu?.(node.id);
         };
 
         const labels = getNodeLabels(flags, d);
 
         return (
             <div
-                className={styles.layerTree__nodeContainer}
+                className={rowClassName(unsupported)}
                 style={{ "--depth": depth } as React.CSSProperties}
-                title={node.description}
+                title={unsupported ?? node.description}
             >
                 <div className={styles.layerTree__leftSection}>
                     {flags.showExpandButton && (
                         <ExpandButton
-                            isExtended={flags.isExtended}
+                            isExtended={isExpanded}
                             collapseLabel={labels.collapseLabel}
                             expandLabel={labels.expandLabel}
                             onClick={handlers.handleExpandClick}
                         />
                     )}
 
-                    {flags.hasEyeIcon && (
-                        <SwitchInput
-                            id={`visibility-${node.id}`}
-                            checked={flags.nodeVisibility}
-                            onChange={(checked) => {
-                                logger.debug(
-                                    `Calling onToggleVisibility(${node.id}, ${checked})`,
-                                );
-                                onToggleVisibility?.(node.id, checked);
-                            }}
-                        />
-                    )}
+                    <SwitchInput
+                        id={`visibility-${node.id}`}
+                        checked={node.isVisible}
+                        disabled={Boolean(unsupported)}
+                        onChange={(checked) => {
+                            onToggleVisibility?.(node.id, checked);
+                        }}
+                    />
 
                     <TypeIcon
                         iconName={flags.layerTypeIcon}
                         label={labels.typeIconLabel}
                     />
 
-                    <span className={styles.layerTree__nodeTitle}>
+                    <Text
+                        variant="body"
+                        truncate
+                        className={styles.layerTree__nodeTitle}
+                    >
                         {node.title}
-                    </span>
+                    </Text>
                 </div>
 
-                <div className={styles.layerTree__rightSection}>
-                    {flags.hasZoom && (
-                        <ActionButton
-                            iconName="zoom"
-                            label={labels.zoomToExtentLabel}
-                            onClick={handlers.handleZoomClick}
-                            disabled={!node.bbox}
-                        />
-                    )}
-
-                    {flags.hasMore && (
-                        <MoreButton
-                            isActive={isMorePanelOpen}
-                            disabled={moreButtonDisabled}
-                            icon={labels.moreBtnIcon}
-                            label={labels.moreBtnLabel}
-                            onClick={handleMoreClick}
-                        />
-                    )}
-                </div>
+                <NodeActions
+                    flags={flags}
+                    labels={labels}
+                    renderError={renderError}
+                    controlsDisabled={Boolean(unsupported)}
+                    moreButtonDisabled={moreButtonDisabled}
+                    isMorePanelOpen={isMorePanelOpen}
+                    zoomDisabled={
+                        !rootStore.treeStore.getZoomExtent(node.id)
+                    }
+                    onZoomClick={handlers.handleZoomClick}
+                    onMoreClick={handleMoreClick}
+                />
             </div>
         );
     },

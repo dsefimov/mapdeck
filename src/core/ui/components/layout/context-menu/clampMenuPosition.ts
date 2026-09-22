@@ -1,5 +1,9 @@
 import type { MenuSize } from "./useContextMenu";
 
+/**
+ * Pull a menu position back into the viewport when the menu would overflow
+ * its bottom-right corner, leaving a margin; an on-screen position is unchanged.
+ */
 export function clampMenuPosition(
     position: { x: number; y: number },
     menuSize: MenuSize,

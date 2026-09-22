@@ -1,6 +1,6 @@
 import { observer } from "mobx-react-lite";
 
-import { useRootStore } from "@core/framework/store";
+import { useRootStore } from "@core/shell";
 
 import WidgetButton from "./WidgetButton";
 import { filterSidebarWidgets } from "../utils/filterSidebarWidgets";
@@ -10,31 +10,29 @@ import styles from "./Widget.module.css";
 const SidebarComponent = observer(
     ({ excludedWidgetIds = [] }: SidebarProps) => {
         const rootStore = useRootStore();
-        const { overlayStore } = rootStore;
+        const { widgetStore } = rootStore;
 
         const widgets = filterSidebarWidgets(
-            rootStore.catalogStore.allWidgets,
+            widgetStore.allWidgets,
             excludedWidgetIds,
         );
 
         const handleWidgetClick = (widgetId: string) => {
-            if (overlayStore.isWidgetOpen(widgetId)) {
-                overlayStore.closeWidget(widgetId);
+            if (widgetStore.isWidgetOpen(widgetId)) {
+                widgetStore.closeWidget(widgetId);
             } else {
-                overlayStore.openWidget(widgetId);
+                widgetStore.openWidget(widgetId);
             }
         };
 
         return (
             <div className={`${styles.sidebar} ${styles.sidebarCollapsed}`}>
                 <div className={styles.sidebar__widgetsList}>
-                    {widgets.map((widget) => (
+                    {widgets.map((instance) => (
                         <WidgetButton
-                            key={widget.id}
-                            widget={widget}
-                            isOpen={overlayStore.openWidgetIds.includes(
-                                widget.id,
-                            )}
+                            key={instance.id}
+                            widget={instance.definition}
+                            isOpen={instance.isOpen}
                             onClick={handleWidgetClick}
                         />
                     ))}

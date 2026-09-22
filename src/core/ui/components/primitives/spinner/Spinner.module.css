@@ -1,12 +1,21 @@
 .spinner {
     display: inline-block;
-    width: var(--icon-lg);
-    height: var(--icon-lg);
     border: var(--border-md) solid
         color-mix(in srgb, var(--color-text) 20%, transparent);
-    border-top-color: var(--color-primary);
+    border-top-color: var(--color-accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
+}
+
+.md {
+    width: var(--icon-lg);
+    height: var(--icon-lg);
+}
+
+.sm {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    border-width: var(--border-sm);
 }
 
 @keyframes spin {

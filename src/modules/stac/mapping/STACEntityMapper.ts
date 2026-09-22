@@ -1,182 +1,128 @@
-import type { IObservableArray } from "mobx";
-import { logger } from "@core/shared/diagnostics/logger";
 import {
     type TreeNode,
     LayerTreeNodeTypes,
     type LayerNode,
     type GroupNode,
-    type NodeRoles,
-    type LayerNodeRoles,
-} from "@core/framework/types";
+    isGroupNode,
+} from "@core/contracts";
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
-import { mapAssetsToNodeRoles } from "./RoleMapper";
-import type { LayerConfigRegistry } from "@core/domain/adapters";
+import { mapAssetsToProtocols, type ProtocolMappingResult } from "./RoleMapper";
+import { assignCapabilities, type CapabilitySource } from "./capabilities";
 import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
-import { Bbox, flattenTo2D } from "@core/shared/geo";
+import { bboxFromTuple, flattenTo2D, type Bbox } from "@core/lib/geo";
+import { logger } from "@core/lib/logger";
 import type { STACCache } from "../core/STACCache";
 
+
+/**
+ * Node bbox from a raw STAC bbox tuple; null when absent or degenerate —
+ * the zoom control stays disabled for such nodes (GroupNode.bbox contract).
+ */
+function toNodeBbox(bbox: readonly number[] | undefined): Bbox | null {
+    const parsed = bboxFromTuple(bbox);
+    return parsed ? flattenTo2D(parsed) : null;
+}
+
+/** Maps STAC entities (collections, items) to tree nodes using protocol-based resolution. */
 export class STACEntityMapper {
     constructor(
         private cache: STACCache,
-        private layerConfigRegistry: LayerConfigRegistry,
         private roleRegistry: RoleResolverRegistry,
+        private capabilitySource: CapabilitySource,
     ) {}
 
-    mapCollectionToGroupNode(
-        collection: STACCollection,
-        childrenIds: IObservableArray<string>,
-    ): TreeNode {
-        const flattenedBbox = flattenTo2D(
-            new Bbox(collection.extent.spatial.bbox[0]!),
-        );
-
-        const roles: NodeRoles = collection.assets
-            ? mapAssetsToNodeRoles(
-                  collection.assets,
-                  this.roleRegistry,
-                  this.layerConfigRegistry,
-              )
-            : { reports: [] };
-
-        // Estimate the number of direct children.
-        // Count directly linked children (static STAC).
-        // 0 means unknown — the component will decide how to handle it.
+    /** Map a STAC collection to a GroupNode with child links. */
+    mapCollectionToGroupNode(collection: STACCollection): GroupNode {
         const childLinkCount = collection.links.filter(
             (l) => l.rel === "child" || l.rel === "item",
         ).length;
+
+        const reports = collection.assets
+            ? (mapAssetsToProtocols(collection.assets, this.roleRegistry)
+                  ?.relatedObjects ?? [])
+            : [];
 
         return {
             id: collection.id,
             type: LayerTreeNodeTypes.Group,
             title: collection.title || collection.id,
             description: collection.description || "",
-            icon: "",
-            metadata: {
-                stacEntityRef: `Collection:${collection.id}`,
-            },
+            metadata: { stacEntityRef: collection.id },
             parentId: null,
-            childrenIds,
+            childrenIds: [],
             childrenCount: childLinkCount,
-            bbox: flattenedBbox,
-            roles,
-            isExtended: false,
+            bbox: toNodeBbox(collection.extent?.spatial.bbox[0]),
             isVisible: false,
-        } as GroupNode;
+            relatedObjects: reports,
+        };
     }
 
-    mapItemToLayerNode(item: STACItem): TreeNode | null {
-        const roles = mapAssetsToNodeRoles(
-            item.assets,
-            this.roleRegistry,
-            this.layerConfigRegistry,
-            item.properties,
-            item.bbox,
+    /** Map a STAC item to a LayerNode via protocol resolution. Returns null when no renderer can be selected. */
+    mapItemToLayerNode(item: STACItem): LayerNode | null {
+        const result = mapAssetsToProtocols(item.assets, this.roleRegistry, {
+                ...(item.properties
+                    ? { properties: item.properties as Record<string, unknown> }
+                    : {}),
+                ...(item.bbox ? { itemBbox: item.bbox } : {}),
+                ...(item.stac_extensions
+                    ? { stac_extensions: item.stac_extensions }
+                    : {}),
+            },
         );
+        if (!result || !result.renderer) return null;
+        return this.buildLayerNode(item, {
+            ...result,
+            renderer: result.renderer,
+        });
+    }
 
-        const hasBbox = item.bbox && item.bbox.length >= 4;
-
-        if (roles.reports.length === 0 && !roles.display && !roles.attribute) {
-            return this.createPlaceholderOrSkip(item, hasBbox, "no assets");
+    /** The caller has checked `renderer` is present (see mapItemToLayerNode). */
+    private buildLayerNode(
+        item: STACItem,
+        result: ProtocolMappingResult & {
+            renderer: NonNullable<ProtocolMappingResult["renderer"]>;
+        },
+    ): LayerNode {
+        const { capabilities, unimplemented } = assignCapabilities(
+            result.data
+                ? { renderer: result.renderer, data: result.data }
+                : { renderer: result.renderer },
+            this.capabilitySource,
+        );
+        for (const capability of unimplemented) {
+            logger.warn(
+                `STAC: dropping unimplemented capability "${capability.toolId}" (${capability.slot}) on item "${item.id}"`,
+            );
         }
-
-        const layerRoles = this.resolveRoleConflicts(roles);
-        if (!layerRoles) {
-            return this.createPlaceholderOrSkip(item, hasBbox, "no display");
-        }
-
-        const flattenedBbox = hasBbox ? flattenTo2D(new Bbox(item.bbox)) : null;
-
-        const layerNode: LayerNode = {
+        return {
             id: item.id,
             type: LayerTreeNodeTypes.Layer,
             title: item.properties.title || item.id,
             description: item.properties.description || "",
-            icon: "",
-            metadata: {
-                stacEntityRef: `Feature:${item.id}`,
-            },
+            metadata: { stacEntityRef: item.id },
             parentId: null,
-            bbox: flattenedBbox,
-            roles: layerRoles,
+            bbox: toNodeBbox(item.bbox),
+            renderer: result.renderer,
+            ...(result.data ? { data: result.data } : {}),
+            capabilities,
+            relatedObjects: result.relatedObjects,
             isVisible: false,
         };
-
-        return layerNode;
     }
 
+    /** Reverse-lookup: extract the STAC entity reference from a tree node's metadata. */
     getSTACEntityFromNode(node: TreeNode): STACEntity | null {
         const ref = node.metadata?.stacEntityRef as string | undefined;
         if (!ref) return null;
-
-        const colonIndex = ref.indexOf(":");
-        if (colonIndex === -1) return null;
-
-        const type = ref.slice(0, colonIndex);
-        const id = ref.slice(colonIndex + 1);
-        return this.cache.get<STACEntity>(type, id) ?? null;
+        // The cache is keyed by STAC entity type — derive it from the node kind.
+        const type = isGroupNode(node) ? "Collection" : "Feature";
+        return this.cache.get(type, ref) ?? null;
     }
 
+    /** Reverse-lookup: extract a STAC collection from a tree node, if the node references one. */
     getSTACCollectionFromNode(node: TreeNode): STACCollection | null {
         const entity = this.getSTACEntityFromNode(node);
-        if (entity && isSTACCollection(entity)) {
-            return entity;
-        }
-        return null;
-    }
-
-    /**
-     * Resolve role conflicts by keeping only one display role and one attribute role.
-     * Report roles are kept as-is (multiple reports are allowed).
-     *
-     * Returns null if no display role is present (item cannot be a layer).
-     */
-    private resolveRoleConflicts(roles: NodeRoles): LayerNodeRoles | null {
-        if (!roles.display) return null;
-
-        const result: LayerNodeRoles = {
-            display: roles.display,
-            reports: roles.reports,
-        };
-        if (roles.attribute) result.attribute = roles.attribute;
-        return result;
-    }
-
-    /**
-     * Create a placeholder layer node for items that have spatial extent
-     * but no renderable assets. The node has no display role — it appears
-     * in the tree with the item title and bbox, but no map rendering or
-     * action buttons.
-     */
-    private createPlaceholderOrSkip(
-        item: STACItem,
-        hasBbox: boolean,
-        reason: string,
-    ): TreeNode | null {
-        if (!hasBbox) {
-            logger.debug(`Item ${item.id} has no bbox and ${reason}, skipping`);
-            return null;
-        }
-        const flattenedBbox =
-            item.bbox && item.bbox.length >= 4
-                ? flattenTo2D(new Bbox(item.bbox))
-                : null;
-
-        const layerNode: LayerNode = {
-            id: item.id,
-            type: LayerTreeNodeTypes.Layer,
-            title: item.properties.title || item.id,
-            description: item.properties.description || "",
-            icon: "",
-            metadata: {
-                stacEntityRef: `Feature:${item.id}`,
-            },
-            parentId: null,
-            bbox: flattenedBbox,
-            roles: { reports: [] },
-            isVisible: false,
-        };
-
-        return layerNode;
+        return entity && isSTACCollection(entity) ? entity : null;
     }
 }

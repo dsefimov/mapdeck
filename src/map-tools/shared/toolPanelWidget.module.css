@@ -1,0 +1,9 @@
+/* Positions an active tool panel left of the top-right toolbar. */
+.panelPosition {
+    position: absolute;
+    top: var(--space-8);
+    right: var(--toolbar-width);
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: auto;
+}

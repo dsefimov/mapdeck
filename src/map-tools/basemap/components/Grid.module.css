@@ -1,11 +1,11 @@
 .basemap_component {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
-    padding: var(--space-sm);
+    gap: var(--space-10);
+    padding: var(--space-10);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-md);
-    background: var(--color-background);
+    background: var(--color-bg);
     box-shadow: var(--shadow-md);
     pointer-events: auto;
 }
@@ -14,38 +14,47 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--space-sm);
-    background-color: var(--color-background);
+    padding: var(--space-10);
+    background-color: var(--color-bg);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: all var(--transition-fast);
     text-align: center;
-    width: var(--tool-width-sm);
+    /* width = preview + padding (identical for all cards,
+       regardless of title length) */
+    width: calc(
+        var(--preview-image-size) + 2 * var(--space-10) +
+            2 * var(--border-sm)
+    );
 }
 
 .basemap_card:hover {
     background-color: var(--color-hover);
-    border-color: var(--color-secondary);
-    box-shadow: var(--shadow-sm);
+    border-color: var(--color-border);
 }
 
 .basemap_card_active {
-    background-color: var(--color-primary);
-    color: var(--color-background);
-    border-color: var(--color-primary);
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+/* Active card — white label via descendant selector (0-2-0),
+   wins over the Text base color regardless of CSS-module order */
+.basemap_card_active .basemap_card_label {
+    color: var(--color-bg);
 }
 
 .basemap_card_active:hover {
-    background-color: var(--color-primary);
+    background-color: var(--color-accent);
 }
 
 .basemap_card_preview {
-    width: calc(var(--tool-width-sm) - var(--space-lg));
-    height: calc(var(--tool-width-sm) - var(--space-lg));
+    width: var(--preview-image-size);
+    height: var(--preview-image-size);
     border-radius: var(--radius-sm);
     background-size: contain;
-    margin-bottom: var(--space-sm);
+    margin-bottom: var(--space-10);
     border: var(--border-sm) solid var(--color-border);
 }
 
@@ -55,10 +64,11 @@
     pointer-events: none;
 }
 
-.error_text {
-    color: var(--color-error);
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-semibold);
+/* Centering inside the preview — descendant selector: the variant display
+   (title/hint = block, 0-1-0) must not beat flex centering via
+   CSS-module import order */
+.basemap_card_preview .placeholder,
+.basemap_card_preview .error_text {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -67,14 +77,6 @@
 }
 
 .placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-bold);
-    color: var(--color-text-muted);
     background: var(--color-hover);
     border-radius: var(--radius-sm);
 }

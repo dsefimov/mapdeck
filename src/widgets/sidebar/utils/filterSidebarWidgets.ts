@@ -1,12 +1,17 @@
-import type { Widget } from "@core/framework/types";
+import type { WidgetInstance } from "@core/common/widget";
 
+/**
+ * Widgets the sidebar lists: grid-placed, not opted out via
+ * `showInSidebar: false`, and not on the caller's exclusion list.
+ */
 export function filterSidebarWidgets(
-    allWidgets: readonly Widget[],
+    allWidgets: readonly WidgetInstance[],
     excludedIds: readonly string[],
-): Widget[] {
+): WidgetInstance[] {
     return allWidgets.filter(
-        (widget) =>
-            widget.showInSidebar !== false &&
-            !excludedIds.includes(widget.id),
+        (instance) =>
+            (instance.definition.placement ?? "grid") === "grid" &&
+            instance.definition.showInSidebar !== false &&
+            !excludedIds.includes(instance.id),
     );
 }

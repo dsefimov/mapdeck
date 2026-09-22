@@ -9,23 +9,20 @@ export interface SliderInputProps {
     max: number;
     step?: number;
     onChange: (value: number) => void;
-    onPointerUp?: React.PointerEventHandler<HTMLInputElement>;
-    onMouseUp?: React.MouseEventHandler<HTMLInputElement>;
-    onTouchEnd?: React.TouchEventHandler<HTMLInputElement>;
+    /** Fires when the user finishes a pointer drag — the value is final. */
+    onCommit?: () => void;
     disabled?: boolean;
     className?: string;
 }
 
-export const SliderInput: React.FC<SliderInputProps> = ({
+export const SliderInput: (props: SliderInputProps) => React.ReactNode = ({
     id,
     value,
     min,
     max,
     step,
     onChange,
-    onPointerUp,
-    onMouseUp,
-    onTouchEnd,
+    onCommit,
     disabled,
     className,
 }) => {
@@ -43,9 +40,7 @@ export const SliderInput: React.FC<SliderInputProps> = ({
             step={step ?? 1}
             disabled={disabled}
             onChange={(e) => onChange(Number(e.target.value))}
-            onPointerUp={onPointerUp}
-            onMouseUp={onMouseUp}
-            onTouchEnd={onTouchEnd}
+            onPointerUp={onCommit}
         />
     );
 };

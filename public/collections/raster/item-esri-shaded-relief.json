@@ -1,0 +1,20 @@
+{
+    "stac_version": "1.0.0",
+    "type": "Feature",
+    "id": "esri-world-shaded-relief",
+    "bbox": [-180.0, -85.05, 180.0, 85.05],
+    "properties": {
+        "title": "World Shaded Relief (Esri)",
+        "description": "Grayscale terrain hillshade from Esri's Living Atlas — a translucent raster overlay that pairs well with the raster-opacity tool. XYZ tiles up to zoom 13.",
+        "datetime": "2024-01-01T00:00:00Z"
+    },
+    "assets": {
+        "tiles": {
+            "href": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Shaded_Relief/MapServer/tile/{z}/{y}/{x}",
+            "roles": ["raster-tile"],
+            "title": "Esri World Shaded Relief tiles",
+            "type": "image/png",
+            "raster:max-zoom": 13
+        }
+    }
+}

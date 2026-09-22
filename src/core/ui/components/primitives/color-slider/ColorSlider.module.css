@@ -1,0 +1,35 @@
+.wrapper {
+    position: relative;
+    height: var(--icon-sm);
+    padding: var(--space-4);
+    background: var(--color-border);
+    border-radius: var(--radius-lg);
+    box-sizing: content-box;
+    overflow: hidden;
+}
+
+.canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+}
+
+.canvas:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+}
+
+.thumb {
+    position: absolute;
+    top: var(--border-sm);
+    width: calc(var(--icon-sm) - var(--space-4));
+    height: calc(var(--icon-sm) + 2 * var(--space-4) - var(--border-md));
+    /* Dark frame instead of the original white one — white vanishes over
+       light gradient segments and the panel background */
+    border: var(--border-md) solid var(--color-text-secondary);
+    border-radius: var(--radius-xs);
+    pointer-events: none;
+    transform: translateX(-50%);
+}

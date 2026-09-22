@@ -13,33 +13,41 @@
     pointer-events: none;
 }
 
+/* The input is visually hidden — ring the track it controls instead */
+.input:focus-visible + .track {
+    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+}
+
 .track {
     position: relative;
-    width: calc(var(--icon-lg) + var(--space-xs));
-    height: calc(var(--icon-sm) + var(--space-xs));
-    border-radius: var(--radius-lg);
+    width: var(--space-32);
+    height: var(--space-16);
+    border-radius: var(--radius-full);
     background: var(--color-border);
+    opacity: 0.6;
     transition: background-color var(--transition-fast);
 }
 
 .thumb {
     position: absolute;
-    top: var(--space-xs);
-    left: var(--space-xs);
-    width: calc(var(--icon-sm) - var(--space-xs));
-    height: calc(var(--icon-sm) - var(--space-xs));
+    top: calc((var(--space-16) - var(--space-10)) / 2);
+    left: calc((var(--space-16) - var(--space-10)) / 2);
+    width: var(--space-10);
+    height: var(--space-10);
     border-radius: 50%;
-    background: var(--color-background);
-    box-shadow: var(--shadow-sm);
+    background: var(--color-bg);
+    /* Border instead of elevation — the thumb sits on the track, not above the page */
+    border: var(--border-sm) solid var(--color-border);
     transition: transform var(--transition-fast);
 }
 
 .checked .track {
-    background: var(--color-primary);
+    background: var(--color-accent);
+    opacity: 1;
 }
 
 .checked .thumb {
-    transform: translateX(calc(var(--icon-lg) - var(--icon-sm)));
+    transform: translateX(var(--space-16));
 }
 
 .disabled {

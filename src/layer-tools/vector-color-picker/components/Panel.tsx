@@ -1,43 +1,34 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { useRootStore } from "@core/framework/store";
-import { isLayerNode } from "@core/framework/types";
-import type { TreeNode, VectorLayerConfig } from "@core/framework/types";
-import { logger } from "@core/shared/diagnostics/logger";
-import { ColorPicker } from "@core/ui/composites/color-picker/ColorPicker";
-import { InputLabel, SliderInput } from "@core/ui/components/primitives/inputs";
+import { useRootStore } from "@core/shell";
+import { isLayerNode } from "@core/contracts";
+import { logger } from "@core/lib/logger";
+import { setUniformVectorOpacity } from "@core/domain/layer-tree";
+import { ColorPicker } from "@core/ui/composites";
+import { SliderInput } from "@core/ui/components/primitives/inputs";
+import { Field } from "@core/ui/components";
+import { DEFAULT_ACCENT_CSS } from "@core/ui/theme";
 import { VECTOR_COLOR_PICKER_ID } from "./Tool";
 import styles from "./Panel.module.css";
+import type { LayerStyle } from "@core/contracts";
 
 export interface VectorColorPickerProps {
     nodeId: string;
 }
 
-interface GuardResult {
-    paint: Record<string, unknown>;
-    opacity: number;
+function labelOf(
+    dict: Record<string, string>,
+    key: string,
+    fallback: string,
+): string {
+    return dict[key] ?? fallback;
 }
 
-function validateNode(
-    node: TreeNode | null,
-    nodeId: string,
-): GuardResult | null {
-    if (!node || !isLayerNode(node)) {
-        logger.warn(`VectorColorPicker: node ${nodeId} is not a layer`);
-        return null;
-    }
-
-    const displayRole = node.roles.display;
-    if (!displayRole) return null;
-
-    const config = displayRole.render.config as unknown as Record<
-        string,
-        unknown
-    >;
-    const paint = (config.paint as Record<string, unknown>) ?? {};
-    const opacity = (paint["fill-opacity"] as number) ?? 1.0;
-
-    return { paint, opacity };
+function withPaint(
+    style: LayerStyle,
+    paintUpdates: Record<string, unknown>,
+): LayerStyle {
+    return { ...style, paint: { ...style.paint, ...paintUpdates } };
 }
 
 export const VectorColorPickerComponent: (
@@ -45,51 +36,57 @@ export const VectorColorPickerComponent: (
 ) => React.ReactNode = observer(({ nodeId }) => {
     const rootStore = useRootStore();
     const dict = rootStore.localeStore.t(VECTOR_COLOR_PICKER_ID);
-    const node = rootStore.treeStore.getNode(nodeId);
+    const node = rootStore.treeStore.node(nodeId);
 
-    const guard = validateNode(node, nodeId);
-    if (!guard) return null;
-    const { paint, opacity } = guard;
+    if (!node || !isLayerNode(node)) {
+        logger.warn(`VectorColorPicker: node ${nodeId} is not a layer`);
+        return null;
+    }
 
-    const updatePaint = (paintUpdates: Record<string, unknown>): void => {
-        const merged = { ...paint, ...paintUpdates };
-        rootStore.treeStore.updateLayerConfig(nodeId, {
-            paint: merged,
-        } as Partial<VectorLayerConfig>);
-    };
-
-    const updateOpacity = (newOpacity: number): void => {
-        rootStore.treeStore.updateLayerConfig(nodeId, {
-            paint: {
-                ...paint,
-                "fill-opacity": newOpacity,
-                "line-opacity": newOpacity,
-                "circle-opacity": newOpacity,
-            },
-        } as Partial<VectorLayerConfig>);
-    };
+    const style = node.style ?? {};
+    const paint = (style.paint ?? {}) as Record<string, unknown>;
+    const opacity = (paint["fill-opacity"] as number) ?? 1.0;
 
     const handleOpacityChange = (newOpacity: number): void => {
-        updateOpacity(newOpacity);
+        rootStore.treeStore.updateLayerStyle(
+            nodeId,
+            setUniformVectorOpacity(style, newOpacity),
+        );
     };
 
     return (
         <div className={styles.container}>
+            {/* Unset paint renders with the theme accent on the map —
+                the swatch shows that same color until the user picks one */}
             <ColorPicker
-                label={dict["label.color"] ?? "Color"}
-                value={(paint["fill-color"] as string) ?? ""}
-                onChange={(color) => updatePaint({ "fill-color": color })}
+                label={labelOf(dict, "label.color", "Color")}
+                value={(paint["fill-color"] as string) ?? DEFAULT_ACCENT_CSS}
+                onChange={(color) =>
+                    rootStore.treeStore.updateLayerStyle(
+                        nodeId,
+                        withPaint(style, { "fill-color": color }),
+                    )
+                }
             />
             <ColorPicker
-                label={dict["label.border-color"] ?? "Border color"}
-                value={(paint["line-color"] as string) ?? ""}
-                onChange={(color) => updatePaint({ "line-color": color })}
+                label={labelOf(dict, "label.border-color", "Border color")}
+                value={(paint["line-color"] as string) ?? DEFAULT_ACCENT_CSS}
+                onChange={(color) =>
+                    rootStore.treeStore.updateLayerStyle(
+                        nodeId,
+                        withPaint(style, { "line-color": color }),
+                    )
+                }
             />
-            <div className={styles.opacitySection}>
-                <InputLabel variant="caption" htmlFor="opacity">
-                    {dict["label.opacity"] ?? "Opacity"}:{" "}
-                    {Math.round(opacity * 100)}%
-                </InputLabel>
+            <Field
+                htmlFor="opacity"
+                label={
+                    <>
+                        {labelOf(dict, "label.opacity", "Opacity")}:{" "}
+                        {Math.round(opacity * 100)}%
+                    </>
+                }
+            >
                 <SliderInput
                     id="opacity"
                     min={0}
@@ -98,7 +95,7 @@ export const VectorColorPickerComponent: (
                     value={opacity}
                     onChange={handleOpacityChange}
                 />
-            </div>
+            </Field>
         </div>
     );
 });

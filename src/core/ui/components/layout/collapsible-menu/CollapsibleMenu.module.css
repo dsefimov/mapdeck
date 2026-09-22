@@ -1,6 +1,6 @@
 .menuPanel {
     position: relative;
-    background: var(--color-background);
+    background: var(--color-bg);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-sm);
     overflow: hidden;
@@ -21,12 +21,12 @@
 .menuContent {
     display: flex;
     flex-direction: column;
-    font-size: var(--font-size-md);
+    gap: var(--space-10);
+    padding: var(--space-10);
 }
 
 .menuComponent {
-    padding-bottom: var(--space-sm);
-    background-color: var(--color-background);
+    background-color: var(--color-bg);
 }
 
 .menuComponent:last-child {

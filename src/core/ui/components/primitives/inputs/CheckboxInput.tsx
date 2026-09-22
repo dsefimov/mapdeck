@@ -6,13 +6,15 @@ export interface CheckboxInputProps {
     id: string;
     checked: boolean;
     onChange: (checked: boolean) => void;
+    disabled?: boolean;
     className?: string | undefined;
 }
 
-export const CheckboxInput: React.FC<CheckboxInputProps> = ({
+export const CheckboxInput: (props: CheckboxInputProps) => React.ReactNode = ({
     id,
     checked,
     onChange,
+    disabled,
     className,
 }) => {
     return (
@@ -21,6 +23,7 @@ export const CheckboxInput: React.FC<CheckboxInputProps> = ({
             type="checkbox"
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
+            disabled={disabled}
             className={cn(styles.input, className)}
         />
     );

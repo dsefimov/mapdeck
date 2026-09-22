@@ -1,7 +1,10 @@
-import { LayerRoles, makeRenderDescriptor } from "@core/framework/types";
-import type { DisplayRole } from "@core/framework/types";
-import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
+import type {
+    IRoleResolver,
+    ResolveContext,
+    ProtocolAssignment,
+} from "../IRoleResolver";
 import type { STACAsset } from "../../types";
+import { baseAssetParams } from "../baseAssetParams";
 
 /**
  * GeoJSON for DeckGL.
@@ -15,32 +18,25 @@ import type { STACAsset } from "../../types";
 export class GeoJsonRoleResolver implements IRoleResolver {
     readonly priority = 35;
 
-    canResolve(asset: STACAsset): boolean {
+    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
         if (asset.roles?.includes("geojson")) return true;
         if (asset.roles?.includes("ogc")) return true;
-        // Explicit geo+json MIME only — application/json is too broad
         return (
             asset.type === "application/geo+json" ||
             asset.type === "application/vnd.geo+json"
         );
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): DisplayRole {
+    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
+        const protocolId = asset.roles?.includes("ogc")
+            ? "ogc-features"
+            : "geojson-tiled";
         const sourceUrl = resolveOgcFeaturesUrl(asset.href);
-        const layerConfig = ctx.registry.create(LayerRoles.GEOJSON);
-        const cfg = layerConfig as unknown as Record<string, unknown>;
-        cfg.url = sourceUrl;
 
         return {
-            id: ctx.assetKey,
-            category: "display",
-            label: asset.title ?? ctx.assetKey,
-            ...(asset.type ? { mimeType: asset.type } : {}),
-            render: makeRenderDescriptor(
-                LayerRoles.GEOJSON,
-                sourceUrl,
-                layerConfig,
-            ),
+            protocolId,
+            sourceUrl,
+            params: baseAssetParams(asset, ctx),
         };
     }
 }
@@ -49,7 +45,7 @@ export class GeoJsonRoleResolver implements IRoleResolver {
  * OGC API Features collection endpoint returns collection metadata, not data.
  * Append /items to obtain a FeatureCollection.
  */
-export function resolveOgcFeaturesUrl(href: string): string {
+function resolveOgcFeaturesUrl(href: string): string {
     const clean = href.endsWith("/") ? href.slice(0, -1) : href;
     return clean.endsWith("/items") ? href : `${clean}/items`;
 }

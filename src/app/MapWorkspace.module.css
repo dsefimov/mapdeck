@@ -1,0 +1,22 @@
+.mapWorkspace {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+}
+
+/* The workspace is a fixed-viewport surface: nothing inside it may
+   grow a page scrollbar (widget resize previews included). */
+.mapArea {
+    flex: 1;
+    background-color: var(--color-border);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Overlay container for map-toolbar widgets — children position themselves. */
+.mapToolbarWidget {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-tooltip);
+    pointer-events: none;
+}

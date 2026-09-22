@@ -1,12 +1,13 @@
-import type { Widget } from "@core/framework/types";
-import { formatDict } from "@core/framework/i18n";
-import { useRootStore } from "@core/framework/store";
+import { type StoredWidget, LOCALE_KEY_WIDGET_NAME } from "@core/contracts";
+import { formatDict, typedDict } from "@core/lib/text";
+import { useRootStore } from "@core/shell";
 import { observer } from "mobx-react-lite";
+import type { SidebarLocaleKey } from "../locale";
 import { SIDEBAR_ID } from "..";
 import styles from "./Widget.module.css";
 
 interface WidgetButtonProps {
-    widget: Widget;
+    widget: StoredWidget;
     isOpen: boolean;
     onClick: (widgetId: string) => void;
 }
@@ -14,13 +15,18 @@ interface WidgetButtonProps {
 const WidgetButton = observer<WidgetButtonProps>(
     ({ widget, isOpen, onClick }) => {
         const rootStore = useRootStore();
-        const dict = rootStore.localeStore.t(SIDEBAR_ID);
+        const dict = typedDict<SidebarLocaleKey>(
+            rootStore.localeStore.t(SIDEBAR_ID),
+        );
         const widgetButtonClass = `${styles.sidebar__widgetButton} ${
             isOpen ? styles.sidebar__widgetButtonOpen : ""
         }`;
 
-        const widgetDict = rootStore.localeStore.t(widget.id);
-        const widgetName = widgetDict["widget.name"]!;
+        // Dynamic namespace — no key union is possible, so the id is the
+        // display-name fallback (same idiom as getWidgetName).
+        const widgetName =
+            rootStore.localeStore.t(widget.id)[LOCALE_KEY_WIDGET_NAME] ??
+            widget.id;
 
         const handleClick = () => onClick(widget.id);
 
@@ -29,7 +35,7 @@ const WidgetButton = observer<WidgetButtonProps>(
                 className={widgetButtonClass}
                 onClick={handleClick}
                 title={widgetName}
-                aria-label={formatDict(dict["aria.selectWidget"]!, {
+                aria-label={formatDict(dict["aria.selectWidget"], {
                     name: widgetName,
                 })}
             >

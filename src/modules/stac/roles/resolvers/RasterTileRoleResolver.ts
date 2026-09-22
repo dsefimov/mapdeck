@@ -1,37 +1,41 @@
-import { LayerRoles, makeRenderDescriptor } from "@core/framework/types";
-import type { DisplayRole } from "@core/framework/types";
-import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
+import type {
+    IRoleResolver,
+    ResolveContext,
+    ProtocolAssignment,
+} from "../IRoleResolver";
 import type { STACAsset } from "../../types";
+import { baseAssetParams } from "../baseAssetParams";
+
+/** MIME of Mapbox Vector Tiles — their URLs share the {z}/{x}/{y} shape. */
+const MVT_MIME = "application/vnd.mapbox-vector-tile";
 
 /**
  * Handles XYZ raster tiles.
- * Matches: role "raster-tile" (custom) or {z}/{x}/{y} pattern in the URL.
+ * Matches: role "raster-tile" (custom) or {z}/{x}/{y} pattern in the URL —
+ * but the URL heuristic never applies to vector-tile assets: this resolver
+ * runs at a lower priority number than VectorTileRoleResolver, so without
+ * the guard it would claim MVT templates first.
  */
 export class RasterTileRoleResolver implements IRoleResolver {
     readonly priority = 20;
 
-    canResolve(asset: STACAsset): boolean {
-        const hasRole = asset.roles?.includes("raster-tile") ?? false;
-        const isXyz = /\{[zxy]\}/.test(asset.href);
-        return hasRole || isXyz;
+    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
+        if (asset.roles?.includes("raster-tile")) return true;
+        if (asset.roles?.includes("vector-tile")) return false;
+        if (asset.type === MVT_MIME) return false;
+        return /\{z\}\/\{x\}\/\{y\}/.test(asset.href);
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): DisplayRole {
-        const layerConfig = ctx.registry.create(LayerRoles.RASTER);
-        const cfg = layerConfig as unknown as Record<string, unknown>;
-        cfg.url = asset.href;
-        cfg.type = "xyz";
-
+    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
         return {
-            id: ctx.assetKey,
-            category: "display",
-            label: asset.title ?? ctx.assetKey,
-            ...(asset.type ? { mimeType: asset.type } : {}),
-            render: makeRenderDescriptor(
-                LayerRoles.RASTER,
-                asset.href,
-                layerConfig,
-            ),
+            protocolId: "xyz",
+            sourceUrl: asset.href,
+            params: {
+                ...baseAssetParams(asset, ctx),
+                ...(typeof asset["raster:max-zoom"] === "number"
+                    ? { maxzoom: asset["raster:max-zoom"] }
+                    : {}),
+            },
         };
     }
 }

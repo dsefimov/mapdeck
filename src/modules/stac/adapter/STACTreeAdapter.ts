@@ -1,16 +1,11 @@
-import { observable, runInAction } from "mobx";
-import {
-    type SourceAdapter,
-    type TreeNode,
-    type ReportRole,
-    LayerTreeNodeTypes,
-} from "@core/framework/types";
-import { logger } from "@core/shared/diagnostics/logger";
+import type { SourceAdapter } from "@core/contracts";
+import { type TreeNode, type GroupNode, type LayerNode, LayerTreeNodeTypes } from "@core/contracts";
+import { logger } from "@core/lib/logger";
 import { type STACConfig } from "../core/STACConfig";
 import { STACClient } from "../core/STACClient";
 import { STACCache } from "../core/STACCache";
 import { STACEntityMapper } from "../mapping/STACEntityMapper";
-import type { LayerConfigRegistry } from "@core/domain/adapters";
+import type { CapabilitySource } from "../mapping/capabilities";
 import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { resolveBaseUrl, filterLinksByRel } from "../utils/url";
 import {
@@ -33,8 +28,8 @@ export class STACTreeAdapter implements SourceAdapter {
     private state: InitializedState | null = null;
 
     constructor(
-        private readonly layerConfigRegistry: LayerConfigRegistry,
         readonly roleRegistry: RoleResolverRegistry,
+        private capabilitySource: CapabilitySource,
     ) {}
 
     initialize(config: Record<string, unknown>): void {
@@ -47,8 +42,8 @@ export class STACTreeAdapter implements SourceAdapter {
             client: new STACClient(stacConfig),
             mapper: new STACEntityMapper(
                 cache,
-                this.layerConfigRegistry,
                 this.roleRegistry,
+                this.capabilitySource,
             ),
         };
 
@@ -57,51 +52,37 @@ export class STACTreeAdapter implements SourceAdapter {
 
     async fetchRoot(): Promise<TreeNode[]> {
         const { client, cache, mapper, config } = this.getState();
+        const ctx: FetchContext = { client, cache, mapper };
 
         try {
             const catalog = await client.fetchCatalog(config.url);
             cache.store(catalog);
 
-            const nodes: TreeNode[] = [];
+            const batches: TreeNode[][] = [
+                (await fetchChildCollections(catalog, ctx)).filter(
+                    (n): n is GroupNode => n !== null,
+                ),
+            ];
 
-            // Handle child links → collections (static STAC)
-            const collectionNodes = await fetchChildCollections(catalog, {
-                client,
-                cache,
-                mapper,
-            });
-            for (const n of collectionNodes) {
-                if (n) nodes.push(n);
-            }
-
-            // Handle collections API endpoint (STAC API — e.g., HubOcean)
             const apiCollectionsLink = filterLinksByRel(
                 catalog.links,
                 "collections",
             )[0];
             if (apiCollectionsLink) {
                 logger.debug("STAC mode: api");
-                const apiNodes = await fetchCollectionsFromApi(
-                    apiCollectionsLink.href,
-                    { client, cache, mapper },
+                batches.push(
+                    await fetchCollectionsFromApi(
+                        apiCollectionsLink.href,
+                        ctx,
+                    ),
                 );
-                for (const n of apiNodes) {
-                    if (n) nodes.push(n);
-                }
             } else {
                 logger.debug("STAC mode: static");
             }
 
-            // Handle item links directly in catalog (items linked without Collection container)
-            const itemNodes = await fetchCatalogItems(catalog, {
-                client,
-                cache,
-                mapper,
-            });
-            for (const n of itemNodes) {
-                if (n) nodes.push(n);
-            }
+            batches.push(await fetchCatalogItems(catalog, ctx));
 
+            const nodes = dedupeById(batches.flat());
             if (nodes.length === 0) {
                 logger.warn(
                     `No children or items found in catalog ${catalog.id}`,
@@ -133,15 +114,7 @@ export class STACTreeAdapter implements SourceAdapter {
 
         const itemResults = await Promise.all(itemPromises);
         const collectionNodes = (await Promise.all(collectionPromises)).flat();
-
-        // Merge collected reports from items into parent GroupNode
-        runInAction(() => {
-            for (const result of itemResults) {
-                parent.roles.reports.push(...result.collectedReports);
-            }
-        });
-
-        const itemNodes = itemResults.flatMap((r) => r.nodes);
+        const itemNodes = itemResults.flat();
         return [...itemNodes, ...collectionNodes];
     }
 
@@ -157,7 +130,6 @@ export class STACTreeAdapter implements SourceAdapter {
     }
 }
 
-// ---- Pure functions outside class ----
 
 interface FetchContext {
     client: STACClient;
@@ -165,19 +137,45 @@ interface FetchContext {
     mapper: STACEntityMapper;
 }
 
-interface FetchItemsResult {
-    nodes: TreeNode[];
-    collectedReports: ReportRole[];
+/**
+ * Fetch, validate, cache and map one collection link; null on any failure
+ * or when the entity is not a collection.
+ */
+async function loadCollectionNode(
+    href: string,
+    baseUrl: string | undefined,
+    ctx: FetchContext,
+): Promise<GroupNode | null> {
+    try {
+        const entity = await ctx.client.fetchEntity(href, baseUrl);
+        if (!isSTACCollection(entity)) return null;
+        ctx.cache.store(entity);
+        return ctx.mapper.mapCollectionToGroupNode(entity);
+    } catch (error) {
+        logger.warn(`Failed to load collection ${href}:`, error);
+        return null;
+    }
 }
 
-function collectReportsFromNodes(nodes: TreeNode[]): ReportRole[] {
-    return nodes.flatMap((n) => n.roles?.reports ?? []);
+/**
+ * One collection can arrive both as a child link and through the
+ * /collections API — without dedupe the tree would render it twice.
+ */
+function dedupeById(nodes: readonly TreeNode[]): TreeNode[] {
+    const seen = new Set<string>();
+    const unique: TreeNode[] = [];
+    for (const node of nodes) {
+        if (seen.has(node.id)) continue;
+        seen.add(node.id);
+        unique.push(node);
+    }
+    return unique;
 }
 
 async function fetchChildCollections(
     catalog: STACCatalog | STACCollection,
     ctx: FetchContext,
-): Promise<(TreeNode | null)[]> {
+): Promise<(GroupNode | null)[]> {
     const childLinks = filterLinksByRel(catalog.links, "child");
     if (childLinks.length === 0) return [];
 
@@ -186,20 +184,7 @@ async function fetchChildCollections(
     );
 
     return Promise.all(
-        childLinks.map(async (link) => {
-            try {
-                const entity = await ctx.client.fetchEntity(link.href);
-                if (!isSTACCollection(entity)) return null;
-                ctx.cache.store(entity);
-                return ctx.mapper.mapCollectionToGroupNode(
-                    entity,
-                    observable.array<string>([]),
-                );
-            } catch (error) {
-                logger.warn(`Failed to fetch child ${link.href}:`, error);
-                return null;
-            }
-        }),
+        childLinks.map((link) => loadCollectionNode(link.href, undefined, ctx)),
     );
 }
 
@@ -210,20 +195,18 @@ async function fetchCatalogItems(
     const itemLinks = filterLinksByRel(catalog.links, "item");
     if (itemLinks.length === 0) return [];
 
-    const results: TreeNode[] = [];
-    for (const link of itemLinks) {
-        try {
-            const items = await ctx.client.fetchItemsAll(link.href);
-            items.forEach((item) => ctx.cache.store(item));
-            for (const item of items) {
-                const node = ctx.mapper.mapItemToLayerNode(item);
-                if (node) results.push(node);
-            }
-        } catch (error) {
-            logger.warn(`Failed to fetch item ${link.href}:`, error);
-        }
-    }
-    return results;
+    logger.debug(
+        `Found ${itemLinks.length} item link(s) at the catalog root`,
+    );
+
+    // Root item links run the same pipeline as collection items — parallel
+    // and enriched: a lightweight listing (items without assets) can sit at
+    // the root just as well, and root links are as independent of each
+    // other as collection ones. Per-link failures degrade inside.
+    const batches = await Promise.all(
+        itemLinks.map((link) => fetchItemsFromUrl(link.href, undefined, ctx)),
+    );
+    return batches.flat();
 }
 
 /**
@@ -241,10 +224,7 @@ async function fetchCollectionsFromApi(
         for (const collection of collections) {
             ctx.cache.store(collection);
             nodes.push(
-                ctx.mapper.mapCollectionToGroupNode(
-                    collection,
-                    observable.array<string>([]),
-                ),
+                ctx.mapper.mapCollectionToGroupNode(collection),
             );
         }
 
@@ -266,10 +246,10 @@ function buildChildFetchPromises(
     baseUrl: string | undefined,
     ctx: FetchContext,
 ): {
-    itemPromises: Promise<FetchItemsResult>[];
+    itemPromises: Promise<TreeNode[]>[];
     collectionPromises: Promise<TreeNode[]>[];
 } {
-    const itemPromises: Promise<FetchItemsResult>[] = [];
+    const itemPromises: Promise<TreeNode[]>[] = [];
     const collectionPromises: Promise<TreeNode[]>[] = [];
     const itemsLink = filterLinksByRel(collection.links, "items")[0];
     const itemLinks = filterLinksByRel(collection.links, "item");
@@ -300,90 +280,120 @@ async function fetchItemsFromUrl(
     href: string,
     baseUrl: string | undefined,
     ctx: FetchContext,
-): Promise<FetchItemsResult> {
+): Promise<TreeNode[]> {
     try {
         const items = await ctx.client.fetchItemsAll(href, baseUrl);
         const enriched = await enrichItems(items, ctx);
         enriched.forEach((item) => ctx.cache.store(item));
-
-        const nodes = mapItemsToNodes(enriched, ctx.mapper);
-        const collectedReports = collectReportsFromNodes(nodes);
-
-        return { nodes, collectedReports };
+        return mapItemsToNodes(enriched, ctx.mapper);
     } catch (error) {
         logger.warn(`Failed to load items from ${href}:`, error);
-        return { nodes: [], collectedReports: [] };
+        return [];
     }
 }
 
 /**
- * Enrich items that have no assets by fetching individual item details.
- * Some STAC APIs (e.g., HubOcean) return lightweight items in list
- * responses with empty `assets`, but full assets are available when
- * fetching each item individually via its `self` link.
+ * Enrich items that arrive without assets by fetching each item's full
+ * form through its `self` link — a listing may embed lightweight items,
+ * and the standard's self link is the canonical way back to the complete
+ * representation.
  *
  * Requests are batched to avoid 429 rate limiting.
  */
 const ENRICH_BATCH_SIZE = 5;
 
+/**
+ * Ceiling on per-item enrichment fetches: one N+1 walk over a huge listing
+ * must not turn into thousands of requests. Items beyond the cap keep their
+ * list-response shape (no assets) instead of hanging the tree load.
+ */
+const ENRICH_MAX_ITEMS = 200;
+
+function partitionByAssets(
+    items: STACItem[],
+): { withAssets: STACItem[]; assetless: STACItem[] } {
+    const withAssets: STACItem[] = [];
+    const assetless: STACItem[] = [];
+    for (const item of items) {
+        const assetKeys = item.assets ? Object.keys(item.assets) : [];
+        (assetKeys.length === 0 ? assetless : withAssets).push(item);
+    }
+    return { withAssets, assetless };
+}
+
+/** Fetches one item's full shape through its self link, null if impossible. */
+async function fetchFullItem(
+    item: STACItem,
+    ctx: FetchContext,
+): Promise<STACItem | null> {
+    const selfLink = item.links?.find((l) => l.rel === "self");
+    if (!selfLink?.href) return null;
+    const entity = await ctx.client.fetchEntity(selfLink.href);
+    if (!isSTACItem(entity)) {
+        logger.warn(
+            `Self link ${selfLink.href} returned non-Item: ${entity.type}`,
+        );
+        return null;
+    }
+    return entity;
+}
+
+/** One enrichment batch: settled self-link fetches, cached on success. */
+async function enrichBatch(
+    batch: STACItem[],
+    ctx: FetchContext,
+): Promise<STACItem[]> {
+    const results = await Promise.allSettled(
+        batch.map((item) => fetchFullItem(item, ctx)),
+    );
+    const enriched: STACItem[] = [];
+    for (const result of results) {
+        if (result.status === "fulfilled" && result.value) {
+            enriched.push(result.value);
+            ctx.cache.store(result.value);
+        }
+    }
+    return enriched;
+}
+
 async function enrichItems(
     items: STACItem[],
     ctx: FetchContext,
 ): Promise<STACItem[]> {
-    const toEnrich: STACItem[] = [];
-    const enriched: STACItem[] = [];
+    const { withAssets, assetless } = partitionByAssets(items);
+    if (assetless.length === 0) return items;
 
-    for (const item of items) {
-        const assetKeys = item.assets ? Object.keys(item.assets) : [];
-        if (assetKeys.length === 0) {
-            toEnrich.push(item);
-        } else {
-            enriched.push(item);
-        }
+    const enrichable = assetless.slice(0, ENRICH_MAX_ITEMS);
+    if (assetless.length > ENRICH_MAX_ITEMS) {
+        logger.warn(
+            `Enriching only the first ${ENRICH_MAX_ITEMS} of ` +
+                `${assetless.length} asset-less item(s) — the rest keep their ` +
+                `list shape`,
+        );
     }
 
-    if (toEnrich.length === 0) return items;
-
     logger.debug(
-        `Enriching ${toEnrich.length} item(s) in batches of ${ENRICH_BATCH_SIZE}`,
+        `Enriching ${enrichable.length} item(s) in batches of ${ENRICH_BATCH_SIZE}`,
     );
 
     let enrichedCount = 0;
-
-    for (let i = 0; i < toEnrich.length; i += ENRICH_BATCH_SIZE) {
-        const batch = toEnrich.slice(i, i + ENRICH_BATCH_SIZE);
-        const results = await Promise.allSettled(
-            batch.map(async (item) => {
-                const selfLink = item.links?.find((l) => l.rel === "self");
-                if (!selfLink?.href) return null;
-                const entity = await ctx.client.fetchEntity(selfLink.href);
-                if (!isSTACItem(entity)) {
-                    logger.warn(
-                        `Self link ${selfLink.href} returned non-Item: ${entity.type}`,
-                    );
-                    return null;
-                }
-                return entity;
-            }),
+    for (let i = 0; i < enrichable.length; i += ENRICH_BATCH_SIZE) {
+        const batch = await enrichBatch(
+            enrichable.slice(i, i + ENRICH_BATCH_SIZE),
+            ctx,
         );
-
-        for (const result of results) {
-            if (result.status === "fulfilled" && result.value) {
-                enriched.push(result.value);
-                ctx.cache.store(result.value);
-                enrichedCount++;
-            }
-        }
+        enrichedCount += batch.length;
+        withAssets.push(...batch);
     }
 
-    if (enrichedCount < toEnrich.length) {
+    if (enrichedCount < assetless.length) {
         logger.debug(
-            `Enriched ${enrichedCount} of ${toEnrich.length} item(s) ` +
-                `(${toEnrich.length - enrichedCount} failed or have no self link)`,
+            `Enriched ${enrichedCount} of ${assetless.length} item(s) ` +
+                `(${assetless.length - enrichedCount} failed or have no self link)`,
         );
     }
 
-    return enriched;
+    return withAssets;
 }
 
 async function fetchChildCollection(
@@ -391,20 +401,8 @@ async function fetchChildCollection(
     baseUrl: string | undefined,
     ctx: FetchContext,
 ): Promise<TreeNode[]> {
-    try {
-        const entity = await ctx.client.fetchEntity(href, baseUrl);
-        if (!isSTACCollection(entity)) return [];
-        ctx.cache.store(entity);
-        return [
-            ctx.mapper.mapCollectionToGroupNode(
-                entity,
-                observable.array<string>([]),
-            ),
-        ];
-    } catch (error) {
-        logger.warn(`Failed to load collection from ${href}:`, error);
-        return [];
-    }
+    const node = await loadCollectionNode(href, baseUrl, ctx);
+    return node ? [node] : [];
 }
 
 function mapItemsToNodes(
@@ -413,7 +411,7 @@ function mapItemsToNodes(
 ): TreeNode[] {
     return items
         .map((item) => mapper.mapItemToLayerNode(item))
-        .filter((node): node is TreeNode => node !== null);
+        .filter((node): node is LayerNode => node !== null);
 }
 
 function extractConfig(raw: Record<string, unknown>): STACConfig {

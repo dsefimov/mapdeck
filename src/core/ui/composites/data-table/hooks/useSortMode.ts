@@ -6,7 +6,7 @@ interface SortState {
     direction: SortDirection;
 }
 
-// Cycles: different column → asc; same + asc → desc; same + desc → reset
+/** Cycles: different column → asc; same + asc → desc; same + desc → reset. */
 function sortReducer(state: SortState, column: string): SortState {
     if (state.column !== column) return { column, direction: "asc" };
     if (state.direction === "asc") return { column, direction: "desc" };

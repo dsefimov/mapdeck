@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@core/ui/utils/cn";
+import { Text } from "@core/ui/components/primitives/text/Text";
 import styles from "./InputLabel.module.css";
 
 export interface InputLabelProps {
@@ -12,18 +13,22 @@ export interface InputLabelProps {
     className?: string;
 }
 
-export const InputLabel: React.FC<InputLabelProps> = ({
+export const InputLabel: (props: InputLabelProps) => React.ReactNode = ({
     htmlFor,
     children,
     variant = "default",
     className,
 }) => {
+    const content =
+        variant === "caption" ? (
+            <Text variant="caption">{children}</Text>
+        ) : (
+            <Text variant="body">{children}</Text>
+        );
+
     return (
-        <label
-            htmlFor={htmlFor}
-            className={cn(styles.label, styles[variant], className)}
-        >
-            {children}
+        <label htmlFor={htmlFor} className={cn(styles.label, className)}>
+            {content}
         </label>
     );
 };

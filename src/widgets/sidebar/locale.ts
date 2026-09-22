@@ -1,10 +1,15 @@
-import type { SupportedLanguage, TranslationDict } from "@core/framework/types";
+import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+
+const en = {
+    "widget.name": "Widgets",
+    "aria.selectWidget": "Select {name} widget",
+};
+
+/** Locale keys of the sidebar namespace — derived from the en dictionary. */
+export type SidebarLocaleKey = keyof typeof en;
 
 export const sidebarTranslations: Partial<
     Record<SupportedLanguage, TranslationDict>
 > = {
-    en: {
-        "widget.name": "Widgets",
-        "aria.selectWidget": "Select {name} widget",
-    },
+    en,
 };

@@ -1,10 +1,39 @@
-build
+# Dependencies
+node_modules/
 
-**/node_modules
-docs/PLAN.md
+# Build output
+build/
+dist/
+*.tsbuildinfo
 
-AGENT.md
-.qwen
+# Test, coverage and browser-automation artifacts
+test-results/
+playwright-report/
+coverage/
+.playwright-mcp/
 
-# Example data — to be added
-public/
+# Local env files — runtime secrets never enter the repository
+.env
+.env.*
+!.env.example
+
+# Working artifacts: task plans, agent and editor scratch, OS noise
+plans/
+.qwen/
+.claude/
+.zcode/
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Images dumped at the repo root during manual UI work —
+# root-anchored on purpose: tracked images under public/ stay tracked.
+/*.png
+/*.jpeg
+/*.jpg
+/*.webp

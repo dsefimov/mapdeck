@@ -1,0 +1,8 @@
+/* ═══════════════════════════════════════════
+   Vendor CSS overrides (MapLibre GL, etc.)
+   ═══════════════════════════════════════════ */
+
+.maplibregl-ctrl-attrib.maplibregl-compact {
+    margin: calc(var(--space-8) / 2) !important;
+    margin-right: var(--space-8) !important;
+}

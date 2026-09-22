@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/framework/types";
+import type { SupportedLanguage, TranslationDict } from "@core/contracts";
 
 export const basemapTranslations: Partial<
     Record<SupportedLanguage, TranslationDict>

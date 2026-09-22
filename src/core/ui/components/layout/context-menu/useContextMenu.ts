@@ -1,4 +1,4 @@
-import { useLocalObservable } from "mobx-react-lite";
+import { useMemo, useState } from "react";
 
 export interface ContextMenuPosition {
     x: number;
@@ -19,16 +19,19 @@ export interface MapContextMenuAPI {
 }
 
 export function useMapContextMenu(): MapContextMenuAPI {
-    return useLocalObservable<MapContextMenuAPI>(() => ({
-        isOpen: false,
-        position: null,
-        open(pos: ContextMenuPosition): void {
-            this.isOpen = true;
-            this.position = pos;
-        },
-        close(): void {
-            this.isOpen = false;
-            this.position = null;
-        },
-    }));
+    const [position, setPosition] = useState<ContextMenuPosition | null>(
+        null,
+    );
+
+    // Memoized so consumers that park the API in an effect keep a stable
+    // object between position changes.
+    return useMemo<MapContextMenuAPI>(
+        () => ({
+            isOpen: position !== null,
+            position,
+            open: setPosition,
+            close: () => setPosition(null),
+        }),
+        [position],
+    );
 }

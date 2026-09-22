@@ -1,14 +1,16 @@
 import { useMemo } from "react";
-import type { TranslationDict } from "@core/framework/types";
 import type { SortDirection } from "../types";
 import { applyRowFilters, applyKvSorting, compareValues } from "../utils";
+
+/** Localized strings — structural, so callers may pass any dictionary. */
+type Dict = Record<string, string>;
 
 interface DataPipelineInput {
     rows: Record<string, unknown>[];
     filters: Record<string, string>;
     sortColumn?: string | null;
     sortDirection?: SortDirection;
-    dict: TranslationDict;
+    dict: Dict;
 }
 
 interface DataPipelineResult {

@@ -1,4 +1,5 @@
 import React, { type ReactNode } from "react";
+import { WidgetShell } from "@core/ui/composites/widget-shell/WidgetShell";
 import styles from "./ToolPanel.module.css";
 
 export interface ToolPanelProps {
@@ -14,12 +15,14 @@ export interface ToolPanelProps {
 }
 
 /**
- * Generic panel chrome for map tools.
+ * Generic panel chrome for map tools — inherits WidgetShell
+ * (14px bold title, padding/gap 10, radius 6), adds a
+ * fixed width for the tool panel.
  *
  * Renders title → children → actions → hint
  * in a fixed visual structure.
  */
-export const ToolPanel: React.FC<ToolPanelProps> = ({
+export const ToolPanel: (props: ToolPanelProps) => React.ReactNode = ({
     title,
     hint,
     actions,
@@ -29,12 +32,14 @@ export const ToolPanel: React.FC<ToolPanelProps> = ({
     const panelClass = [styles.panel, className].filter(Boolean).join(" ");
 
     return (
-        <div className={panelClass}>
-            <div className={styles.title}>{title}</div>
+        <WidgetShell
+            title={title}
+            hint={hint}
+            actions={actions}
+            className={panelClass}
+        >
             {children}
-            {actions && <div className={styles.actions}>{actions}</div>}
-            {hint && <div className={styles.hint}>{hint}</div>}
-        </div>
+        </WidgetShell>
     );
 };
 

@@ -5,8 +5,7 @@
  * via the layer-tree widget settings.
  */
 
-import { type Module } from "@core/framework/types";
-import type { RootStore } from "@core/framework/store";
+import type { Module, ModuleContext } from "@core/contracts";
 import { STACTreeAdapter } from "../adapter/STACTreeAdapter";
 import { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { ReportRoleResolver } from "../roles/resolvers/ReportRoleResolver";
@@ -16,49 +15,42 @@ import { WmsRoleResolver } from "../roles/resolvers/WmsRoleResolver";
 import { VectorTileRoleResolver } from "../roles/resolvers/VectorTileRoleResolver";
 import { GeoJsonRoleResolver } from "../roles/resolvers/GeoJsonRoleResolver";
 import { PointCloudRoleResolver } from "../roles/resolvers/PointCloudRoleResolver";
-import { logger } from "@core/shared/diagnostics/logger";
+import { logger } from "@core/lib/logger";
 
 export class STACModule implements Module {
     readonly id = "stac";
     readonly name = "STAC Catalog Module";
 
-    private rootStore: RootStore | null = null;
+    /**
+     * Public resolver registry — other modules register their
+     * STAC asset resolvers here to add support for new protocols.
+     */
+    readonly resolverRegistry = new RoleResolverRegistry();
 
-    setRootStore(rootStore: RootStore): void {
-        this.rootStore = rootStore;
-    }
+    private resolversRegistered = false;
 
-    async register(): Promise<void> {
-        if (!this.rootStore) {
-            throw new Error(
-                "STACModule requires rootStore — call setRootStore before register()",
-            );
+    async register(context: ModuleContext): Promise<void> {
+        if (!this.resolversRegistered) {
+            this.resolverRegistry.register(new ReportRoleResolver());
+            this.resolverRegistry.register(new AttributeRoleResolver());
+            this.resolverRegistry.register(new RasterTileRoleResolver());
+            this.resolverRegistry.register(new WmsRoleResolver());
+            this.resolverRegistry.register(new VectorTileRoleResolver());
+            this.resolverRegistry.register(new GeoJsonRoleResolver());
+            this.resolverRegistry.register(new PointCloudRoleResolver());
+            this.resolversRegistered = true;
         }
 
         logger.debug("Registering STAC adapter...");
 
-        const roleRegistry = createDefaultRoleRegistry();
         const adapter = new STACTreeAdapter(
-            this.rootStore.layerConfigRegistry,
-            roleRegistry,
+            this.resolverRegistry,
+            context.layerTools,
         );
-        await this.rootStore.sourceAdapterFactory.register("stac", adapter);
+        context.sourceAdapterFactory.register(adapter);
 
         logger.debug("STAC adapter registered successfully");
     }
-}
-
-function createDefaultRoleRegistry(): RoleResolverRegistry {
-    const registry = new RoleResolverRegistry();
-    registry.register(new ReportRoleResolver());
-    registry.register(new AttributeRoleResolver());
-    registry.register(new RasterTileRoleResolver());
-    registry.register(new WmsRoleResolver());
-    registry.register(new VectorTileRoleResolver());
-    registry.register(new GeoJsonRoleResolver());
-    registry.register(new PointCloudRoleResolver());
-    // Not yet implemented: TiledAssetsRoleResolver — tracked in PLAN.md
-    return registry;
 }
 
 export const stacModule = new STACModule();

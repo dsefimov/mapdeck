@@ -4,30 +4,38 @@ import BaseNode, { type BaseNodeProps } from "./BaseNode";
 import { CollapsibleMenu } from "@core/ui/components";
 import { ReportDownloads } from "./ReportDownloads";
 
-import type { TreeNode } from "@core/framework/types";
-import { isLayerNode } from "@core/framework/types";
-import { LayerRoles, type LayerRole } from "@core/framework/types";
-import { useRootStore } from "@core/framework/store";
-import { logger } from "@core/shared/diagnostics/logger";
+import type { TreeNode, LayerNode } from "@core/contracts";
+import type { LayerTool } from "@core/contracts";
+import { isLayerNode } from "@core/contracts";
+import { useRootStore } from "@core/shell";
+import { logger } from "@core/lib/logger";
 import styles from "./Widget.module.css";
 
 export interface ItemNodeProps {
-    /** The layer node to render */
     node: TreeNode;
-    /** Depth level for indentation (0 = root) */
     depth?: number | undefined;
-    /** Callback when visibility changes */
+    isMenuOpen: boolean;
+    /** Reason the node cannot render, when the snapshot predicate blocks it. */
+    unsupported?: string | undefined;
     onVisibilityChange: (nodeId: string, visible: boolean) => void;
-    /** Callback for zoom action */
+    onOpenMenu: (nodeId: string) => void;
+    onCloseMenu: () => void;
     onZoom?: ((nodeId: string) => void) | undefined;
 }
 
 const ItemNode: (props: ItemNodeProps) => React.ReactNode = observer(
-    ({ node, depth = 0, onVisibilityChange, onZoom }) => {
+    ({
+        node,
+        depth = 0,
+        isMenuOpen,
+        unsupported,
+        onVisibilityChange,
+        onOpenMenu,
+        onCloseMenu,
+        onZoom,
+    }) => {
         const rootStore = useRootStore();
-        const treeStore = rootStore.treeStore;
 
-        // Ensure this is actually a layer node
         if (!isLayerNode(node)) {
             logger.warn(
                 `ItemNode component received non-layer node: ${node.id}`,
@@ -35,46 +43,35 @@ const ItemNode: (props: ItemNodeProps) => React.ReactNode = observer(
             return null;
         }
 
-        // Get the active display role to determine tools
-        const displayRole = node.roles.display;
-        const roleForTools =
-            displayRole?.render.config.role ?? LayerRoles.RASTER;
+        const tools = rootStore.layerToolStore.getToolsForNode(node);
+        const hasTools = tools.length > 0;
 
-        // Check if this node has any tools available
-        const hasTools = displayRole
-            ? rootStore.layerToolStore.getLayerTools(roleForTools).length > 0
-            : false;
+        const hasReports = node.relatedObjects.some((o) => o.type === "report");
+        const renderError = rootStore.treeStore.getRenderError(node.id);
 
-        // Check if this node has any report roles
-        const hasReports = node.roles.reports.length > 0;
-
-        // Check if this node's "More" panel is open
-        const isPanelOpen = treeStore.isNodePanelOpen(node.id);
-
-        // Layers don't have expand/collapse or open actions
         const baseNodeProps: BaseNodeProps = {
             node,
             depth,
+            renderError,
+            unsupported,
             onToggleVisibility: onVisibilityChange,
+            onOpenMenu,
             onZoom,
-            // Layers don't expand
             onToggleExpansion: undefined,
-            // Layers don't show expand arrow
             showExpandArrow: false,
-            // Disable button if no tools and no reports available
             moreButtonDisabled: !hasTools && !hasReports,
-            // Highlight button when panel is open
-            isMorePanelOpen: isPanelOpen,
+            isMorePanelOpen: isMenuOpen,
         };
 
         return (
             <>
                 <BaseNode {...baseNodeProps} />
-                {isPanelOpen && (
+                {isMenuOpen && (
                     <ItemMenu
                         node={node}
-                        roleForTools={roleForTools}
+                        tools={tools}
                         hasReports={hasReports}
+                        onClose={onCloseMenu}
                     />
                 )}
             </>
@@ -86,20 +83,17 @@ const ItemNode: (props: ItemNodeProps) => React.ReactNode = observer(
  * Separate component to keep ItemNode complexity low.
  */
 const ItemMenu: (props: {
-    node: import("@core/framework/types").LayerNode;
-    roleForTools: LayerRole;
+    node: LayerNode;
+    tools: LayerTool[];
     hasReports: boolean;
-}) => React.ReactNode = observer(({ node, roleForTools, hasReports }) => {
-    const rootStore = useRootStore();
-    const treeStore = rootStore.treeStore;
-
+    onClose: () => void;
+}) => React.ReactNode = observer(({ node, tools, hasReports, onClose }) => {
     return (
         <CollapsibleMenu
-            items={rootStore.layerToolStore.getLayerTools(roleForTools)}
+            items={tools}
             open={true}
-            onClose={() => treeStore.togglePanel(node.id)}
+            onClose={onClose}
             className={styles.layerTree__menuContainer}
-            panelClassName={styles.layerTree__menuPanel}
             closeOnClickOutside={false}
             hideIfEmpty={!hasReports}
             nodeId={node.id}

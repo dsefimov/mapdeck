@@ -1,70 +1,14 @@
-.header {
-    font-size: var(--font-size-md);
-    font-weight: var(--font-semibold);
-    padding: var(--space-sm) 0;
-    color: var(--color-text);
-}
-
 .tableContainer {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-10);
     flex: 1;
     min-height: 0;
 }
 
 .controls {
     display: flex;
-    gap: var(--space-sm);
-}
-
-.controlButton {
-    padding: var(--space-sm) var(--space-sm);
-    border: var(--border-sm) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-background);
-    color: var(--color-text-sec);
-    font-size: var(--font-size-xs);
-    cursor: pointer;
-    transition: background-color var(--transition-fast);
-}
-
-.controlButton:hover {
-    background: var(--color-hover);
-}
-
-.emptyState {
-    padding: var(--space-sm);
-    font-size: var(--font-size-xs);
-    color: var(--color-text-sec);
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-sm);
-}
-
-.retryButton {
-    background: none;
-    border: none;
-    color: var(--color-text);
-    cursor: pointer;
-    padding: 0;
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--icon-sm);
-    height: var(--icon-sm);
-    line-height: 1;
-    transition:
-        background var(--transition-fast),
-        color var(--transition-fast);
-}
-
-.retryButton:hover {
-    background: color-mix(in srgb, var(--color-text) 10%, transparent);
-    color: var(--color-primary);
+    gap: var(--space-8);
 }
 
 /* ── Single table layout ────────────────────────────────────────── */
@@ -72,8 +16,8 @@
 .dataTable {
     width: 100%;
     border-collapse: collapse;
-    font-size: var(--font-size-xs);
-    background: var(--color-background);
+    line-height: var(--line-normal);
+    background: var(--color-bg);
 }
 
 /* KV mode: fixed layout so columns split evenly */
@@ -91,26 +35,21 @@
     position: sticky;
     top: 0;
     z-index: 2;
-    background: var(--color-background);
+    background: var(--color-bg);
 }
 
 .dataTable th {
     text-align: left;
-    padding: var(--space-sm) var(--space-sm);
+    padding: var(--space-8) var(--space-8);
     border-bottom: var(--border-sm) solid var(--color-border);
-    font-weight: var(--font-semibold);
-    font-size: var(--font-size-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text-sec);
     white-space: nowrap;
 }
 
 .dataTable td {
-    padding: var(--space-sm) var(--space-sm);
+    padding: var(--space-8) var(--space-8);
     border-bottom: var(--border-sm) solid var(--color-border);
     vertical-align: top;
-    max-width: var(--column-wdth);
+    max-width: var(--column-width);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -129,11 +68,29 @@
 /* ── Header / sort ──────────────────────────────────────────────── */
 
 .sortableHeader {
+    /* The sort button owns the cell's interactive box (and its padding) */
+    padding: 0;
+}
+
+.sortButton {
+    display: block;
+    width: 100%;
+    padding: var(--space-8) var(--space-8);
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
     cursor: pointer;
 }
 
-.sortableHeader:hover {
+.sortButton:hover {
     background: var(--color-hover);
+}
+
+.sortButton:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
 }
 
 .sortIndicator {
@@ -143,10 +100,10 @@
 
 .filterInput {
     width: 100%;
-    padding: var(--space-sm) var(--space-sm);
+    padding: var(--space-8) var(--space-8);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-sm);
-    background: var(--color-background);
+    background: var(--color-bg);
     color: var(--color-text);
     font-size: var(--font-size-xs);
     box-sizing: border-box;
@@ -154,8 +111,8 @@
 
 .filterInput:focus {
     outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 var(--space-sm) var(--color-primary);
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
 }
 
 /* ── Scroll container ───────────────────────────────────────────── */
@@ -164,7 +121,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
-    min-height: var(--space-lg);
+    min-height: var(--space-32);
     flex: 1;
     contain: layout style paint;
 }
@@ -183,8 +140,6 @@
 
 .rowNumber {
     text-align: center;
-    font-size: var(--font-size-xs);
-    color: color-mix(in srgb, var(--color-text) 55%, transparent);
 }
 
 /* ── Zoom column ────────────────────────────────────────────────── */
@@ -199,26 +154,6 @@
 .zoomCell {
     text-align: center;
     vertical-align: middle;
-}
-
-.zoomButton {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-}
-
-.zoomButton:disabled {
-    opacity: 0.3;
-    cursor: default;
-}
-
-.zoomButton img {
-    width: var(--icon-sm);
-    height: var(--icon-sm);
 }
 
 /* ── Loading indicator ──────────────────────────────────────────── */

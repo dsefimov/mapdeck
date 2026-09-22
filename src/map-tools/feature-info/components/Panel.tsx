@@ -1,174 +1,51 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { reaction } from "mobx";
-import maplibregl from "maplibre-gl";
-import { logger } from "@core/shared/diagnostics/logger";
-
-import type { MapToolComponentProps, LayerNode } from "@core/framework/types";
-
-import type { FeatureGroup, CollectResult, ClickPosition } from "../types";
-import { featureCollector } from "../utils/FeatureCollector";
-import { showClickMarker, removeClickMarker } from "../utils/clickMarker";
-import { DataTable } from "@core/ui/composites/data-table";
-import { LoadingScreen } from "@core/ui/components";
+import type { MapToolComponentProps } from "@core/contracts";
+import { typedDict } from "@core/lib/text";
+import { Button, EmptyState, LoadingScreen } from "@core/ui/components";
 import { ToolPanel } from "@core/ui/composites";
-import toolStyles from "@core/ui/composites/tool-panel/ToolPanel.module.css";
-import styles from "./Panel.module.css";
+import { useEscapeKey, useMapCursor } from "@core/ui/hooks";
+import type { FeatureInfoStore } from "../utils/FeatureInfoStore";
+import { FeatureInfoController } from "../utils/FeatureInfoController";
+import type { FeatureInfoLocaleKey } from "../locale";
+import { LayerSelector } from "./LayerSelector";
+import { SelectedContent } from "./SelectedContent";
+
+/** Locale key for layers whose protocol cannot provide feature info. */
+const UNSUPPORTED_MESSAGE_KEY = "provider.notAvailable";
 
 /**
- * Main FeatureInfo component.
- * Handles map click events, collects features from all providers,
- * and displays them in a dropdown + attribute table UI.
+ * Main FeatureInfo component: a thin observer over FeatureInfoStore. The
+ * collection lifecycle lives in the controller (attach/detach on
+ * mount/unmount — ADR-0002 case-2 wiring).
  */
 export const FeatureInfoComponent: (
-    props: MapToolComponentProps,
+    props: MapToolComponentProps & { store: FeatureInfoStore },
 ) => React.ReactNode = observer(
-    ({ map, rootStore, deactivate, overlayManager }) => {
-        const dict = rootStore.localeStore.t("feature-info");
-        const coreDict = rootStore.localeStore.t("core");
-        const [groups, setGroups] = React.useState<FeatureGroup[]>([]);
-        const [selectedIndex, setSelectedIndex] = React.useState(0);
-        const [loading, setLoading] = React.useState(false);
-        const [hasClicked, setHasClicked] = React.useState(false);
-        const abortRef = React.useRef<AbortController | null>(null);
+    ({ map, context, deactivate, overlayManager, store }) => {
+        const dict = typedDict<FeatureInfoLocaleKey>(
+            context.locale.t("feature-info"),
+        );
+        const coreDict = context.locale.t("core");
 
-        /**
-         * Get visible layer nodes from LayerTreeStore.
-         */
-        const getVisibleLayers = React.useCallback((): LayerNode[] => {
-            return rootStore.treeStore.layerNodes.filter(
-                (node) => node.isVisible,
-            );
-        }, [rootStore.treeStore]);
-
-        const triggerCollection = React.useCallback(
-            (
-                lngLat: maplibregl.LngLat,
-                screenPoint: { x: number; y: number },
-            ) => {
-                if (abortRef.current) abortRef.current.abort();
-
-                const position: ClickPosition = {
-                    lng: lngLat.lng,
-                    lat: lngLat.lat,
-                };
-                showClickMarker(position, overlayManager);
-                setHasClicked(true);
-                setSelectedIndex(0);
-                setLoading(true);
-
-                const visibleLayers = getVisibleLayers();
-
-                const controller = new AbortController();
-                abortRef.current = controller;
-
-                featureCollector
-                    .collect(
-                        {
-                            screenX: screenPoint.x,
-                            screenY: screenPoint.y,
-                            map,
-                            visibleLayers,
-                            signal: controller.signal,
-                            xyzNotAvailableMessage:
-                                dict["provider.xyzNotAvailable"] ?? "",
-                            cogNotAvailableMessage:
-                                dict["provider.cogNotAvailable"] ?? "",
-                        },
-                        (result: CollectResult) => {
-                            if (controller.signal.aborted) return;
-
-                            setGroups(result.groups);
-                            setLoading(result.loading);
-
-                            setSelectedIndex((prev) =>
-                                result.groups.length <= prev ? 0 : prev,
-                            );
-                        },
-                    )
-                    .catch((error) => {
-                        if (!controller.signal.aborted) {
-                            logger.error(
-                                "FeatureInfo: collection failed",
-                                error,
-                            );
-                            setLoading(false);
-                        }
-                    });
-            },
-            [dict, getVisibleLayers, map, overlayManager],
+        // Distinct from the tool's own state key ("feature-info" holds the
+        // session store) — this one owns the wiring controller.
+        const controller = context.stateStore.get(
+            "feature-info:controller",
+            () => new FeatureInfoController(),
         );
 
-        const triggerCollectionRef = React.useRef(triggerCollection);
-        triggerCollectionRef.current = triggerCollection;
-
-        const handleMapClick = React.useCallback(
-            (event: maplibregl.MapMouseEvent) => {
-                triggerCollection(event.lngLat, {
-                    x: event.point.x,
-                    y: event.point.y,
-                });
-            },
-            [triggerCollection],
-        );
-
-        /**
-         * Handle Escape key to deactivate.
-         */
-        const handleKeyDown = React.useCallback(
-            (event: KeyboardEvent) => {
-                if (event.key === "Escape") {
-                    deactivate();
-                }
-            },
-            [deactivate],
-        );
-
-        // Subscribe to map events
         React.useEffect(() => {
-            map.on("click", handleMapClick);
-            window.addEventListener("keydown", handleKeyDown);
+            controller.attach({ map, context, overlayManager, store });
+            return () => controller.detach();
+        }, [controller, map, context, overlayManager, store]);
 
-            return () => {
-                map.off("click", handleMapClick);
-                window.removeEventListener("keydown", handleKeyDown);
-                removeClickMarker(overlayManager);
-            };
-        }, [handleMapClick, handleKeyDown, map, overlayManager]);
+        useEscapeKey(deactivate);
+        useMapCursor(map, "crosshair");
 
-        // Update cursor
-        React.useEffect(() => {
-            const canvas = map.getCanvas();
-            if (!canvas) return;
+        const { groups, selectedIndex, setSelectedIndex, loading, hasClicked } =
+            store;
 
-            canvas.style.cursor = "crosshair";
-
-            return () => {
-                canvas.style.cursor = "";
-            };
-        }, [map]);
-
-        React.useEffect(() => {
-            return reaction(
-                () => rootStore.mapToolStore.pendingPoint,
-                (pending) => {
-                    if (!pending) return;
-                    const point = rootStore.mapToolStore.consumePendingPoint();
-                    if (!point) return;
-
-                    triggerCollectionRef.current(
-                        new maplibregl.LngLat(
-                            point.lngLat.lng,
-                            point.lngLat.lat,
-                        ),
-                        point.screenPoint,
-                    );
-                },
-                { fireImmediately: true },
-            );
-        }, [rootStore.mapToolStore]);
-
-        // Render
         const selectedGroup = groups[selectedIndex];
         const totalGroups = groups.length;
 
@@ -177,71 +54,35 @@ export const FeatureInfoComponent: (
                 title={dict["eyebrow"]}
                 hint={dict["instructions"]}
                 actions={
-                    <button
-                        type="button"
-                        className={toolStyles.button}
-                        onClick={deactivate}
-                    >
+                    <Button fullWidth onClick={deactivate}>
                         {dict["button.close"]}
-                    </button>
+                    </Button>
                 }
             >
                 {!hasClicked && (
-                    <div className={styles.noFeatures}>
-                        {dict["noClickYet"]}
-                    </div>
+                    <EmptyState message={dict["noClickYet"]} />
                 )}
 
                 {hasClicked && groups.length === 0 && !loading && (
-                    <div className={styles.noFeatures}>
-                        {dict["noFeatures"]}
-                    </div>
+                    <EmptyState message={dict["noFeatures"]} />
                 )}
 
                 {loading && <LoadingScreen />}
 
-                {/* Layer selector — always visible, shows only layers with features */}
-                <div className={styles.layerSelector}>
-                    <label className={styles.layerSelectorLabel}>
-                        {dict["layer.label"]}
-                    </label>
-                    <select
-                        className={styles.layerSelect}
-                        value={selectedIndex}
-                        onChange={(e) =>
-                            setSelectedIndex(Number(e.target.value))
-                        }
-                        disabled={groups.length === 0}
-                    >
-                        {groups.length === 0 && (
-                            <option value={0}>
-                                {dict["select.placeholder"]}
-                            </option>
-                        )}
-                        {groups.map((group, index) => {
-                            return (
-                                <option
-                                    key={
-                                        group.layerId +
-                                        "_" +
-                                        (group.features[0]?.id ?? index)
-                                    }
-                                    value={index}
-                                >
-                                    {group.layerName} {index + 1}/{totalGroups}
-                                </option>
-                            );
-                        })}
-                    </select>
-                </div>
+                <LayerSelector
+                    groups={groups}
+                    selectedIndex={selectedIndex}
+                    totalGroups={totalGroups}
+                    dict={dict}
+                    onSelect={setSelectedIndex}
+                />
 
                 {selectedGroup && selectedGroup.features.length > 0 && (
-                    <DataTable
-                        rows={selectedGroup.features.map((f) => f.attributes)}
-                        {...(groups.length > 1 && {
-                            header: selectedGroup.layerName,
-                        })}
+                    <SelectedContent
+                        group={selectedGroup}
+                        totalGroups={totalGroups}
                         dict={coreDict}
+                        unsupportedMessage={dict[UNSUPPORTED_MESSAGE_KEY]}
                     />
                 )}
             </ToolPanel>

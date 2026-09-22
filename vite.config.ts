@@ -7,7 +7,6 @@ export default defineConfig({
     root: ".",
     resolve: {
         alias: {
-            "@app": resolve("./src/app"),
             "@core": resolve("./src/core"),
             "@layer-tools": resolve("./src/layer-tools"),
             "@map-tools": resolve("./src/map-tools"),
@@ -17,19 +16,47 @@ export default defineConfig({
     },
     build: {
         outDir: "build",
+        // Hidden maps: built for offline stack decoding, never referenced
+        // from the shipped JS — whatever serves build/ must not publish them.
+        sourcemap: "hidden",
+        rollupOptions: {
+            output: {
+                // One 2.65 MB blob cache-invalidated on every app change;
+                // split by dependency shelf-life instead — the heavy map
+                // libraries move far rarer than the app code.
+                manualChunks(id: string): string | undefined {
+                    if (!id.includes("node_modules")) return undefined;
+                    if (
+                        /[\\/]node_modules[\\/]react(-dom)?[\\/]/.test(id) ||
+                        /[\\/]node_modules[\\/]scheduler[\\/]/.test(id)
+                    ) {
+                        return "react";
+                    }
+                    if (
+                        id.includes("@deck.gl") ||
+                        id.includes("@luma.gl") ||
+                        id.includes("loaders.gl")
+                    ) {
+                        return "deck";
+                    }
+                    if (id.includes("maplibre-gl")) return "maplibre";
+                    if (id.includes("@turf") || id.includes("proj4")) {
+                        return "geo";
+                    }
+                    return "vendor";
+                },
+            },
+        },
     },
     server: {
         port: 3000,
         host: true,
-        proxy: {
-            "/basemap": "http://localhost:8080",
-        },
     },
     preview: {
         port: 24678,
         host: true,
     },
     test: {
-        include: ["src/**/*.test.ts"],
+        include: ["src/**/*.test.{ts,tsx}"],
     },
 });

@@ -1,18 +1,18 @@
 .container {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-8);
 }
 
 .row {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-8);
 }
 
 .swatch {
-    width: calc(var(--icon-lg) + var(--space-xs));
-    height: calc(var(--icon-lg) + var(--space-xs));
+    width: calc(var(--icon-lg) + var(--space-4));
+    height: calc(var(--icon-lg) + var(--space-4));
     border-radius: var(--radius-sm);
     border: var(--border-sm) solid var(--color-border);
     flex-shrink: 0;
@@ -20,10 +20,10 @@
 
 .hexInput {
     flex: 1;
-    padding: var(--space-sm);
+    padding: var(--space-8);
     border: var(--border-sm) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-background);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
     color: var(--color-text);
     font-size: var(--font-size-xs);
     font-family: inherit;
@@ -31,36 +31,5 @@
 }
 
 .hexInput:focus {
-    border-color: var(--color-primary);
-}
-
-.sliderWrapper {
-    position: relative;
-    height: var(--icon-sm);
-    padding: var(--space-xs);
-    background: var(--color-border);
-    border-radius: var(--radius-lg);
-    box-sizing: content-box;
-    overflow: hidden;
-}
-
-.hueCanvas {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: var(--radius-lg);
-    cursor: pointer;
-}
-
-.hueThumb {
-    position: absolute;
-    top: var(--border-sm);
-    width: calc(var(--icon-sm) - var(--space-xs));
-    height: calc(var(--icon-sm) + 2 * var(--space-xs) - var(--border-md));
-    border: var(--border-md) solid var(--color-background);
-    border-radius: var(--radius-xs);
-    background: transparent;
-    pointer-events: none;
-    box-shadow: var(--shadow-sm);
-    transform: translateX(-50%);
+    border-color: var(--color-accent);
 }

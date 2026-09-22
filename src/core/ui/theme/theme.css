@@ -1,0 +1,133 @@
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — CORE TOKENS (semantic, light theme)
+   Scheme: semantic tokens; the dark theme overrides them in
+   [data-theme="dark"] without touching components.
+   All values are flat hex/px (required by getThemeColor).
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+    /* ═══════════════════════════════════════════
+     1. COLORS — text
+     ═══════════════════════════════════════════ */
+    --color-text: #343a40;
+    --color-text-secondary: #6c757d;
+    --color-text-muted: color-mix(
+        in srgb,
+        var(--color-text) 55%,
+        transparent
+    ); /* placeholders, disabled labels */
+
+    /* ═══════════════════════════════════════════
+     2. COLORS — background / surface
+     ═══════════════════════════════════════════ */
+    --color-bg: #ffffff;
+    --color-bg-subtle: #f8f9fa; /* menus, dividers, row selection */
+    --color-track: #dee2e6; /* slider track, off-switch */
+
+    /* ═══════════════════════════════════════════
+     3. COLORS — borders / outline
+     ═══════════════════════════════════════════ */
+    --color-border: #ced4da;
+    --color-outline: #eeeeee; /* light divider */
+
+    /* ═══════════════════════════════════════════
+     4. COLORS — accent (interactive)
+     ═══════════════════════════════════════════ */
+    --color-accent: #0051ca;
+    --color-accent-800: #05379d; /* slider fill */
+    --color-on-accent: #ffffff;
+    --color-focus-ring: color-mix(
+        in srgb,
+        var(--color-accent) 25%,
+        transparent
+    );
+
+    /* ═══════════════════════════════════════════
+     5. COLORS — feedback
+     ═══════════════════════════════════════════ */
+    --color-error: #d32f2f;
+    --color-success: #2e7d32; /* confirmations (not accent!) */
+
+    /* ═══════════════════════════════════════════
+     6. COLORS — derived states
+     ═══════════════════════════════════════════ */
+    --color-hover: color-mix(in srgb, var(--color-text) 10%, transparent);
+    --color-disabled: color-mix(in srgb, var(--color-text) 30%, transparent);
+    --color-scrim: rgba(0, 0, 0, 0.3); /* modal overlays */
+    --shadow-color: #191218;
+
+    /* ═══════════════════════════════════════════
+     7. SPACING — pixel scale
+     ═══════════════════════════════════════════ */
+    --space-2: 0.125rem;
+    --space-4: 0.25rem;
+    --space-5: 0.3125rem;
+    --space-8: 0.5rem;
+    --space-10: 0.625rem; /* primary gap, widget padding */
+    --space-12: 0.75rem; /* inputs, triggers */
+    --space-16: 1rem;
+    --space-24: 1.5rem;
+    --space-32: 2rem;
+
+    /* ═══════════════════════════════════════════
+     8. TYPOGRAPHY (Roboto)
+     ═══════════════════════════════════════════ */
+    --font-family: "Roboto", system-ui, sans-serif;
+
+    /* Three text sizes (decision: Roboto is larger than condensed PF DinText):
+       xl — headings, base — main text, xs — hints/labels */
+    --font-size-xs: 0.625rem; /* hints, caption, uppercase labels */
+    --font-size-base: 0.75rem; /* main text, labels, buttons */
+    --font-size-xl: 0.875rem; /* headings */
+
+    --font-regular: 400;
+    --font-semibold: 600;
+    --font-bold: 700;
+
+    --line-none: 1;
+    --line-tight: 1.25;
+    --line-normal: 1.5;
+    --letter-spacing-caption: 0.04em; /* uppercase labels */
+
+    /* ═══════════════════════════════════════════
+     9. BORDERS AND RADIUS
+     ═══════════════════════════════════════════ */
+    --border-sm: 1px;
+    --border-md: 2px;
+    --border-lg: 4px;
+    --radius-xs: 0.125rem; /* slider track, tiny elements */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem; /* widgets, cards, inputs */
+    --radius-lg: 0.75rem;
+    --radius-full: 9999px; /* pills, icon buttons, switch */
+
+    /* ═══════════════════════════════════════════
+     10. SHADOWS (mixed from --shadow-color)
+     ═══════════════════════════════════════════ */
+    --shadow-sm: 0 2px 6px
+        color-mix(in srgb, var(--shadow-color) 12%, transparent);
+    --shadow-md: 0 4px 12px
+        color-mix(in srgb, var(--shadow-color) 18%, transparent);
+    --shadow-lg: 0 8px 24px
+        color-mix(in srgb, var(--shadow-color) 25%, transparent);
+
+    /* ═══════════════════════════════════════════
+     11. Z-INDEX
+     ═══════════════════════════════════════════ */
+    --z-sticky: 10;
+    --z-tooltip: 400;
+    --z-modal: 500;
+    --z-floating: 1000; /* portaled panels above all chrome (selects) */
+    --z-dragging: 10000; /* mid-gesture windows — top of everything */
+
+    /* ═══════════════════════════════════════════
+     12. ICONS
+     ═══════════════════════════════════════════ */
+    --icon-sm: 1rem; /* inline icons, buttons */
+    --icon-lg: 1.5rem; /* widget icons, large buttons */
+
+    /* ═══════════════════════════════════════════
+     13. TRANSITIONS
+     ═══════════════════════════════════════════ */
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+}

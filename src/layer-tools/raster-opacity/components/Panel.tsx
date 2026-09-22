@@ -1,12 +1,14 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { useRootStore } from "@core/framework/store";
-import { isLayerNode, isRasterConfig, LayerRoles } from "@core/framework/types";
-import { formatDict } from "@core/framework/i18n";
-import { logger } from "@core/shared/diagnostics/logger";
-import { InputLabel, SliderInput } from "@core/ui/components/primitives/inputs";
+import { useRootStore } from "@core/shell";
+import { isLayerNode } from "@core/contracts";
+import { formatDict, typedDict } from "@core/lib/text";
+import { logger } from "@core/lib/logger";
+import { SliderInput } from "@core/ui/components/primitives/inputs";
+import { Field } from "@core/ui/components";
+import { setRasterOpacity } from "@core/domain/layer-tree";
+import type { RasterOpacityLocaleKey } from "../locale";
 import { RASTER_OPACITY_SLIDER_ID } from "./Tool";
-import styles from "./Panel.module.css";
 
 export interface RasterOpacitySliderProps {
     nodeId: string;
@@ -16,42 +18,33 @@ export const RasterOpacityComponent: (
     props: RasterOpacitySliderProps,
 ) => React.ReactNode = observer(({ nodeId }) => {
     const rootStore = useRootStore();
-    const dict = rootStore.localeStore.t(RASTER_OPACITY_SLIDER_ID);
-    const node = rootStore.treeStore.getNode(nodeId);
+    const dict = typedDict<RasterOpacityLocaleKey>(
+        rootStore.localeStore.t(RASTER_OPACITY_SLIDER_ID),
+    );
+    const node = rootStore.treeStore.node(nodeId);
 
     if (!node || !isLayerNode(node)) {
         logger.warn(`RasterOpacitySlider: node ${nodeId} is not a layer`);
         return null;
     }
 
-    const displayRole = node.roles.display;
-    if (!displayRole) return null;
-    if (!isRasterConfig(displayRole.render.config)) {
-        logger.warn(
-            `RasterOpacitySlider: node ${nodeId} is not a raster layer`,
-        );
-        return null;
-    }
-
-    const currentOpacity = displayRole.render.config.opacity ?? 1.0;
+    const paint = node.style?.paint ?? {};
+    const currentOpacity = (paint["raster-opacity"] as number) ?? 1.0;
 
     const handleOpacityChange = (newOpacity: number) => {
-        rootStore.treeStore.updateLayerConfig<typeof LayerRoles.RASTER>(
+        rootStore.treeStore.updateLayerStyle(
             nodeId,
-            {
-                opacity: newOpacity,
-            },
+            setRasterOpacity(node.style ?? {}, newOpacity),
         );
-        logger.debug(`Changed opacity for layer ${nodeId} to ${newOpacity}`);
     };
 
     return (
-        <div className={styles.opacitySliderContainer}>
-            <InputLabel htmlFor="opacity">
-                {formatDict(dict["label.opacity"]!, {
-                    percent: Math.round(currentOpacity * 100),
-                })}
-            </InputLabel>
+        <Field
+            label={formatDict(dict["label.opacity"], {
+                percent: Math.round(currentOpacity * 100),
+            })}
+            htmlFor="opacity"
+        >
             <SliderInput
                 id="opacity"
                 min={0}
@@ -60,7 +53,7 @@ export const RasterOpacityComponent: (
                 value={currentOpacity}
                 onChange={handleOpacityChange}
             />
-        </div>
+        </Field>
     );
 });
 

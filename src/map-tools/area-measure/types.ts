@@ -2,17 +2,14 @@
  * Types for Area Measure tool
  */
 
-import type { MeasurementPoint3D } from "@core/framework/types";
-
-// Re-export MeasurementPoint3D as Point3D for consistency with ruler-3d
-export type { MeasurementPoint3D as Point3D } from "@core/framework/types";
+import type { GeoPoint } from "@core/lib/geo";
 
 /**
  * Segment between two consecutive vertices with edge distance
  */
 export interface PolygonEdge {
-    from: MeasurementPoint3D;
-    to: MeasurementPoint3D;
+    from: GeoPoint;
+    to: GeoPoint;
     distanceMeters: number; // geodesic distance in meters
 }
 

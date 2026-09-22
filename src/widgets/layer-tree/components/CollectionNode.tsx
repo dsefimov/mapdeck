@@ -1,15 +1,14 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import type { TreeNode } from "@core/framework/types";
-import { isGroupNode, isLayerNode } from "@core/framework/types";
+import type { TreeNode } from "@core/contracts";
+import { isGroupNode } from "@core/contracts";
 import { CollapsibleMenu } from "@core/ui/components";
 
 import BaseNode, { type BaseNodeProps } from "./BaseNode";
-import ItemNode from "./ItemNode";
 import { ReportDownloads } from "./ReportDownloads";
 import { LoadingScreen } from "@core/ui/components";
-import { useRootStore } from "@core/framework/store";
-import { logger } from "@core/shared/diagnostics/logger";
+import { useRootStore } from "@core/shell";
+import { logger } from "@core/lib/logger";
 import styles from "./Widget.module.css";
 
 /* Spinner threshold — show loading indicator when children count
@@ -29,30 +28,32 @@ function shouldShowSpinner(
 }
 
 export interface CollectionNodeProps {
-    /** The group node to render */
     node: TreeNode;
-    /** Depth level for indentation (0 = root) */
     depth?: number | undefined;
-    /** Callback when expansion state changes */
+    isExpanded: boolean;
+    isMenuOpen: boolean;
     onToggleExpansion: (nodeId: string) => void;
-    /** Callback when group visibility changes */
     onToggleVisibility: (nodeId: string, visible: boolean) => void;
-    /** Callback when layer visibility changes */
-    onToggleItemVisible:
-        | ((nodeId: string, visible: boolean) => void)
-        | undefined;
-    /** Callback for zoom action (groups and layers only) */
+    onOpenMenu: (nodeId: string) => void;
+    onCloseMenu: () => void;
     onZoom?: ((nodeId: string) => void) | undefined;
 }
 
+/**
+ * Renders a single group row. Children are separate rows produced by the
+ * view model's `visibleRows` — this component does not recurse.
+ */
 const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
     observer(
         ({
             node,
             depth = 0,
+            isExpanded,
+            isMenuOpen,
             onToggleExpansion,
             onToggleVisibility,
-            onToggleItemVisible,
+            onOpenMenu,
+            onCloseMenu,
             onZoom,
         }) => {
             const rootStore = useRootStore();
@@ -65,65 +66,27 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
                 return null;
             }
 
-            const expanded = node.isExtended;
+            const collectionReports = node.relatedObjects.filter(
+                (o) => o.type === "report",
+            );
+            const hasReports = collectionReports.length > 0;
 
-            // Get child nodes from store
-            const childNodes = treeStore.getChildNodes(node.id);
-
-            const renderChild = (child: TreeNode) => {
-                const childDepth = depth + 1;
-
-                if (isGroupNode(child)) {
-                    return (
-                        <CollectionNode
-                            key={child.id}
-                            node={child}
-                            depth={childDepth}
-                            onToggleExpansion={onToggleExpansion}
-                            onToggleVisibility={onToggleVisibility}
-                            onToggleItemVisible={onToggleItemVisible}
-                            onZoom={onZoom}
-                        />
-                    );
-                } else if (isLayerNode(child)) {
-                    return (
-                        <ItemNode
-                            key={child.id}
-                            node={child}
-                            depth={childDepth}
-                            onVisibilityChange={
-                                onToggleItemVisible ?? onToggleVisibility
-                            }
-                            onZoom={onZoom}
-                        />
-                    );
-                }
-                return null;
-            };
-
-            // Check if this node's "More" panel is open
-            const isPanelOpen = treeStore.isNodePanelOpen(node.id);
-
-            // Check if this group has any report roles
-            const hasReports = node.roles.reports.length > 0;
-
-            // BaseNode props for the collection header
             const baseNodeProps: BaseNodeProps = {
                 node,
                 depth,
+                isExpanded,
                 onToggleExpansion,
                 onToggleVisibility,
+                onOpenMenu,
                 onZoom,
                 showExpandArrow: true,
-                // Enable button only if there are reports
                 moreButtonDisabled: !hasReports,
-                // Highlight button when panel is open
-                isMorePanelOpen: isPanelOpen,
+                isMorePanelOpen: isMenuOpen,
             };
 
             const showSpinner = shouldShowSpinner(
-                expanded,
-                treeStore.loadingNodeIds.has(node.id),
+                isExpanded,
+                treeStore.isLoading(node.id),
                 node.childrenCount,
             );
 
@@ -131,12 +94,11 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
                 <>
                     <BaseNode {...baseNodeProps} />
 
-                    {isPanelOpen && hasReports && (
+                    {isMenuOpen && hasReports && (
                         <CollapsibleMenu
                             open={true}
-                            onClose={() => treeStore.togglePanel(node.id)}
+                            onClose={onCloseMenu}
                             className={styles.layerTree__menuContainer}
-                            panelClassName={styles.layerTree__menuPanel}
                             closeOnClickOutside={false}
                             hideIfEmpty={false}
                             nodeId={node.id}
@@ -145,9 +107,6 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
                         </CollapsibleMenu>
                     )}
 
-                    {expanded && childNodes.length > 0 && (
-                        <div>{childNodes.map(renderChild)}</div>
-                    )}
                     {showSpinner && <LoadingScreen />}
                 </>
             );

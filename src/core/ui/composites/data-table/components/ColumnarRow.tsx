@@ -1,5 +1,5 @@
 import React from "react";
-import type { TranslationDict } from "@core/framework/types";
+import { Text } from "@core/ui/components/primitives/text/Text";
 import type { GeometryColumnConfig } from "../types";
 import { formatValue } from "../utils";
 import { ZoomButtonCell } from "./ZoomButtonCell";
@@ -12,25 +12,33 @@ interface ColumnarRowProps {
     columns: string[];
     loading: boolean;
     geometryColumn?: GeometryColumnConfig | undefined;
-    dict: TranslationDict;
+    dict: Record<string, string>;
 }
 
-const CellValue: React.FC<{
+interface CellValueProps {
     isLoaded: boolean;
     loading: boolean;
     value: unknown;
-    dict: TranslationDict;
-}> = React.memo(({ isLoaded, loading, value, dict }) => {
-    if (isLoaded) return <>{formatValue(value, dict)}</>;
-    if (loading) return <>…</>;
+    dict: Record<string, string>;
+}
+
+const CellValue = React.memo<CellValueProps>(({ isLoaded, loading, value, dict }) => {
+    if (isLoaded) {
+        return <Text variant="body">{formatValue(value, dict)}</Text>;
+    }
+    if (loading) return <Text variant="body">…</Text>;
     return null;
 });
 CellValue.displayName = "CellValue";
 
-export const ColumnarRow: React.FC<ColumnarRowProps> = React.memo(
+export const ColumnarRow = React.memo<ColumnarRowProps>(
     ({ row, globalIdx, isLoaded, columns, loading, geometryColumn, dict }) => (
         <tr style={!isLoaded ? { opacity: 0.3 } : undefined}>
-            <td className={styles.rowNumber}>{globalIdx + 1}</td>
+            <td className={styles.rowNumber}>
+                <Text variant="hint" tone="muted">
+                    {globalIdx + 1}
+                </Text>
+            </td>
             {geometryColumn && (
                 <ZoomButtonCell
                     bbox={row[geometryColumn.key]}

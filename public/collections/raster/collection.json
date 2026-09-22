@@ -1,0 +1,42 @@
+{
+    "id": "esri-raster",
+    "type": "Collection",
+    "stac_version": "1.0.0",
+    "title": "Raster — Esri",
+    "description": "Raster tile pyramids from Esri's Living Atlas, served as XYZ tiles by the public arcgisonline CDN: a physical map of the world and a grayscale shaded-relief overlay.",
+    "license": "proprietary",
+    "providers": [
+        {
+            "name": "Esri",
+            "roles": ["producer", "host"],
+            "url": "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9"
+        }
+    ],
+    "extent": {
+        "spatial": {
+            "bbox": [[-180.0, -85.05, 180.0, 85.05]]
+        },
+        "temporal": {
+            "interval": [["2024-01-01T00:00:00Z", null]]
+        }
+    },
+    "links": [
+        {
+            "rel": "license",
+            "href": "https://www.esri.com/en-us/legal/terms/full-master-agreement",
+            "title": "Esri terms of use"
+        },
+        {
+            "rel": "item",
+            "href": "/collections/raster/item-esri-physical-map.json",
+            "type": "application/geo+json",
+            "title": "World Physical Map"
+        },
+        {
+            "rel": "item",
+            "href": "/collections/raster/item-esri-shaded-relief.json",
+            "type": "application/geo+json",
+            "title": "World Shaded Relief"
+        }
+    ]
+}

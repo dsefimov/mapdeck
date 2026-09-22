@@ -1,1 +1,1 @@
-export { viewAttributeTableTools } from "./components/Tool";
+export { ViewAttributeTableTool } from "./components/Tool";

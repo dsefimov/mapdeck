@@ -1,3 +1,76 @@
-.select {
+.trigger {
     composes: inputBase from "./shared.module.css";
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: calc(var(--space-32) + var(--space-2));
+    padding: 0 var(--space-12);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+}
+
+.trigger:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.value {
+    flex: 1;
+}
+
+.chevronArea {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: calc(var(--space-32) + var(--space-12));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chevron {
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    transition: transform var(--transition-fast);
+}
+
+.chevronOpen {
+    transform: rotate(180deg);
+}
+
+.panel {
+    position: fixed;
+    /* Above widget content and the --z-modal (500) layer: the dropdown is
+       portaled to body and must clear every widget while open. */
+    z-index: var(--z-floating);
+    max-height: 13rem;
+    overflow-y: auto;
+    padding: var(--space-4) 0;
+    background: var(--color-bg);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+}
+
+.groupLabel {
+    padding: var(--space-8) var(--space-12);
+}
+
+.option {
+    padding: var(--space-8) var(--space-12);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.option:hover,
+.highlight {
+    background: var(--color-hover);
+}
+
+.empty {
+    padding: var(--space-8) var(--space-12);
 }

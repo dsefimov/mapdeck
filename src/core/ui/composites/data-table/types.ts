@@ -1,4 +1,4 @@
-import type { Bbox } from "@core/shared/geo";
+import type { Bbox } from "@core/lib/geo";
 
 export type SortDirection = "asc" | "desc" | null;
 

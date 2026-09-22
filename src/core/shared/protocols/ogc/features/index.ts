@@ -1,1 +1,0 @@
-export { fetchOgcFeaturesPage } from "./client";

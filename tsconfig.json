@@ -21,15 +21,12 @@
         "noUnusedParameters": true,
         "noImplicitOverride": true,
         "exactOptionalPropertyTypes": true,
-        "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
 
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "verbatimModuleSyntax": true,
 
         "paths": {
-            "@app/*": ["app/*"],
             "@core/*": ["core/*"],
             "@layer-tools/*": ["layer-tools/*"],
             "@map-tools/*": ["map-tools/*"],
@@ -38,6 +35,6 @@
         },
         "types": ["node", "vite/client"]
     },
-    "include": ["src/**/*", "vite.config.ts"],
+    "include": ["src/**/*", "vite.config.ts", "playwright.config.ts"],
     "exclude": ["node_modules", "build"]
 }

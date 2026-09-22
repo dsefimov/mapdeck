@@ -1,13 +1,17 @@
-import { type TreeNode, isGroupNode } from "@core/framework/types";
+import { type TreeNode, isGroupNode, isLayerNode } from "@core/contracts";
 import type { AttributeLayerInfo } from "./index";
 
+/**
+ * Selectable layers for the attribute table: layer nodes that carry data,
+ * each labeled with its group's title when the parent is a group.
+ */
 export function buildAttributeLayers(
     layerNodes: readonly TreeNode[],
-    getNode: (id: string) => TreeNode | null,
+    getNode: (id: string) => TreeNode | undefined,
 ): AttributeLayerInfo[] {
     const result: AttributeLayerInfo[] = [];
     for (const node of layerNodes) {
-        if (!node.roles.attribute) continue;
+        if (!isLayerNode(node) || !node.data) continue;
         let groupTitle: string | null = null;
         if (node.parentId) {
             const parent = getNode(node.parentId);

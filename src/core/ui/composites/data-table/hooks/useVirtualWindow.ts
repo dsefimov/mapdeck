@@ -1,6 +1,7 @@
 import {
     useCallback,
     useEffect,
+    useLayoutEffect,
     useRef,
     useState,
     type RefObject,
@@ -11,6 +12,7 @@ import {
     PRELOAD_BUFFER_ROWS,
     ROW_HEIGHT,
 } from "../constants";
+import styles from "../AttributeTable.module.css";
 
 interface UseVirtualWindowOptions {
     rowCount: number;
@@ -46,11 +48,29 @@ export function useVirtualWindow(
     const containerRef = useRef<HTMLDivElement>(null);
     const containerHeightRef = useRef(DEFAULT_CONTAINER_HEIGHT);
     const isFetchingRef = useRef(false);
+    const rowHeightMeasuredRef = useRef(false);
+    const [rowHeight, setRowHeight] = useState(ROW_HEIGHT);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(
         DEFAULT_CONTAINER_HEIGHT,
     );
     const [fetchTrigger, setFetchTrigger] = useState(0);
+
+    // Rows size themselves from CSS — measure one real row and let it
+    // drive every formula below; the constant is only the first-frame
+    // fallback. The guard flag also keeps a later first-child spacer row
+    // (present once the window is scrolled) from being measured instead.
+    useLayoutEffect(() => {
+        if (rowHeightMeasuredRef.current) return;
+        const row = containerRef.current?.querySelector(
+            `tbody tr:not(.${styles.spacerRow})`,
+        );
+        const height = row?.getBoundingClientRect().height ?? 0;
+        if (height > 0) {
+            rowHeightMeasuredRef.current = true;
+            setRowHeight(height);
+        }
+    }, [rowCount]);
 
     // Track container height via ResizeObserver without triggering re-renders
     useEffect(() => {
@@ -67,7 +87,6 @@ export function useVirtualWindow(
         return () => ro.disconnect();
     }, []);
 
-    // On scroll: read fresh height from ref, update state once
     const handleScroll = useCallback(() => {
         const el = containerRef.current;
         if (!el) return;
@@ -75,11 +94,10 @@ export function useVirtualWindow(
         setContainerHeight(containerHeightRef.current);
     }, []);
 
-    // Trigger fetchMore when the visible window extends beyond loaded data.
-    // Uses isFetchingRef to prevent duplicate calls during the gap between
-    // fetchMore start and loading flag update from the store.
-    // Uses raw useEffect (not useAsyncEffect) to control isFetchingRef reset
-    // in cleanup when dependencies change and the previous fetch is cancelled.
+    // isFetchingRef prevents duplicate calls during the gap between
+    // fetchMore start and the loading flag update from the store.
+    // Cleanup resets isFetchingRef when dependencies change and the
+    // previous fetch is cancelled.
     useEffect(() => {
         let cancelled = false;
 
@@ -89,7 +107,7 @@ export function useVirtualWindow(
             if (rowCount >= effectiveTotal) return;
 
             const visibleEndRow =
-                Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) +
+                Math.ceil((scrollTop + containerHeight) / rowHeight) +
                 PRELOAD_BUFFER_ROWS;
             const needMoreData = visibleEndRow > rowCount;
 
@@ -119,34 +137,36 @@ export function useVirtualWindow(
     }, [
         scrollTop,
         rowCount,
+        effectiveTotal,
         containerHeight,
+        rowHeight,
         loading,
         fetchMore,
         pageSize,
         fetchTrigger,
     ]);
 
-    const rawStart = Math.floor(scrollTop / ROW_HEIGHT);
+    const rawStart = Math.floor(scrollTop / rowHeight);
     const startIndex = Math.max(0, rawStart - BUFFER_SIZE);
     const visibleCount =
-        Math.ceil(containerHeight / ROW_HEIGHT) + 2 * BUFFER_SIZE;
+        Math.ceil(containerHeight / rowHeight) + 2 * BUFFER_SIZE;
     const endIndex = Math.min(effectiveTotal, startIndex + visibleCount);
-    const topPaddingHeight = startIndex * ROW_HEIGHT;
+    const topPaddingHeight = startIndex * rowHeight;
     const bottomPaddingHeight =
-        Math.max(0, effectiveTotal - endIndex) * ROW_HEIGHT;
+        Math.max(0, effectiveTotal - endIndex) * rowHeight;
 
     // Reset scroll position when total shrinks below current viewport
     // (e.g., filter applied while scrolled deep into the list).
     useEffect(() => {
         const el = containerRef.current;
         if (!el || effectiveTotal === 0) return;
-        const totalHeight = effectiveTotal * ROW_HEIGHT;
+        const totalHeight = effectiveTotal * rowHeight;
         const maxScrollTop = Math.max(0, totalHeight - containerHeight);
         if (el.scrollTop > maxScrollTop) {
             el.scrollTop = 0;
             setScrollTop(0);
         }
-    }, [effectiveTotal, containerHeight]);
+    }, [effectiveTotal, containerHeight, rowHeight]);
 
     return {
         containerRef,

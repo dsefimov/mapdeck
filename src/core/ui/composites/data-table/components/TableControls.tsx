@@ -1,5 +1,5 @@
 import React from "react";
-import type { TranslationDict } from "@core/framework/types";
+import { Button } from "@core/ui/components/primitives/button/Button";
 import styles from "../AttributeTable.module.css";
 
 interface TableControlsProps {
@@ -7,10 +7,10 @@ interface TableControlsProps {
     hasActiveFilters: boolean;
     onToggleFilters: () => void;
     onClearFilters: () => void;
-    dict: TranslationDict;
+    dict: Record<string, string>;
 }
 
-export const TableControls: React.FC<TableControlsProps> = React.memo(
+export const TableControls = React.memo<TableControlsProps>(
     ({
         showFilters,
         hasActiveFilters,
@@ -19,24 +19,16 @@ export const TableControls: React.FC<TableControlsProps> = React.memo(
         dict,
     }) => (
         <div className={styles.controls}>
-            <button
-                type="button"
-                className={styles.controlButton}
-                onClick={onToggleFilters}
-            >
+            <Button size="sm" onClick={onToggleFilters}>
                 {showFilters
-                    ? dict["attributeTable.hide"]
-                    : dict["attributeTable.show"]}{" "}
-                {dict["attributeTable.filters"]}
-            </button>
+                    ? dict["dataTable.hide"]
+                    : dict["dataTable.show"]}{" "}
+                {dict["dataTable.filters"]}
+            </Button>
             {hasActiveFilters && (
-                <button
-                    type="button"
-                    className={styles.controlButton}
-                    onClick={onClearFilters}
-                >
-                    {dict["attributeTable.clearFilters"]}
-                </button>
+                <Button size="sm" onClick={onClearFilters}>
+                    {dict["dataTable.clearFilters"]}
+                </Button>
             )}
         </div>
     ),

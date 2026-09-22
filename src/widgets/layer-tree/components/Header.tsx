@@ -1,46 +1,52 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { Icon } from "@core/ui/components";
-import { useRootStore } from "@core/framework/store";
+import { IconButton, SearchInput } from "@core/ui/components";
+import { useRootStore } from "@core/shell";
+import { LayerTreeViewModel } from "../viewModel/LayerTreeViewModel";
 import { LAYER_TREE_ID } from "..";
 import styles from "./Widget.module.css";
 
 interface LayerTreeHeaderProps {
     onUpdateClick?: () => void;
     disabled?: boolean;
-    title?: string;
 }
 
 const LayerTreeHeader: (props: LayerTreeHeaderProps) => React.ReactNode =
-    observer(({ onUpdateClick, disabled = true, title: _title }) => {
+    observer(({ onUpdateClick, disabled = true }) => {
         const rootStore = useRootStore();
         const dict = rootStore.localeStore.t(LAYER_TREE_ID);
-        const treeStore = rootStore.treeStore;
-
-        const buttonTitle = disabled
-            ? dict["button.update.disabledTitle"]
-            : dict["button.update.title"];
+        const viewModel = rootStore.stateStore.get(
+            LAYER_TREE_ID,
+            () => new LayerTreeViewModel(rootStore),
+        );
 
         return (
             <div className={styles.layerTree__header}>
-                <input
-                    type="text"
-                    className={styles.layerTree__searchInput}
-                    placeholder={dict["search.placeholder"]}
-                    value={treeStore.searchQuery}
-                    onChange={(e) => treeStore.setSearchQuery(e.target.value)}
+                <SearchInput
+                    id="layer-tree-search"
+                    value={viewModel.searchQuery}
+                    onChange={(value) => viewModel.setSearchQuery(value)}
                     disabled={disabled}
-                    aria-label={dict["aria.search"]}
+                    {...(styles.layerTree__search && {
+                        className: styles.layerTree__search,
+                    })}
+                    {...(dict["search.placeholder"] && {
+                        placeholder: dict["search.placeholder"],
+                    })}
+                    {...(dict["aria.search"] && {
+                        ariaLabel: dict["aria.search"],
+                    })}
                 />
-                <button
-                    onClick={onUpdateClick}
-                    className={styles.layerTree__updateButton}
-                    disabled={disabled}
-                    title={buttonTitle}
-                    aria-label={buttonTitle}
-                >
-                    <Icon name="refresh" />
-                </button>
+                {onUpdateClick && (
+                    <IconButton
+                        icon="refresh"
+                        label={dict["button.update.title"] ?? "Update"}
+                        onClick={onUpdateClick}
+                        {...(styles.layerTree__updateButton && {
+                            className: styles.layerTree__updateButton,
+                        })}
+                    />
+                )}
             </div>
         );
     });

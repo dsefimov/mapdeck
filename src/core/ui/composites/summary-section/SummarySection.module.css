@@ -1,0 +1,37 @@
+.summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    border-radius: var(--radius-md);
+    padding: var(--space-10) var(--space-5);
+    border: var(--border-sm) solid var(--color-border);
+}
+
+.item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-8);
+    padding: var(--space-5);
+}
+
+.label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+.dot {
+    width: var(--space-8);
+    height: var(--space-8);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dotHorizontal {
+    background-color: var(--color-track);
+}
+
+.dotVertical {
+    background-color: var(--color-accent);
+}

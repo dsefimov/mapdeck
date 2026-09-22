@@ -1,0 +1,43 @@
+/* ── Segments (used by SegmentsList) ──────────────────────────────────────── */
+
+.segments {
+    padding: var(--space-10);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+}
+
+.segmentsTitle {
+    margin-bottom: var(--space-10);
+}
+
+.segmentsList {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-10);
+    max-height: 150px;
+    overflow-y: auto;
+    padding-right: var(--space-8);
+}
+
+.segmentItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid
+        color-mix(in srgb, var(--color-border) 50%, transparent);
+}
+
+.segmentItem:last-child {
+    border-bottom: none;
+}
+
+.segmentComponents {
+    display: flex;
+    flex-direction: column;
+}
+
+.segmentComponent {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-8);
+}

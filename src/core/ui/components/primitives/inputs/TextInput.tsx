@@ -6,13 +6,15 @@ export interface TextInputProps {
     id: string;
     value: string;
     onChange: (value: string) => void;
+    disabled?: boolean;
     className?: string | undefined;
 }
 
-export const TextInput: React.FC<TextInputProps> = ({
+export const TextInput: (props: TextInputProps) => React.ReactNode = ({
     id,
     value,
     onChange,
+    disabled,
     className,
 }) => {
     return (
@@ -21,6 +23,7 @@ export const TextInput: React.FC<TextInputProps> = ({
             type="text"
             className={cn(styles.input, className)}
             value={value}
+            disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
         />
     );

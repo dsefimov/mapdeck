@@ -1,0 +1,28 @@
+/* ═══════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — TOOL / WIDGET-SPECIFIC TOKENS
+   Ownership rule:
+   - inside a component → local declarations in its CSS module;
+   - shared by ≥2 components outside core/ui, or needed by a TS bridge → here;
+   - for a single tool → its CSS module, not here.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+    /* Measure colors (deck.gl-readable, flat hex).
+       Single source for maplibre paint + deck.gl layers. */
+    --tool-measure-stroke: var(--color-accent);
+    --tool-measure-fill: var(--color-accent);
+    --tool-measure-preview: var(--color-accent);
+
+    --toolbar-width: calc(
+        var(--icon-lg) + 4 * var(--border-sm) + 6 * var(--space-8)
+    );
+    --tool-panel-width-sm: 10rem;
+    --tool-panel-width-lg: 22rem;
+    --column-width: 10rem;
+
+    /* Per-step indent of a depth-indented list row (ADR-0004: the token
+       file names layout roles, not the extensions that consume them). */
+    --list-indent-step: 28px;
+
+    /* Square side of a preview thumbnail grid. */
+    --preview-image-size: 128px;
+}

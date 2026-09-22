@@ -1,0 +1,71 @@
+/* Design-system text: the only place typography rules live.
+   tone/weight are declared AFTER the variants — they win by cascade inside
+   the module; consumer classes (0-1-0) cannot override color/weight,
+   they stay for layout/decoration only. */
+
+.text {
+    font-family: inherit;
+}
+
+.title {
+    display: block;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-bold);
+    line-height: var(--line-none);
+    color: var(--color-text);
+}
+
+.body {
+    /* no display/line-height — inline, inherits the container */
+    font-size: var(--font-size-base);
+    font-weight: var(--font-regular);
+    color: var(--color-text);
+}
+
+.hint {
+    display: block;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-regular);
+    line-height: var(--line-none);
+    color: var(--color-text-secondary);
+}
+
+.caption {
+    display: block;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-semibold);
+    line-height: var(--line-none);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-caption);
+    color: var(--color-text-secondary);
+}
+
+.secondary {
+    color: var(--color-text-secondary);
+}
+
+.muted {
+    color: var(--color-text-muted);
+}
+
+.accent {
+    color: var(--color-accent);
+}
+
+.error {
+    color: var(--color-error);
+}
+
+.semibold {
+    font-weight: var(--font-semibold);
+}
+
+.bold {
+    font-weight: var(--font-bold);
+}
+
+.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

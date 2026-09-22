@@ -1,4 +1,5 @@
-import type { Widget } from "@core/framework/types";
+import type { Widget, WidgetSizeConfig } from "@core/contracts";
+import { readWidgetConfig } from "@core/contracts";
 import { sidebarTranslations } from "./locale";
 import SidebarComponent from "./components/Widget";
 import type { SidebarProps } from "./types";
@@ -6,13 +7,25 @@ import config from "./config.json";
 
 export const SIDEBAR_ID = "sidebar-widget" as const;
 
-const Sidebar: Widget<SidebarProps> = {
-    id: SIDEBAR_ID,
-    icon: "",
-    localeTranslations: sidebarTranslations,
-    component: SidebarComponent,
-    showInSidebar: config.base?.showInSidebar ?? true,
-    ...config.size,
-};
+/** The sidebar widget: the launcher for the grid widgets. */
+export class SidebarWidget implements Widget<SidebarProps> {
+    readonly id = SIDEBAR_ID;
+    readonly icon = "";
+    readonly localeTranslations = sidebarTranslations;
+    readonly component = SidebarComponent;
+    readonly showInSidebar: boolean;
+    readonly size?: WidgetSizeConfig;
 
-export default Sidebar;
+    constructor() {
+        const { showInSidebar, size } = readWidgetConfig(
+            SIDEBAR_ID,
+            config,
+        );
+        this.showInSidebar = showInSidebar;
+        if (size) {
+            this.size = size;
+        }
+    }
+}
+
+export default SidebarWidget;

@@ -1,33 +1,30 @@
-import type { AttributeRole, NodeAttributeConfig } from "@core/framework/types";
-import type { IRoleResolver, ResolveContext } from "../IRoleResolver";
+import type {
+    IRoleResolver,
+    ResolveContext,
+    ProtocolAssignment,
+} from "../IRoleResolver";
 import type { STACAsset } from "../../types";
+import { baseAssetParams } from "../baseAssetParams";
 
 const ATTRIBUTE_ROLES = new Set(["wfs", "ogc-feature-api"]);
 
 export class AttributeRoleResolver implements IRoleResolver {
     readonly priority = 10;
 
-    canResolve(asset: STACAsset): boolean {
+    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
         return asset.roles?.some((r) => ATTRIBUTE_ROLES.has(r)) ?? false;
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): AttributeRole {
+    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
         const adapterType =
             asset.roles?.find((r) => ATTRIBUTE_ROLES.has(r)) ?? "wfs";
-        const attributeConfig: NodeAttributeConfig = {
-            endpointUrl: asset.href,
-            type: adapterType,
-        };
-        if (asset.type) attributeConfig.mimeType = asset.type;
+        const protocolId =
+            adapterType === "ogc-feature-api" ? "ogc-features" : "wfs";
 
-        const result: AttributeRole = {
-            id: ctx.assetKey,
-            category: "attribute",
-            label: asset.title ?? ctx.assetKey,
+        return {
+            protocolId,
             sourceUrl: asset.href,
-            attributeConfig,
+            params: baseAssetParams(asset, ctx),
         };
-        if (asset.type) result.mimeType = asset.type;
-        return result;
     }
 }

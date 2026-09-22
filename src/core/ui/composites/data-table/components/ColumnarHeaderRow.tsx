@@ -1,8 +1,9 @@
 import React from "react";
+import { formatDict } from "@core/lib/text";
 import { Icon } from "@core/ui/components";
-import type { TranslationDict } from "@core/framework/types";
+import { Text } from "@core/ui/components/primitives/text/Text";
 import type { SortDirection, GeometryColumnConfig } from "../types";
-import { getSortIndicator } from "../utils";
+import { getAriaSort, getSortIndicator } from "../utils";
 import styles from "../AttributeTable.module.css";
 
 interface ColumnarHeaderRowProps {
@@ -14,10 +15,10 @@ interface ColumnarHeaderRowProps {
     filters: Record<string, string>;
     onFilterChange: (column: string, value: string) => void;
     geometryColumn?: GeometryColumnConfig | undefined;
-    dict: TranslationDict;
+    dict: Record<string, string>;
 }
 
-export const ColumnarHeaderRow: React.FC<ColumnarHeaderRowProps> = React.memo(
+export const ColumnarHeaderRow = React.memo<ColumnarHeaderRowProps>(
     ({
         columns,
         sortColumn,
@@ -32,12 +33,14 @@ export const ColumnarHeaderRow: React.FC<ColumnarHeaderRowProps> = React.memo(
         <>
             <tr>
                 <th className={styles.rowNumberHeader}>
-                    {dict["attributeTable.rowNumber"]}
+                    <Text variant="caption">
+                        {dict["dataTable.rowNumber"]}
+                    </Text>
                 </th>
                 {geometryColumn && (
                     <th
                         className={styles.zoomColumnHeader}
-                        aria-label={dict["attributeTable.zoomToObject"]}
+                        aria-label={dict["dataTable.zoomToObject"]}
                     >
                         <Icon name="zoom" />
                     </th>
@@ -47,14 +50,28 @@ export const ColumnarHeaderRow: React.FC<ColumnarHeaderRowProps> = React.memo(
                         key={col}
                         className={styles.sortableHeader}
                         style={{ minWidth: 80 }}
-                        onClick={() => onSort(col)}
-                    >
-                        {col}
-                        {sortColumn === col && (
-                            <span className={styles.sortIndicator}>
-                                {getSortIndicator(sortDirection)}
-                            </span>
+                        aria-sort={getAriaSort(
+                            sortColumn === col,
+                            sortDirection,
                         )}
+                    >
+                        <button
+                            type="button"
+                            className={styles.sortButton}
+                            onClick={() => onSort(col)}
+                        >
+                            <Text variant="caption">
+                                {col}
+                                {sortColumn === col && (
+                                    <span
+                                        className={styles.sortIndicator}
+                                        aria-hidden="true"
+                                    >
+                                        {getSortIndicator(sortDirection)}
+                                    </span>
+                                )}
+                            </Text>
+                        </button>
                     </th>
                 ))}
             </tr>
@@ -67,11 +84,14 @@ export const ColumnarHeaderRow: React.FC<ColumnarHeaderRowProps> = React.memo(
                             <input
                                 type="text"
                                 className={styles.filterInput}
-                                placeholder={
-                                    dict[
-                                        "attributeTable.filterColumn"
-                                    ]?.replace("{column}", col) ?? ""
-                                }
+                                placeholder={formatDict(
+                                    dict["dataTable.filterColumn"] ?? "",
+                                    { column: col },
+                                )}
+                                aria-label={formatDict(
+                                    dict["dataTable.filterColumn"] ?? "",
+                                    { column: col },
+                                )}
                                 value={filters[col] ?? ""}
                                 onChange={(e) =>
                                     onFilterChange(col, e.target.value)

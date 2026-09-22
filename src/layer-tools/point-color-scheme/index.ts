@@ -1,1 +1,1 @@
-export { pointColorSchemeTool } from "./components/Tool";
+export { PointColorSchemeTool } from "./components/Tool";

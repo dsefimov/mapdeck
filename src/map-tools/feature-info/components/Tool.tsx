@@ -1,40 +1,29 @@
-import { makeObservable, observable } from "mobx";
-import type maplibregl from "maplibre-gl";
+import React from "react";
+import { MAP_TOOL_KIND } from "@core/contracts";
 import type {
-    MapTool,
-    MapToolPlacement,
     ContextMenuBehavior,
-} from "@core/framework/types";
-import type { IconName } from "@core/ui/components";
+    InteractiveMapTool,
+    MapToolComponentProps,
+} from "@core/contracts";
 import { FeatureInfoComponent } from "./Panel";
+import { FeatureInfoStore } from "../utils/FeatureInfoStore";
 import { featureInfoTranslations } from "../locale";
 
 /**
  * MapTool implementation for feature information.
  * Click on the map to get information about objects at the clicked location.
  */
-export class FeatureInfoTool implements MapTool {
+export class FeatureInfoTool implements InteractiveMapTool {
     readonly id = "feature-info";
-    readonly icon: IconName = "info";
-    readonly placement: MapToolPlacement = "top-right";
-    readonly order = 10;
-    readonly component = FeatureInfoComponent;
+    readonly icon = "info";
+    readonly kind = MAP_TOOL_KIND.interactive;
     readonly contextMenu: ContextMenuBehavior = { mode: "activate-at-point" };
     readonly localeTranslations = featureInfoTranslations;
 
-    isActive = false;
-
-    constructor() {
-        makeObservable(this, {
-            isActive: observable,
-        });
-    }
-
-    activate(_map: maplibregl.Map): void {
-        this.isActive = true;
-    }
-
-    deactivate(): void {
-        this.isActive = false;
-    }
+    readonly component: React.ComponentType<MapToolComponentProps> = (
+        props,
+    ) => {
+        const store = props.context.stateStore.get(this.id, () => new FeatureInfoStore());
+        return <FeatureInfoComponent {...props} store={store} />;
+    };
 }

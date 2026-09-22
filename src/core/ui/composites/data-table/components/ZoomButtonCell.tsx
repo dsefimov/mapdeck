@@ -1,35 +1,35 @@
 import React, { useCallback } from "react";
-import { Icon } from "@core/ui/components";
-import type { Bbox } from "@core/shared/geo";
-import { Bbox as BboxClass } from "@core/shared/geo";
-import type { TranslationDict } from "@core/framework/types";
+import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
+import { typedDict } from "@core/lib/text";
+import type { Bbox } from "@core/lib/geo";
+import { Bbox as BboxClass } from "@core/lib/geo";
 import styles from "../AttributeTable.module.css";
 
 interface ZoomButtonCellProps {
     bbox: unknown;
     isLoaded: boolean;
     onZoom: (bbox: Bbox) => void;
-    dict: TranslationDict;
+    dict: Record<string, string>;
 }
 
-export const ZoomButtonCell: React.FC<ZoomButtonCellProps> = React.memo(
+export const ZoomButtonCell = React.memo<ZoomButtonCellProps>(
     ({ bbox, isLoaded, onZoom, dict }) => {
         const handleClick = useCallback(() => {
             if (bbox instanceof BboxClass) onZoom(bbox);
         }, [bbox, onZoom]);
 
+        // The kit cannot name the core dictionary's key union (`ui → lib`
+        // layer rule), so it types exactly the keys it consumes.
+        const labels = typedDict<"dataTable.zoomToObject">(dict);
+
         return (
             <td className={styles.zoomCell}>
-                <button
-                    type="button"
-                    className={styles.zoomButton}
-                    title={dict["attributeTable.zoomToObject"]}
-                    aria-label={dict["attributeTable.zoomToObject"]}
+                <IconButton
+                    icon="zoom"
+                    label={labels["dataTable.zoomToObject"]}
                     disabled={!isLoaded || bbox == null}
                     onClick={handleClick}
-                >
-                    <Icon name="zoom" />
-                </button>
+                />
             </td>
         );
     },

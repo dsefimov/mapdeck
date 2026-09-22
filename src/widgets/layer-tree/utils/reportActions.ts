@@ -1,6 +1,11 @@
-import { downloadFile } from "@core/shared";
-import { logger } from "@core/shared/diagnostics/logger";
+import { downloadFile } from "@core/ui/utils";
+import { logger } from "@core/lib/logger";
 
+/**
+ * Open a report in a new tab. `opener` is nulled so the report page
+ * cannot reach back into the app via `window.opener`.
+ * Best-effort by design (the error matrix): a URL-less report only logs.
+ */
 export function openReport(url: string, label: string): void {
     if (!url) {
         logger.warn(`Report "${label}" has no URL`);
@@ -12,10 +17,11 @@ export function openReport(url: string, label: string): void {
     }
 }
 
+/** Download a report file, named by its label. Best-effort: a URL-less report only logs. */
 export function downloadReport(url: string, label: string): void {
     if (!url) {
         logger.warn(`Report "${label}" has no URL`);
         return;
     }
-    downloadFile(url, label);
+    void downloadFile(url, label);
 }
