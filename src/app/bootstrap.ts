@@ -75,9 +75,10 @@ export async function bootstrap(
 }
 
 /**
- * Close the basemap channel once every registration ran: repair the select
- * setting even when nothing registered at all, and say so — an assembly
- * without a single basemap renders a baseless map.
+ * Close the basemap channel once every registration ran: settle the select
+ * setting's options (a no-op for an empty registry — there is nothing to
+ * point at) and say so — an assembly without a single basemap renders a
+ * baseless map.
  */
 function finalizeBasemaps(rootStore: RootStore): void {
     rootStore.basemapStore.syncSettingOptions();

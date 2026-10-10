@@ -8,7 +8,11 @@ import {
 import type { RegisterOptions } from "@core/lib/registry";
 import { applyRegistration } from "@core/lib/registry";
 import type { StoreRegistry } from "@core/store-registry";
-import type { BaseMapConfig, BasemapStatus } from "@core/contracts";
+import type {
+    BaseMapConfig,
+    BasemapRegistrationPort,
+    BasemapStatus,
+} from "@core/contracts";
 import {
     checkBasemapHealth,
     DEFAULT_PROBE_TIMEOUT_MS,
@@ -24,7 +28,7 @@ import { logger } from "@core/lib/logger";
 export const BASEMAP_SETTING_ID = "basemap.basemap";
 const BASEMAP_ID_PREFIX = "basemap_";
 
-export class BasemapStore {
+export class BasemapStore implements BasemapRegistrationPort {
     /**
      * id → config, insertion-ordered: an override replaces in place (the
      * entry keeps its position), and the observable map keeps late
@@ -51,14 +55,17 @@ export class BasemapStore {
 
     /**
      * Register basemap configs — the single registration path for the
-     * built-in set and modules. Validates every config, fetches the styles
-     * of `styleUrl` configs concurrently (a failed fetch keeps the config
-     * registered and the health probe reports it unavailable), then applies
-     * everything in one synchronous section: duplicate ids throw unless
-     * `opts.override`, an override replaces in place, drops the stale health
-     * status, and re-applies the active basemap when its config was the one
-     * replaced. The basemap setting's options and a dangling value/default
-     * are repaired in the same section.
+     * built-in set and modules. Validates every config, fetches the style
+     * of `styleUrl` configs that carry no inline `style` (the inline style
+     * wins; a failed fetch keeps the config registered and the health
+     * probe reports it unavailable), then applies everything in one
+     * synchronous all-or-nothing section: a duplicate id — within the
+     * batch, or against the registry without `opts.override` — throws
+     * before anything is applied; with `override` an entry replaces in
+     * place, drops its stale health status, and re-applies the active
+     * basemap when its config was the one replaced. The basemap setting's
+     * options and a dangling value/default are repaired in the same
+     * section.
      */
     async registerConfigs(
         configs: readonly BaseMapConfig[],
@@ -87,6 +94,17 @@ export class BasemapStore {
 
         const replacedActiveIds = new Set<string>();
         runInAction(() => {
+            // The batch is checked against the registry before anything is
+            // applied — a colliding id must not leave a partial registration.
+            const collision = resolved.find(
+                ({ config }) =>
+                    this._configs.has(config.id) && !opts?.override,
+            );
+            if (collision) {
+                throw new Error(
+                    `Basemap "${collision.config.id}" is already registered.`,
+                );
+            }
             for (const { config, style } of resolved) {
                 const entry =
                     style === undefined ? config : { ...config, style };
@@ -278,6 +296,7 @@ export class BasemapStore {
         this.healthStatuses.clear();
         this._ownedIds.clear();
         this._lastApplied = undefined;
+        this._lastSyncedDefault = undefined;
         this._configs.clear();
     }
 

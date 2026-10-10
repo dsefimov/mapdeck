@@ -89,15 +89,18 @@ are ADR-0004; the registration mechanics are ADR-0005. Registration is explicit:
 kind has one registration function, and the composition root runs them in a fixed
 sequence — protocols before modules, so a module's protocols add on top of the base
 set (or replace one explicitly via `{ override: true }`) — and only then initializes
-the root store. The default source type is assembly policy: `src/app/appConfig.ts`
-names it, and a missing or unregistered type fails initialization visibly.
+the root store. The default source type is assembly policy: the assembly names it
+as a bootstrap option (the demo reads it from `src/app/appConfig.ts`), and a missing
+or unregistered type fails initialization visibly.
 
 Modules register through a declared-points context (`ModuleContext`, ADR-0004): the
 registration surfaces for every extension kind — source adapters, protocols, feature
-providers, widgets, both tool kinds, tool-to-protocol links — plus the runtime
-services (state, locale, settings, read ports). A module never receives the domain
-stores; it changes kernel behavior through the points, and a capability no point
-covers is a missing point, not an invitation to reach into internals. Map-tool
+providers, basemaps, widgets, both tool kinds, tool-to-protocol links, settings and
+translations — plus the runtime services and read ports (state, locale, protocol and
+feature-provider reads, the tree catalog, basemap read-and-switch). A module never
+receives the domain stores; it changes kernel behavior through the points, and a
+capability no point covers is a missing point, not an invitation to reach into
+internals. Map-tool
 panels receive the runtime slice of the same family (`ToolRuntimeContext`,
 ADR-0006) together with the map engine — platform technology for tools, not a port.
 

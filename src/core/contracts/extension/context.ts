@@ -39,9 +39,9 @@ export interface WidgetRegistrationPort {
 }
 
 /**
- * Registration surface for layer tools — register, the single link mechanism
- *, and the link-table reads the capability assignment verifies
- * against.
+ * Registration surface for layer tools: registering a tool, the single
+ * link mechanism, and the link-table reads the capability assignment
+ * verifies against.
  */
 export interface LayerToolRegistrationPort {
     registerTool(tool: LayerTool, opts?: RegisterOptions): void;

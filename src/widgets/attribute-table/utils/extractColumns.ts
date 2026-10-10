@@ -6,8 +6,6 @@
 export function extractColumns(
     features: readonly Record<string, unknown>[],
 ): string[] {
-    // `_`-prefixed keys are the FeatureRow reserved-key convention
-    // — they carry spatial metadata, not data columns.
     const colSet = new Set<string>();
     for (const f of features) {
         for (const k of Object.keys(f)) {

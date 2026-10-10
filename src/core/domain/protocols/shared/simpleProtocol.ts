@@ -1,7 +1,7 @@
 /**
  * Factory for simple protocols — the declarative descriptor a protocol fills
- * in when it has no request logic beyond the shared render adapter it reuses
- * — protocols of the same data type reuse the shared adapters.
+ * in when it has no request logic of its own: protocols of the same data
+ * type reuse the shared render adapters.
  * A protocol folder with only a descriptor is data, not code.
  */
 import type {
@@ -34,8 +34,8 @@ export interface SimpleProtocolDescriptor<C> {
 
 /**
  * Builds a protocol from a declarative descriptor. The result is a plain
- * object satisfying `Protocol` — the class-shape rule covers extension kinds
- *, not protocol implementations.
+ * object satisfying `Protocol` — the class-shape rule covers extension
+ * kinds, not protocol implementations.
  */
 export function createSimpleProtocol<C>(
     descriptor: SimpleProtocolDescriptor<C>,

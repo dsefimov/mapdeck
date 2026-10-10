@@ -7,8 +7,8 @@ import { stacModule } from "./stac";
 export const builtInModules: readonly Module[] = [stacModule];
 
 /**
- * Explicit registration of modules through the declared-points context
- *. Array order is execution order — built-ins first, the
+ * Explicit registration of modules through the declared-points context.
+ * Array order is execution order — built-ins first, the
  * consumer's modules after, so the latter may override.
  */
 export async function registerModules(

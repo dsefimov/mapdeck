@@ -121,6 +121,43 @@ describe("BasemapStore — registration", () => {
         expect(store.healthStatuses.has("bm-a")).toBe(false);
     });
 
+    it("does not re-apply the active basemap when an inactive one is overridden", async () => {
+        stubFetch({ example: { ok: true } });
+        const rootStore = storeStub();
+        (rootStore.settingsStore.getStringSetting as ReturnType<typeof vi.fn>)
+            .mockReturnValue("bm-a");
+        const store = await makeStore(rootStore);
+        store.applyBasemap(CONFIG_A);
+        const apply = rootStore.mapStore.applyStyleFragment as ReturnType<
+            typeof vi.fn
+        >;
+        apply.mockClear();
+
+        await store.registerConfigs([{ ...CONFIG_B, name: "Beta corp" }], {
+            override: true,
+        });
+
+        expect(apply).not.toHaveBeenCalled();
+    });
+
+    it("fails a colliding batch without partial registration", async () => {
+        const store = await makeStore(storeStub());
+        const fresh: BaseMapConfig = {
+            id: "bm-new",
+            name: "New",
+            style: CONFIG_A.style!,
+        };
+
+        await expect(
+            store.registerConfigs([fresh, CONFIG_B]),
+        ).rejects.toThrow(/already registered/);
+
+        expect(store.availableBasemaps.map((bm) => bm.id)).toEqual([
+            "bm-a",
+            "bm-b",
+        ]);
+    });
+
     it("re-applies the active basemap when its config is overridden", async () => {
         stubFetch({ example: { ok: true } });
         const rootStore = storeStub();
