@@ -5,7 +5,7 @@
    container carries the tokens itself). Adding a theme means
    overriding these variables via [data-theme] on the container — the
    library ships exactly one theme and no other.
-   All values are flat hex/px (required by getThemeColor).
+   Color values are flat hex (required by getThemeColor).
    ═══════════════════════════════════════════════════════════════ */
 
 /* The embedding host's box model is unknowable — scope our own reset. */
@@ -133,10 +133,36 @@
     --z-dragging: 10000; /* mid-gesture windows — top of everything */
 
     /* ═══════════════════════════════════════════
-     12. ICONS
+     12. ICONS — sizes and artwork tokens
      ═══════════════════════════════════════════ */
     --icon-sm: 1rem; /* inline icons, buttons */
     --icon-lg: 1.5rem; /* widget icons, large buttons */
+
+    /* Artwork: icons render as masks painted with currentColor, so a host
+       swaps a glyph or recolors the set by overriding these on its
+       container — the same gesture as any other token. */
+    --icon-zoom: url("../icons/zoom.svg");
+    --icon-raster: url("../icons/raster.svg");
+    --icon-vector: url("../icons/vector.svg");
+    --icon-point-cloud: url("../icons/point-cloud.svg");
+    --icon-report: url("../icons/report.svg");
+    --icon-collapsed: url("../icons/collapsed.svg");
+    --icon-not-collapsed: url("../icons/not-collapsed.svg");
+    --icon-layers: url("../icons/layers.svg");
+    --icon-map: url("../icons/map.svg");
+    --icon-settings: url("../icons/settings.svg");
+    --icon-refresh: url("../icons/refresh.svg");
+    --icon-ruler: url("../icons/ruler.svg");
+    --icon-area: url("../icons/area.svg");
+    --icon-volume: url("../icons/volume.svg");
+    --icon-compass: url("../icons/compass.svg");
+    --icon-info: url("../icons/info.svg");
+    --icon-attribute-table: url("../icons/attribute-table.svg");
+    --icon-settings-sliders: url("../icons/settings-sliders.svg");
+    --icon-file-download: url("../icons/file-download.svg");
+    --icon-search: url("../icons/search.svg");
+    --icon-angle-down: url("../icons/angle-down.svg");
+    --icon-close: url("../icons/close.svg");
 
     /* ═══════════════════════════════════════════
      13. TRANSITIONS

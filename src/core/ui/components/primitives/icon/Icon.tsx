@@ -1,7 +1,6 @@
 import React from "react";
-import { logger } from "@core/lib/logger";
 import { cn } from "@core/ui/utils/cn";
-import iconRegistry, { isIconName } from "../../../icons/registry";
+import { isIconName } from "../../../icons/registry";
 import type { IconName } from "../../../icons/registry";
 import styles from "./Icon.module.css";
 
@@ -18,31 +17,23 @@ export interface IconProps {
 }
 
 /**
- * Icon component for consistent SVG rendering throughout the application.
- * Icon size is determined entirely by the parent container's CSS.
- * Interactive icons use IconButton — a clickable img is not accessible.
+ * Design-system icon: a masked span painted with currentColor. The glyph
+ * comes from the `--icon-<name>` theme token, so hosts swap artwork and
+ * recolor the set through the same token overrides as the rest of the
+ * theme. Icon size is determined entirely by the parent container's CSS.
+ * Interactive icons use IconButton — a clickable icon is not accessible.
  */
 export const Icon: (props: IconProps) => React.ReactNode = ({
     name,
     className,
     title,
-}) => {
-    const src = iconRegistry[name];
-
-    if (!src) {
-        logger.warn(`Icon "${name}" not found in registry`);
-        return null;
-    }
-
-    return (
-        <img
-            src={src}
-            alt={title || ""}
-            title={title}
-            className={cn(styles.icon, className)}
-            aria-hidden={!title || undefined}
-        />
-    );
-};
+}) => (
+    <span
+        role={title ? "img" : undefined}
+        aria-label={title}
+        aria-hidden={!title || undefined}
+        className={cn(styles.icon, styles[name], className)}
+    />
+);
 
 export default Icon;
