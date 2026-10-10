@@ -3,6 +3,11 @@
  * the types an embedding app needs. Deep integration goes through the
  * `mapdeck/contracts` subpath, which re-exports the full contract barrel.
  */
+
+// The style chain rides the barrel: a library build must bundle the token
+// sheets into mapdeck.css without relying on the host to import them.
+import "@core/ui/theme/index.css";
+
 export { createMapdeck } from "./embed";
 export type { MapdeckOptions, MapdeckInstance } from "./embed";
 export { MapdeckRoot } from "./MapdeckRoot";

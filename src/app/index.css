@@ -1,7 +1,5 @@
-@import "../core/ui/theme/theme.css";
-@import "../core/ui/theme/tool-tokens.css";
-@import "../core/ui/theme/vendor-overrides.css";
-@import "../core/ui/theme/fonts.css";
+@import "../core/ui/theme/index.css";
+@import "./fonts.css";
 
 * {
     box-sizing: border-box;

@@ -1,0 +1,23 @@
+/*
+ * Dogfood fonts. The library ships no font binaries: mapdeck UI inherits
+ * the host font and degrades through the --font-family token stack. The
+ * demo pins Roboto to keep its look; a host wanting Roboto self-hosts it
+ * the same way.
+ */
+
+/* Roboto is loaded from src/app/fonts/ (bundled by Vite) */
+@font-face {
+    font-family: "Roboto";
+    src: url("./fonts/Roboto.ttf") format("truetype");
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto";
+    src: url("./fonts/Roboto-Italic.ttf") format("truetype");
+    font-weight: 400 700;
+    font-style: italic;
+    font-display: swap;
+}
