@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "tool.name": "Raster Opacity",
@@ -12,7 +12,7 @@ const en = {
 export type RasterOpacityLocaleKey = keyof typeof en;
 
 export const rasterOpacityTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };

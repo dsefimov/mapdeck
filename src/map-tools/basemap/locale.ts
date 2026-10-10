@@ -1,7 +1,7 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 export const basemapTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en: {
         "tool.name": "Basemap",

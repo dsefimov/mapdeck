@@ -14,7 +14,7 @@ import type { Layer } from "@deck.gl/core";
 import type { OverlayManager } from "../domain/map-context";
 import type { ToolRuntimeContext } from "./context";
 import type { SettingMetadata } from "./settings";
-import type { SupportedLanguage, TranslationDict } from "./locale";
+import type { TranslationDict } from "./locale";
 
 /**
  * Declarative behavior of a map tool when invoked from the map context menu.
@@ -88,7 +88,7 @@ interface BaseMapTool {
     readonly settings?: SettingMetadata[];
     /** Translation dictionary for the tool's locale (keyed by tool `id`) */
     readonly localeTranslations: Partial<
-        Record<SupportedLanguage, TranslationDict>
+        Record<string, TranslationDict>
     >;
 }
 

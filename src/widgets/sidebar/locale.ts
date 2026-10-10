@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "widget.name": "Widgets",
@@ -9,7 +9,7 @@ const en = {
 export type SidebarLocaleKey = keyof typeof en;
 
 export const sidebarTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };

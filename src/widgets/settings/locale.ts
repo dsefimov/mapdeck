@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "widget.name": "Settings",
@@ -14,7 +14,7 @@ const en = {
 export type SettingsLocaleKey = keyof typeof en;
 
 export const settingsTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };

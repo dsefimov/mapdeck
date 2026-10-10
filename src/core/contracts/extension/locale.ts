@@ -1,10 +1,9 @@
 /**
- * Language codes. `"en"` is the built-in language the library ships
- * dictionaries for; every other language enters as registered data through
- * a module — the code space stays open, the union only keeps
- * `"en"` in autocomplete. Do not enumerate registered languages here.
+ * Language codes are open data: "en" is the built-in language the library
+ * ships dictionaries for; every other language enters as registered
+ * dictionaries through a module. The fallback for a namespace without a
+ * registration in the current language is the whole en dictionary.
  */
-export type SupportedLanguage = "en" | (string & {});
 
 /** Flat string map per namespace — no rigid schema */
 export type TranslationDict = Record<string, string>;
@@ -33,6 +32,6 @@ export interface LocaleApi {
 export interface LocaleRegistrationPort extends LocaleApi {
     registerTranslations(
         namespace: string,
-        dict: Partial<Record<SupportedLanguage, TranslationDict>>,
+        dict: Partial<Record<string, TranslationDict>>,
     ): void;
 }

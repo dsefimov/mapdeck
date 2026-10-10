@@ -5,7 +5,7 @@
 
 import type React from "react";
 import type { SettingMetadata } from "./settings";
-import type { SupportedLanguage, TranslationDict } from "./locale";
+import type { TranslationDict } from "./locale";
 
 /** A widget's render function over its props. */
 export type WidgetComponent<TProps> = (
@@ -40,7 +40,7 @@ export interface Widget<TProps extends { widgetId: string }> {
 
     /** Optional locale translations keyed by language */
     readonly localeTranslations?: Partial<
-        Record<SupportedLanguage, TranslationDict>
+        Record<string, TranslationDict>
     >;
 
     /** Settings metadata for automatic registration */

@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "tool.name": "Point Size",
@@ -12,7 +12,7 @@ const en = {
 export type PointSizeSliderLocaleKey = keyof typeof en;
 
 export const pointSizeSliderTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };

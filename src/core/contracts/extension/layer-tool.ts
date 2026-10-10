@@ -1,5 +1,5 @@
 import type React from "react";
-import type { SupportedLanguage, TranslationDict } from "./locale";
+import type { TranslationDict } from "./locale";
 
 /**
  * A layer tool — a UI component rendered in the "More" menu of a layer node.
@@ -17,6 +17,6 @@ export interface LayerTool {
     readonly component: (nodeId: string) => React.ReactNode;
     /** Optional locale translations keyed by language */
     readonly localeTranslations?: Partial<
-        Record<SupportedLanguage, TranslationDict>
+        Record<string, TranslationDict>
     >;
 }

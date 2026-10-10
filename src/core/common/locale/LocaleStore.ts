@@ -1,7 +1,6 @@
 import { makeAutoObservable, observable } from "mobx";
 import type {
     LocaleRegistrationPort,
-    SupportedLanguage,
     TranslationDict,
 } from "@core/contracts";
 
@@ -13,11 +12,11 @@ import type {
  * Components retrieve strings via `t(namespace)`.
  */
 /** Default language used as fallback — owned by the locale subsystem. */
-const DEFAULT_LANGUAGE: SupportedLanguage = "en";
+const DEFAULT_LANGUAGE = "en";
 
 export class LocaleStore implements LocaleRegistrationPort {
     /** Current active language */
-    currentLang: SupportedLanguage = DEFAULT_LANGUAGE;
+    currentLang: string = DEFAULT_LANGUAGE;
 
     /**
      * Internal storage: namespace → { language → TranslationDict }
@@ -25,7 +24,7 @@ export class LocaleStore implements LocaleRegistrationPort {
      */
     private readonly _translations = observable.map<
         string,
-        Partial<Record<SupportedLanguage, TranslationDict>>
+        Partial<Record<string, TranslationDict>>
     >();
 
     /** Cached map of namespace → dict for current language. Rebuilt on mutation. */
@@ -42,13 +41,12 @@ export class LocaleStore implements LocaleRegistrationPort {
      */
     registerTranslations(
         namespace: string,
-        dict: Partial<Record<SupportedLanguage, TranslationDict>>,
+        dict: Partial<Record<string, TranslationDict>>,
     ): void {
         const existing = this._translations.get(namespace) ?? {};
         for (const [lang, entries] of Object.entries(dict)) {
-            const langKey = lang as SupportedLanguage;
-            existing[langKey] = {
-                ...(existing[langKey] as TranslationDict | undefined),
+            existing[lang] = {
+                ...(existing[lang] as TranslationDict | undefined),
                 ...(entries as TranslationDict),
             };
         }
@@ -69,7 +67,7 @@ export class LocaleStore implements LocaleRegistrationPort {
      * Set the current language.
      * MobX reactivity ensures observer() components re-render.
      */
-    setLanguage(lang: SupportedLanguage): void {
+    setLanguage(lang: string): void {
         this.currentLang = lang;
         this._rebuildCurrentDict();
     }

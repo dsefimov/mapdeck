@@ -1,7 +1,4 @@
-import type {
-    SupportedLanguage,
-    TranslationDict,
-} from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const core = {
     // ErrorScreen / InlineError
@@ -58,7 +55,7 @@ const core = {
 export type CoreLocaleKey = keyof typeof core;
 
 export const coreTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en: core,
 };

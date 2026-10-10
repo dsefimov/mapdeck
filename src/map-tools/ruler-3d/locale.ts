@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "tool.name": "Measure 3D Distance",
@@ -25,7 +25,7 @@ const en = {
 export type Ruler3dLocaleKey = keyof typeof en;
 
 export const ruler3dTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };

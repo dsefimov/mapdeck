@@ -1,7 +1,4 @@
-import type {
-    SupportedLanguage,
-    TranslationDict,
-} from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "widget.name": "Layer Tree",
@@ -32,7 +29,7 @@ const en = {
 export type LayerTreeLocaleKey = keyof typeof en;
 
 export const layerTreeTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };

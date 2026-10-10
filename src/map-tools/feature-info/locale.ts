@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "tool.name": "Feature Info",
@@ -19,7 +19,7 @@ const en = {
 export type FeatureInfoLocaleKey = keyof typeof en;
 
 export const featureInfoTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };

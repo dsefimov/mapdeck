@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "tool.name": "Point Color Scheme",
@@ -17,7 +17,7 @@ const en = {
 export type PointColorSchemeLocaleKey = keyof typeof en;
 
 export const pointColorSchemeTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };

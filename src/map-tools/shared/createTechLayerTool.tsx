@@ -4,7 +4,7 @@ import type {
     InteractiveMapTool,
     MapToolComponentProps,
 } from "@core/contracts";
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 import { TechLayerStore } from "@core/domain/map";
 import { MeasureController } from "./MeasureController";
 
@@ -19,7 +19,7 @@ export interface TechLayerToolConfig<C extends TechLayerController> {
     readonly id: string;
     readonly icon: string;
     readonly localeTranslations: Partial<
-        Record<SupportedLanguage, TranslationDict>
+        Record<string, TranslationDict>
     >;
     /**
      * Builds the tool's controller from a fresh geometry store. Called once

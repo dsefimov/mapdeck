@@ -1,4 +1,4 @@
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 
 const en = {
     "tool.name": "Measure Area",
@@ -22,7 +22,7 @@ const en = {
 export type AreaMeasureLocaleKey = keyof typeof en;
 
 export const areaMeasureTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en,
 };
