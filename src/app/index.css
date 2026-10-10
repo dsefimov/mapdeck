@@ -1,23 +1,7 @@
 @import "../core/ui/theme/theme.css";
 @import "../core/ui/theme/tool-tokens.css";
 @import "../core/ui/theme/vendor-overrides.css";
-
-/* Roboto is loaded from src/core/ui/fonts/ (bundled by Vite) */
-@font-face {
-    font-family: "Roboto";
-    src: url("../core/ui/fonts/Roboto.ttf") format("truetype");
-    font-weight: 400 700;
-    font-style: normal;
-    font-display: swap;
-}
-
-@font-face {
-    font-family: "Roboto";
-    src: url("../core/ui/fonts/Roboto-Italic.ttf") format("truetype");
-    font-weight: 400 700;
-    font-style: italic;
-    font-display: swap;
-}
+@import "../core/ui/theme/fonts.css";
 
 * {
     box-sizing: border-box;

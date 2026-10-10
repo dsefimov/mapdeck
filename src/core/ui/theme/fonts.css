@@ -1,0 +1,22 @@
+/*
+ * Library fonts. Part of the style chain a library build bundles — the
+ * demo's index.css imports it alongside the token sheets, so the shipped
+ * package carries the same faces as the dogfood app.
+ */
+
+/* Roboto is loaded from src/core/ui/fonts/ (bundled by Vite) */
+@font-face {
+    font-family: "Roboto";
+    src: url("../fonts/Roboto.ttf") format("truetype");
+    font-weight: 400 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Roboto";
+    src: url("../fonts/Roboto-Italic.ttf") format("truetype");
+    font-weight: 400 700;
+    font-style: italic;
+    font-display: swap;
+}

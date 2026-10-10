@@ -1,10 +1,23 @@
 /* ═══════════════════════════════════════════════════════════════
-   DESIGN SYSTEM — CORE TOKENS (semantic, light theme)
-   Scheme: semantic tokens; the dark theme overrides them in
-   [data-theme="dark"] without touching components.
+   DESIGN SYSTEM — CORE TOKENS (semantic; one default theme)
+   Scheme: semantic tokens on :root and on the library's own container
+   (.mapdeck-root — a ShadowRoot host never matches :root, so the
+   container carries the tokens itself). Adding a theme means
+   overriding these variables via [data-theme] on the container — the
+   library ships exactly one theme and no other.
    All values are flat hex/px (required by getThemeColor).
    ═══════════════════════════════════════════════════════════════ */
-:root {
+
+/* The embedding host's box model is unknowable — scope our own reset. */
+.mapdeck-root,
+.mapdeck-root *,
+.mapdeck-root *::before,
+.mapdeck-root *::after {
+    box-sizing: border-box;
+}
+
+:root,
+.mapdeck-root {
     /* ═══════════════════════════════════════════
      1. COLORS — text
      ═══════════════════════════════════════════ */
