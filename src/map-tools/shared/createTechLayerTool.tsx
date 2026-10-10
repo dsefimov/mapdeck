@@ -23,7 +23,7 @@ export interface TechLayerToolConfig<C extends TechLayerController> {
     >;
     /**
      * Builds the tool's controller from a fresh geometry store. Called once
-     * per tool id by the instance-state container (ADR-0002, case-2 state).
+     * per tool id by the instance-state container.
      */
     readonly createController: (store: TechLayerStore) => C;
     /** Panel rendered with the tool-scoped controller. */

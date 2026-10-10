@@ -59,7 +59,7 @@ describe("StateStore", () => {
 });
 
 describe("StateStore disposal", () => {
-    it("disposes entries that hold resources and clears the container (ADR-0003)", () => {
+    it("disposes entries that hold resources and clears the container", () => {
         const store = new StateStore();
         const dispose = vi.fn();
         store.get("resourceful", () => ({ dispose }));

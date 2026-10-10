@@ -16,7 +16,7 @@ export interface Geometry {
 /**
  * The renderable slice of a tech layer's state — what
  * `renderTechLayers` consumes. Pure data; deck.gl construction belongs to
- * the overlay renderer (ADR-0010 amendment).
+ * the overlay renderer.
  */
 export interface TechLayerSpec {
     readonly geometries: readonly Geometry[];

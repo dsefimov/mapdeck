@@ -43,7 +43,7 @@ describe("Registry", () => {
         expect(registry.getAll().map((i) => i.id)).toEqual(["a", "b"]);
     });
 
-    it("an explicit override replaces the entry and keeps registration order (ADR-0005)", () => {
+    it("an explicit override replaces the entry and keeps registration order", () => {
         const registry = new Registry<Item>();
         registry.register(item("a"));
         registry.register(item("b"));

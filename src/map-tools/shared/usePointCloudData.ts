@@ -4,7 +4,7 @@ import { findPointCloudDataAdapter } from "@core/contracts";
 
 /**
  * Returns a stable accessor for the loaded point data of a cloud layer —
- * capability-based (ADR-0012): the adapter is found by narrowing across the
+ * capability-based: the adapter is found by narrowing across the
  * protocol registry, naming no protocol id.
  */
 export function usePointCloudData(

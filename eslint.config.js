@@ -354,7 +354,7 @@ export default [
                                 "@modules/*",
                             ],
                             message:
-                                "contracts is extension-neutral (ADR-0004).",
+                                "contracts is extension-neutral: it names no concrete extension ids or handles.",
                         },
                     ],
                 },

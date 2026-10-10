@@ -17,7 +17,7 @@ const UNSUPPORTED_MESSAGE_KEY = "provider.notAvailable";
 /**
  * Main FeatureInfo component: a thin observer over FeatureInfoStore. The
  * collection lifecycle lives in the controller (attach/detach on
- * mount/unmount — ADR-0002 case-2 wiring).
+ * mount/unmount).
  */
 export const FeatureInfoComponent: (
     props: MapToolComponentProps & { store: FeatureInfoStore },

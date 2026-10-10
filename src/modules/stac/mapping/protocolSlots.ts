@@ -1,7 +1,7 @@
 import type { BindingSlot } from "@core/contracts";
 
 /**
- * The STAC module's own per-slot fitness table (ADR-0009): which node slots
+ * The STAC module's own per-slot fitness table: which node slots
  * each resolved protocol can serve, and how well — the core carries no
  * priority semantics, so flipping a protocol's role is an edit here, in the
  * module. An unknown protocol id has no entry and maps to a report row.

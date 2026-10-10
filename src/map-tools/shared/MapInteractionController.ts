@@ -12,7 +12,7 @@ export interface MapHandlerBinding {
 }
 
 /**
- * Base wiring for map-tool controllers (ADR-0002 case-2): attach stores the
+ * Base wiring for map-tool controllers: attach stores the
  * deps, wires the subclass's handler list plus the window keydown, and
  * detach mirrors it exactly — a listener added to the list is unwired for
  * free, so the attach/detach pair can never drift apart.

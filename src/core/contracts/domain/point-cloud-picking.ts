@@ -2,7 +2,7 @@
  * Shared picking utilities for point clouds.
  *
  * Generic over {@link PointCloudData} and the overlay's `pickObject` — no
- * COPC or deck.gl specifics, so any cloud protocol's data works (ADR-0012).
+ * COPC or deck.gl specifics, so any cloud protocol's data works.
  */
 import type { GeoPoint } from "@core/lib/geo";
 import type { CloudPoint, PointCloudData } from "./point-cloud";

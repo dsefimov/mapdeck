@@ -58,7 +58,7 @@ import type { CycleInput } from "./cycle/CycleRunner";
 
 /**
  * COPC point-cloud streaming engine: SSE-driven octree traversal under a
- * point budget, with tile eviction and error backoff (ADR-0011). Source
+ * point budget, with tile eviction and error backoff. Source
  * coordinates are WGS84 (EPSG:4326).
  */
 export class CopcStreamingLoader {
@@ -386,7 +386,7 @@ export class CopcStreamingLoader {
             // The worker phase is unreachable by the abort signal: a cancel
             // during extraction has already reset the state and refunded
             // this node's budget — the result must not resurrect the node
-            // (ADR-0011: the settle check is the last line of defense).
+            // (the settle check is the last line of defense).
             if (node.state !== "loading") {
                 clearNodeBuffers(node);
                 return;

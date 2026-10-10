@@ -7,8 +7,8 @@ import type { Geometry, GeometryKind } from "../types";
  * over the map and one in-progress drawing.
  *
  * Pure state container — no deck.gl, no theme, no map access. Rendering is
- * `renderTechLayers(spec, colors)` at the overlay adapter seam (ADR-0010
- * amendment); each tool owns its instance via the instance-state container.
+ * `renderTechLayers(spec, colors)` at the overlay adapter seam; each tool
+ * owns its instance via the instance-state container.
  */
 export class TechLayerStore {
     /** Completed geometries (the layer content). */

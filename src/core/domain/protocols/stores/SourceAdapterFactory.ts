@@ -15,7 +15,7 @@ export class SourceAdapterFactory implements SourceAdapterFactoryPort {
     /**
      * Register an adapter under its source type, initializing it first so it
      * is ready to serve before anyone can `get` it. Duplicate types throw
-     * unless `opts.override` is set (ADR-0005).
+     * unless `opts.override` is set.
      */
     register(
         adapter: SourceAdapter,

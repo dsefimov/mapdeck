@@ -19,7 +19,7 @@
     --tool-panel-width-lg: 22rem;
     --column-width: 10rem;
 
-    /* Per-step indent of a depth-indented list row (ADR-0004: the token
+    /* Per-step indent of a depth-indented list row (the token
        file names layout roles, not the extensions that consume them). */
     --list-indent-step: 28px;
 

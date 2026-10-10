@@ -191,6 +191,10 @@ Each rule names how it is checked. A rule that cannot be checked is not a rule.
 
 - Inline comments are allowed **only** to explain non-obvious architectural constraints
   that cannot be expressed in the code itself. They MUST state WHY, not WHAT.
+- **Self-sufficient, no document references.** Comments, docstrings, test names, and
+  user-facing messages never cite ADR numbers or other documents — they state the
+  constraint itself. Provenance and decision history live in `docs/adr/`; documentation
+  may point at documentation, code may not.
 - Business logic comments are forbidden — rewrite the code instead.
 - **Docstrings** on exported symbols: required — see Documentation policy above.
 - `TODO` is forbidden — deferred follow-ups are recorded in the session plan, not in code.

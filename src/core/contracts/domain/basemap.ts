@@ -21,7 +21,7 @@ export interface BaseMapConfig {
 }
 
 /**
- * Runtime-slice port over the basemap subsystem (ADR-0004): the surface the
+ * Runtime-slice port over the basemap subsystem: the surface the
  * basemap tool's panel consumes. Registration (`registerConfigs`) stays on
  * the composition-root side.
  */

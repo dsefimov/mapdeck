@@ -106,7 +106,7 @@ function isUnitHiddenCandidate(
 /**
  * Classifies the diff between the registered render units and the desired set
  * built from the snapshot, separating visibility-only changes from structural
- * ones so hidden units are retained in place (ADR-0010).
+ * ones so hidden units are retained in place.
  *
  * - in `desired` only → `added` (invisible items never reach `desired`);
  * - in `current` only, every node id still present in the snapshot and

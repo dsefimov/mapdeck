@@ -211,7 +211,7 @@ export class MapStore {
         return undefined;
     }
 
-    /** Reverses the construction sequence (ADR-0010): manager, overlay, map. */
+    /** Reverses the construction sequence: manager, overlay, map. */
     dispose(): void {
         if (this.layerManager) {
             this.layerManager.dispose();

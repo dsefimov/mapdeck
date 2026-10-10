@@ -21,7 +21,7 @@ describe("SourceAdapterFactory", () => {
         expect(factory.get("stac")).toBe(stac);
     });
 
-    it("a typeless lookup resolves to nothing — no implicit default (ADR-0005)", () => {
+    it("a typeless lookup resolves to nothing — no implicit default", () => {
         const factory = new SourceAdapterFactory();
         factory.register(adapter("stac"));
         factory.register(adapter("wms"));
@@ -43,7 +43,7 @@ describe("SourceAdapterFactory", () => {
         expect(bare.initialize).not.toHaveBeenCalled();
     });
 
-    it("a duplicate type throws — silent replacement is forbidden (ADR-0005)", () => {
+    it("a duplicate type throws — silent replacement is forbidden", () => {
         const factory = new SourceAdapterFactory();
         factory.register(adapter("stac"));
 
@@ -52,7 +52,7 @@ describe("SourceAdapterFactory", () => {
         );
     });
 
-    it("an explicit override replaces the adapter (ADR-0005)", () => {
+    it("an explicit override replaces the adapter", () => {
         const factory = new SourceAdapterFactory();
         const first = adapter("stac");
         const second = adapter("stac");

@@ -40,7 +40,7 @@ export interface VolumeAttachDeps {
  * cloud-point drawing, the drawing → complete phase machine, and the cached
  * computation pipeline (inside-points filter, grid+trapezoid volume,
  * top-surface mesh). State lives in TechLayerStore (geometry) and
- * VolumeMeasureState (phase + results) — both instance-state (ADR-0002).
+ * VolumeMeasureState (phase + results) — both instance-state.
  */
 export class VolumeMeasureController extends MapInteractionController<VolumeAttachDeps> {
     readonly volume = new VolumeMeasureState();

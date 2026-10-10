@@ -7,7 +7,7 @@ import type { StoreRegistry } from "@core/store-registry";
 const COMMIT_DELAY_MS = 150;
 
 /**
- * View model of the point-size slider (ADR-0002 case-2): a debounced
+ * View model of the point-size slider: a debounced
  * style write with a pending indicator. The timer is domain-specific on
  * purpose — the pending flag is observable for the view, and each write
  * reads the node's current style so the model stays safe to cache per

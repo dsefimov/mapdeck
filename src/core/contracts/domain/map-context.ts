@@ -4,7 +4,7 @@ import type { FrustumPlanes } from "@core/lib/geo";
 
 /**
  * Port for the deck.gl overlay backend: attach/detach, layer lifecycle and
- * picking (ADR-0010). Camera queries live on {@link MapContext} — the camera
+ * picking. Camera queries live on {@link MapContext} — the camera
  * is a property of the map, not of the overlay backend.
  */
 export interface OverlayManager<TLayer = unknown> {
@@ -48,10 +48,10 @@ export interface MapContext {
      * log the failure themselves in all cases.
      */
     readonly reportLayerError?: (layerId: string, error: unknown) => void;
-    /** Camera position as [lng, lat, height] when available (ADR-0010) */
+    /** Camera position as [lng, lat, height] when available */
     readonly getCameraPosition?: () => [number, number, number] | null;
-    /** Active deck.gl viewport (ADR-0010) */
+    /** Active deck.gl viewport */
     readonly getActiveViewport?: () => Viewport | null;
-    /** View frustum planes of the active viewport (ADR-0010) */
+    /** View frustum planes of the active viewport */
     readonly getFrustumPlanes?: () => FrustumPlanes | null;
 }

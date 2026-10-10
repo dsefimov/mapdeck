@@ -1,7 +1,7 @@
 /**
  * Pure renderer for tool tech layers: turns a {@link TechLayerSpec} into the
  * deck.gl overlay layers a measure tool draws with. The store stays a state
- * container (ADR-0010 amendment); deck.gl construction lives here, at the
+ * container; deck.gl construction lives here, at the
  * overlay adapter seam, with the measure colors injected per call.
  */
 import {

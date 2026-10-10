@@ -26,7 +26,7 @@ export interface Module<TConfig = Record<string, unknown>> {
     // === Required Methods ===
     /**
      * Register the module with the provided configuration.
-     * Receives the declared-points context (ADR-0004): registration surfaces
+     * Receives the declared-points context: registration surfaces
      * for every extension kind plus the runtime services. Domain stores are
      * deliberately absent — behavior changes through the declared points.
      */

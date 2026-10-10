@@ -24,7 +24,7 @@ interface FailedUnitRecord {
 }
 
 /**
- * The declared cross-domain edge into the layer tree (ADR-0002): the manager
+ * The declared cross-domain edge into the layer tree: the manager
  * consumes the snapshot, reports render errors, and resolves protocols
  * through contracts ports — never through the concrete stores.
  */

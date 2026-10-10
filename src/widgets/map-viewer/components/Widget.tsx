@@ -28,7 +28,7 @@ const MapViewerComponent = observer(({ className = "" }: MapViewerProps) => {
     );
 
     // Thin handlers: the click math and the menu policy live in the view
-    // model (ADR-0002 case-2).
+    // model.
     const handleReposition = (e: ReactMouseEvent) => {
         const point = viewModel.clientToMapClick(e.clientX, e.clientY);
         if (!point) return;

@@ -1,7 +1,7 @@
 /**
  * Typed config parsing for the shared render adapters. A protocol's
  * `RenderDescriptor.config` is `Record<string, unknown>` at the contract
- * level (the protocol is the sole authority on its shape, ADR-0009) — these
+ * level (the protocol is the sole authority on its shape) — these
  * parsers are the single place where the shared adapters cross that boundary:
  * unknown keys are ignored, wrongly-typed values throw, type-correct but
  * out-of-range values are dropped.

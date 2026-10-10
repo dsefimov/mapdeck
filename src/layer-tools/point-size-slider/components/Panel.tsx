@@ -36,7 +36,7 @@ export const PointSizeSliderComponent: (
     const paint = (node.style?.paint ?? {}) as Record<string, unknown>;
     const displayPointSize = (paint["circle-radius"] as number) ?? 2;
 
-    // The debounced style write lives in the view model (ADR-0002 case-2);
+    // The debounced style write lives in the view model;
     // cached per node, safe across panel remounts.
     const viewModel = rootStore.stateStore.get(
         `point-size:${nodeId}`,

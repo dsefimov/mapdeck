@@ -23,7 +23,7 @@ function candidatesForSlot(
 }
 
 /**
- * The module's assignment step (ADR-0009): a resolved binding offers every
+ * The module's assignment step: a resolved binding offers every
  * tool linked to it in that slot as a candidate capability; the core
  * verifier gates each candidate. Renderer candidates come before data
  * candidates; duplicates by tool id are skipped (first slot wins).

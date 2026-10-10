@@ -11,7 +11,7 @@ type NodeBindings = {
 };
 
 /**
- * Core verification rule (ADR-0009): a capability is implemented when the
+ * Core verification rule: a capability is implemented when the
  * tool link `(protocolId of the node's binding for that slot, slot, toolId)`
  * exists. A capability whose slot has no binding on the node is
  * unimplemented by definition — the link cannot exist without the binding.

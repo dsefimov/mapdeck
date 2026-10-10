@@ -337,7 +337,7 @@ export class PointCloudAdapter
 
     /**
      * Deck layers are created visible; a hidden unit keeps streaming, so
-     * the retained visibility is restored on every re-add (ADR-0010).
+     * the retained visibility is restored on every re-add.
      */
     private _applyRetainedVisibility(
         layerId: string,

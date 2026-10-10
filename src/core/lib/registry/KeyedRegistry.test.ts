@@ -28,7 +28,7 @@ describe("KeyedRegistry", () => {
         expect(items.getAll().map((i) => i.value)).toEqual(["1", "2"]);
     });
 
-    it("throws on an occupied key — the ADR-0005 default", () => {
+    it("throws on an occupied key — the registry default", () => {
         const items = registry();
         items.register("a", { value: "1" });
 

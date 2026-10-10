@@ -58,8 +58,7 @@ function buildSummaryItems(
  * Volume measure panel — a thin observer over the
  * {@link VolumeMeasureController}: attach/detach wiring on mount/unmount,
  * the TIN top-surface layer composed over the shared tech layers, and the
- * results summary. All interaction and computation live in the controller
- * (ADR-0002, case-2 controller state).
+ * results summary. All interaction and computation live in the controller.
  */
 export const VolumeMeasureComponent: (
     props: MapToolComponentProps & { controller: VolumeMeasureController },

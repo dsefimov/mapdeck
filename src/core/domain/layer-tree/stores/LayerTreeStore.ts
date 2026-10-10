@@ -72,7 +72,7 @@ export class LayerTreeStore {
     private _treeState!: TreeState;
 
     /**
-     * Cross-domain ports (ADR-0002, consumer-owned): the minimal protocols
+     * Cross-domain ports, consumer-owned: the minimal protocols
      * surfaces this store consumes, wired from the registry at construction.
      */
     private readonly protocols: ProtocolRegistry;
@@ -253,7 +253,7 @@ export class LayerTreeStore {
         const adapter = this.sources.get(type);
         if (!adapter) {
             throw new Error(
-                `No source adapter registered for type "${type}" — an explicit init error, never a silent empty tree (ADR-0005).`,
+                `No source adapter registered for type "${type}" — an explicit init error, never a silent empty tree.`,
             );
         }
         this._sourceType = type;
@@ -504,7 +504,7 @@ export class LayerTreeStore {
             this._disposeAdapter();
             return;
         }
-        // Before the first init the bootstrap owns adapter setup (ADR-0005);
+        // Before the first init the bootstrap owns adapter setup;
         // `refresh` no-ops without an adapter, so the boot path stays single.
         if (this._sourceType !== undefined) {
             this.initAdapter(this._sourceType);

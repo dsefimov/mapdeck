@@ -1,8 +1,8 @@
 /**
- * One map-tool contract, discriminated by `kind` (ADR-0006).
+ * One map-tool contract, discriminated by `kind`.
  * Pure contracts — no business logic.
  *
- * Every map tool is a class instance (ADR-0004) implementing one of the two
+ * Every map tool is a class instance implementing one of the two
  * variants; the discriminant keeps the compile-time guarantee that every
  * registered tool has exactly one capability. The store and the toolbar
  * branch on `kind`.
@@ -28,7 +28,7 @@ export type ContextMenuBehavior =
 
 /**
  * Props of a map tool's panel. The store registry is deliberately absent —
- * panels receive the declared-points runtime context (ADR-0006), the map
+ * panels receive the declared-points runtime context, the map
  * engine (platform technology), and the overlay port.
  */
 export interface MapToolComponentProps {
@@ -38,7 +38,7 @@ export interface MapToolComponentProps {
     deactivate: () => void;
 }
 
-/** What an action tool receives on execution (ADR-0006). */
+/** What an action tool receives on execution. */
 export interface ActionToolInvocation {
     context: ToolRuntimeContext;
     map: maplibregl.Map;
@@ -66,7 +66,7 @@ export interface MapClickPoint {
 }
 
 /**
- * Runtime-slice port over the tool system's own state (ADR-0004): the
+ * Runtime-slice port over the tool system's own state: the
  * pending-point handoff between the map context menu and an activating tool.
  */
 export interface MapToolStatePort {
@@ -124,7 +124,7 @@ export interface ActionMapTool extends BaseMapTool {
     readonly kind: typeof MAP_TOOL_KIND.action;
     /**
      * Execute the action tool. Called when the tool button is clicked.
-     * @param invocation - The runtime context and the current map (ADR-0006)
+     * @param invocation - The runtime context and the current map
      */
     execute(invocation: ActionToolInvocation): void;
 }

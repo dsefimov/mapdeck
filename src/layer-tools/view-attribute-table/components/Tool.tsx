@@ -9,7 +9,7 @@ export const VIEW_ATTRIBUTE_TABLE_ID = "view-attribute-table";
 
 /**
  * The widget this tool opens, by id string — cross-kind imports are
- * forbidden, so the target is named locally (the ADR-0007 link-by-id
+ * forbidden, so the target is named locally (the link-by-id
  * precedent) and its existence is verified at registration.
  */
 export const ATTRIBUTE_TABLE_WIDGET_ID = "attribute-table-widget";

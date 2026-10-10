@@ -3,7 +3,7 @@ import type { LayerTool, NodeCapability } from "@core/contracts";
 /**
  * Resolves assigned capabilities to tool instances in list order,
  * deduplicated by id; unknown tool ids are skipped defensively
- * (ADR-0009 — verified capabilities always resolve, the skip guards
+ * (verified capabilities always resolve, the skip guards
  * future registration changes). The menu operation itself.
  */
 export function resolveNodeTools(

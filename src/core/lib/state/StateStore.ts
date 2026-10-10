@@ -44,7 +44,7 @@ export class StateStore {
 
     /**
      * Dispose every entry that acquired resources, then clear the container
-     * (ADR-0003): the disposal contract reaches keyed instance state, so a
+     *: the disposal contract reaches keyed instance state, so a
      * restart releases instance-scoped state created outside the
      * constructor list.
      */

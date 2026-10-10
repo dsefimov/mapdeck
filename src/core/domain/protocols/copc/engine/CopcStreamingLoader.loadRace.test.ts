@@ -3,7 +3,7 @@
  * settle sequence with the external world mocked: copc.js, initCopc, the
  * worker pool and the node extractor. The extraction phase is not reachable
  * by the abort signal — these tests pin the budget invariant around it
- * (ADR-0011: the settle check is the last line of defense).
+ * (the settle check is the last line of defense).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Bbox } from "@core/lib/geo";

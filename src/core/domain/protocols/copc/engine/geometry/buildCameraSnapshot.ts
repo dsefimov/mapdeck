@@ -10,7 +10,7 @@ import type { MapContext } from "@core/contracts";
 
 /**
  * Deck viewport type obtained through the map context's return types —
- * the engine names no deck import (ADR-0010).
+ * the engine names no deck import.
  */
 export type Viewport = NonNullable<
     ReturnType<NonNullable<MapContext["getActiveViewport"]>>

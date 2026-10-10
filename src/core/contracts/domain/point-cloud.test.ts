@@ -77,7 +77,7 @@ describe("findPointCloudDataAdapter", () => {
         getLayerAdapter: () => BASE_ADAPTER,
     });
 
-    it("skips non-cloud protocols and finds the cloud adapter (ADR-0012)", () => {
+    it("skips non-cloud protocols and finds the cloud adapter", () => {
         const found = findPointCloudDataAdapter(
             registryWith(plainProtocol(), cloudProtocol(), plainProtocol()),
         );

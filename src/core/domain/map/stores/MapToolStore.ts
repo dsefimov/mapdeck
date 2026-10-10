@@ -58,7 +58,7 @@ export class MapToolStore {
     /**
      * Register a new map tool.
      * Auto-registers any settings declared by the tool.
-     * Registering a duplicate id throws unless `opts.override` (ADR-0005).
+     * Registering a duplicate id throws unless `opts.override`.
      */
     registerTool(tool: MapTool, opts?: RegisterOptions): void {
         this.tools.register(tool, opts);
@@ -146,7 +146,7 @@ export class MapToolStore {
         return this.activeToolId === toolId;
     }
 
-    /** Releases the active tool's listeners (ADR-0003); registration survives. */
+    /** Releases the active tool's listeners; registration survives. */
     dispose(): void {
         this.deactivateTool();
         this._currentMap = null;

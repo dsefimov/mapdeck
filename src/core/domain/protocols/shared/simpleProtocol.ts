@@ -1,7 +1,7 @@
 /**
  * Factory for simple protocols — the declarative descriptor a protocol fills
  * in when it has no request logic beyond the shared render adapter it reuses
- * (ADR-0009: "protocols of the same data type reuse the shared adapters").
+ * — protocols of the same data type reuse the shared adapters.
  * A protocol folder with only a descriptor is data, not code.
  */
 import type {
@@ -17,7 +17,7 @@ export interface SimpleConfigInput {
     readonly sourceUrl: string;
     /** Node style merged over the protocol default. */
     readonly style: LayerStyle;
-    /** Protocol params of the node's binding (single source of truth, ADR-0009). */
+    /** Protocol params of the node's binding (single source of truth). */
     readonly params: Record<string, unknown>;
 }
 
@@ -35,7 +35,7 @@ export interface SimpleProtocolDescriptor<C> {
 /**
  * Builds a protocol from a declarative descriptor. The result is a plain
  * object satisfying `Protocol` — the class-shape rule covers extension kinds
- * (ADR-0004), not protocol implementations.
+ *, not protocol implementations.
  */
 export function createSimpleProtocol<C>(
     descriptor: SimpleProtocolDescriptor<C>,

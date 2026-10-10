@@ -29,7 +29,7 @@ export class ToolStore {
      * Register a tool by id and auto-register its `localeTranslations`
      * (the WidgetStore precedent). A tool becomes available to nodes only
      * after `bindToolToProtocol` links it to protocols. Duplicate ids throw
-     * unless `opts.override` (ADR-0005).
+     * unless `opts.override`.
      */
     registerTool(tool: LayerTool, opts?: RegisterOptions): void {
         this.toolsById.register(tool, opts);
@@ -74,7 +74,7 @@ export class ToolStore {
         );
     }
 
-    /** Whether a link `(protocolId, slot, toolId)` exists — the tool-link table capability verification consults (ADR-0009). */
+    /** Whether a link `(protocolId, slot, toolId)` exists — the tool-link table capability verification consults. */
     hasLink(protocolId: string, slot: BindingSlot, toolId: string): boolean {
         const group = this.registryForSlot(slot);
         return group.get(protocolId).some((tool) => tool.id === toolId);
@@ -93,7 +93,7 @@ export class ToolStore {
 
     /**
      * The node's menu: capability ids resolved to tools in list order,
-     * deduplicated, unknown ids skipped defensively (ADR-0009).
+     * deduplicated, unknown ids skipped defensively.
      */
     getToolsForNode(node: LayerNode): LayerTool[] {
         return resolveNodeTools(

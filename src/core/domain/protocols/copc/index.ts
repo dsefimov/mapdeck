@@ -1,6 +1,6 @@
 /**
  * The COPC protocol's public surface. The streaming engine behind it is
- * invisible to the rest of the kernel (ADR-0011) — only the protocol and
+ * invisible to the rest of the kernel — only the protocol and
  * its feature provider cross this boundary; registration wires them.
  */
 export { CopcProtocol } from "./CopcProtocol";

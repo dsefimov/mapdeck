@@ -95,7 +95,7 @@ export interface SnapshotItem {
 
 /**
  * Read access to the tree's render snapshot — the declared cross-domain edge
- * the map consumes (ADR-0002). The layer manager reads the snapshot through
+ * the map consumes. The layer manager reads the snapshot through
  * this port, never through the concrete store.
  */
 export interface LayerSnapshotSource {
@@ -104,7 +104,7 @@ export interface LayerSnapshotSource {
 
 /**
  * The tree's per-node render-error channel, written by the layer manager
- * (the render channel of ADR-0008) — the second half of the map → tree edge.
+ * The second half of the map → tree edge.
  */
 export interface RenderErrorSink {
     reportRenderError(nodeIds: string[], error: string | null): void;

@@ -45,7 +45,7 @@ export class WidgetStore {
 
     /**
      * Registers a widget and creates its instance. Duplicate id throws unless
-     * `opts.override` (ADR-0005). Translations and settings are
+     * `opts.override`. Translations and settings are
      * auto-registered.
      */
     registerWidget<TProps extends { widgetId: string }>(

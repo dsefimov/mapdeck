@@ -9,7 +9,7 @@ export interface MenuSurface {
 }
 
 /**
- * View model of the map viewer (ADR-0002 case-2): the client-to-map
+ * View model of the map viewer: the client-to-map
  * click math and the context-menu action policy. The widget is a thin
  * observer; the model survives remounts through the state store.
  */

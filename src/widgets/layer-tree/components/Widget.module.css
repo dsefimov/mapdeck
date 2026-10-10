@@ -60,7 +60,7 @@
     background: var(--color-hover);
 }
 
-/* Unrenderable node — marked, not hidden (ADR-0008/0010) */
+/* Unrenderable node — marked, not hidden */
 .layerTree__nodeUnsupported {
     opacity: 0.45;
     cursor: default;

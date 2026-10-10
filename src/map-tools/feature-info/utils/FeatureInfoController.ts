@@ -21,7 +21,7 @@ export interface FeatureInfoAttachDeps {
 }
 
 /**
- * Interaction orchestration of the feature-info tool (ADR-0002 case-2):
+ * Interaction orchestration of the feature-info tool:
  * map click handling, the pending-point reaction, supersede-abort of
  * in-flight collections, and the click marker's lifetime. The panel is a
  * thin observer; session state lives in FeatureInfoStore.

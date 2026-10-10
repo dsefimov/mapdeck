@@ -102,7 +102,7 @@ export function applyKvSorting(
     sortDirection?: SortDirection,
 ): [string, unknown][] {
     // flatMap + filter already produces a new array — no extra copy needed.
-    // The `_` prefix is the FeatureRow reserved-key convention (ADR-0013) —
+    // The `_` prefix is the FeatureRow reserved-key convention —
     // ui cannot import the contract, so the convention is restated here.
     const entries = rows
         .flatMap(Object.entries)

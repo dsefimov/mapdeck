@@ -16,7 +16,7 @@ interface SplitGetMapUrl {
 }
 
 /**
- * Split a WMS asset href at the source boundary (ADR-0009: the binding's
+ * Split a WMS asset href at the source boundary (the binding's
  * URL is the clean endpoint, params are the single source of truth for
  * request parameters). Static catalogs often embed a full GetMap URL —
  * LAYERS/STYLES/VERSION/FORMAT move into params; unrecognized vendor

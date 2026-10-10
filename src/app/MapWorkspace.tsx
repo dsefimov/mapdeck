@@ -31,7 +31,7 @@ function WidgetSlot({
 }
 
 /**
- * The static workspace chrome (ADR-0004): the sidebar and the map viewer
+ * The static workspace chrome: the sidebar and the map viewer
  * sit outside the widget grid, map-tool panels render over the map, and
  * the floating widget grid fills the rest.
  */

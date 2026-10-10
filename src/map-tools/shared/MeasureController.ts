@@ -33,8 +33,7 @@ export interface MeasureControllerConfig {
  * Interaction orchestration of a measure tool: click-to-place, move-preview,
  * drag-to-edit, middle-click edit toggle, keyboard shortcuts (Escape, E,
  * Ctrl+Z). Owns no state of its own — geometry lives in the TechLayerStore;
- * the panel is a thin observer and wires attach/detach on mount/unmount
- * (ADR-0002, case-2 controller).
+ * the panel is a thin observer and wires attach/detach on mount/unmount.
  */
 export class MeasureController extends MapInteractionController<MeasureAttachDeps> {
     constructor(
@@ -194,7 +193,7 @@ export function measureCursor(
 
 /**
  * Panel wiring for a controller: attach on mount, detach on unmount — the
- * only `useEffect` a measure panel keeps (ADR-0002).
+ * only `useEffect` a measure panel keeps.
  */
 export function useAttachedController(
     controller: { attach(deps: MeasureAttachDeps): void; detach(): void },

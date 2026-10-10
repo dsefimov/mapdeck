@@ -1,6 +1,6 @@
 /**
  * Assembly configuration of this deployment — the build-time choices a
- * geoportal is composed from (ADR-0005). The base registers extensions; this
+ * geoportal is composed from. The base registers extensions; this
  * file decides how they are assembled.
  */
 export interface AppConfig {

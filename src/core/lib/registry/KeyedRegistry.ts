@@ -4,7 +4,7 @@ import type { RegisterOptions } from "./Registry";
 /**
  * Unique-key registry: `key → T`, where the key is external to the item.
  *
- * The single home of the ADR-0005 registration semantics: registering under
+ * The single home of the registration-override semantics: registering under
  * an occupied key throws — the extension set is fixed at build time, so an
  * accidental duplicate is a programming error caught at startup; a
  * deliberate replacement passes `{ override: true }` and is visible as a

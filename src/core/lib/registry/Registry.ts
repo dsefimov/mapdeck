@@ -1,6 +1,6 @@
 import { KeyedRegistry } from "./KeyedRegistry";
 
-/** Registration modifiers — the explicit replacement escape of ADR-0005. */
+/** Registration modifiers — the explicit replacement escape hatch. */
 export interface RegisterOptions {
     /** Replace an existing entry with the same id (logs a warning). */
     override?: boolean;
@@ -12,7 +12,7 @@ export interface RegisterOptions {
  * Registering an entry whose id is already present throws — the extension set
  * is fixed at build time, so an accidental duplicate is a programming error
  * caught at startup. A deliberate replacement passes `{ override: true }` and
- * is visible as a logged warning (ADR-0005). The mechanics live in
+ * is visible as a logged warning. The mechanics live in
  * {@link KeyedRegistry}; this is the own-id specialization.
  */
 export class Registry<T extends { id: string }> {

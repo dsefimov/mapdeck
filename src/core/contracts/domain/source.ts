@@ -48,14 +48,14 @@ export interface SourceAdapter {
 }
 
 /**
- * Port over the source-adapter factory (ADR-0004): what a module registers
+ * Port over the source-adapter factory: what a module registers
  * through and what the layer-tree domain reads from. Deliberately carries no
- * `setDefault` — the default source type is assembly policy (ADR-0005).
+ * `setDefault` — the default source type is assembly policy.
  */
 export interface SourceAdapterFactory {
     /**
      * Register an adapter under its type. Duplicate types throw unless
-     * `opts.override` — the explicit replacement of ADR-0005.
+     * `opts.override`.
      */
     register(
         adapter: SourceAdapter,

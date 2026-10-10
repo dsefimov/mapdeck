@@ -14,12 +14,12 @@ export enum LayerTreeNodeTypes {
 /**
  * Which of a layer node's two protocol bindings serves a capability or an
  * assignment: map rendering (`renderer`) or attribute access (`data`).
- * Shared by the node model, the tool links and source modules (ADR-0009).
+ * Shared by the node model, the tool links and source modules.
  */
 export type BindingSlot = "renderer" | "data";
 
 /**
- * A capability assigned to a node by its source (ADR-0009): the id of a
+ * A capability assigned to a node by its source: the id of a
  * layer tool plus the binding slot that serves it. Open string vocabulary —
  * modules register their own tools.
  */
@@ -71,7 +71,7 @@ export interface LayerNode extends TreeNodeBase {
 
     /**
      * Capabilities the source assigned to this node — verified at assignment
-     * (a capability survives only when its tool link exists, ADR-0009). The
+     * (a capability survives only when its tool link exists). The
      * menu resolves these to tools in list order; capabilities play no part
      * in rendering.
      */
@@ -90,7 +90,7 @@ export type TreeNode = GroupNode | LayerNode;
 
 /**
  * Read access to the layer catalog — the runtime-slice port tool panels and
- * modules consume (ADR-0004). Extensions never touch the tree store itself.
+ * modules consume. Extensions never touch the tree store itself.
  */
 export interface LayerCatalogPort {
     /** Every layer node currently in the tree, in tree order. */

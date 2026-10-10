@@ -94,7 +94,7 @@ export function toPointCloudDataAdapter(
 
 /**
  * Find a cloud-capable adapter across the whole protocol registry — the
- * capability lookup of ADR-0012. Naming no protocol id, a second cloud
+ * capability lookup. Naming no protocol id, a second cloud
  * protocol registered by a module is visible here with zero changes. With
  * `layerId`, only an adapter actually holding that layer's data matches;
  * returns null when no protocol serves clouds.

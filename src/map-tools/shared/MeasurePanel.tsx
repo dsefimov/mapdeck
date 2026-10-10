@@ -11,7 +11,7 @@ import { useTechLayers } from "./useTechLayers";
 import { usePointCloudData } from "./usePointCloudData";
 
 /**
- * The measure panels' shared shell (ADR-0002 case-2): controller wiring,
+ * The measure panels' shared shell: controller wiring,
  * cursor, tech layers, the ToolPanel frame with the standard
  * undo/reset/close actions, and the summary + segments layout. The tool's
  * panel computes its measurements and passes the items; everything else

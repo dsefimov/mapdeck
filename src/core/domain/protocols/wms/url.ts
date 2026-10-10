@@ -1,6 +1,6 @@
 /**
  * Pure WMS URL builders — request construction only, no parsing.
- * The base URL arrives clean by contract (ADR-0009: the binding's URL is
+ * The base URL arrives clean by contract (the binding's URL is
  * the endpoint without query parameters; the protocol never parses query
  * strings out of it).
  */
