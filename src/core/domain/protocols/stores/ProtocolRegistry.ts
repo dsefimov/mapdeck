@@ -1,6 +1,6 @@
 import type {
     Protocol,
-    ProtocolRegistry as ProtocolRegistryPort,
+    ProtocolRegistrationPort,
 } from "@core/contracts";
 import {
     Registry,
@@ -15,9 +15,9 @@ import {
  * established in the tool's own registration code via
  * ToolStore.bindToolToProtocol, the single mechanism linking protocols to
  * tools.
- * Duplicate registrations throw unless `{ override: true }` (ADR-0005).
+ * Duplicate registrations throw unless `{ override: true }`.
  */
-export class ProtocolRegistry implements ProtocolRegistryPort {
+export class ProtocolRegistry implements ProtocolRegistrationPort {
     private readonly byId = new Registry<Protocol>();
 
     register(protocol: Protocol, opts?: RegisterOptions): void {

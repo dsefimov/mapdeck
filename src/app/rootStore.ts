@@ -100,7 +100,6 @@ export class RootStore implements StoreRegistry {
         this.toolContext = {
             stateStore: this.stateStore,
             locale: this.localeStore,
-            settings: this.settingsStore,
             protocols: this.protocolRegistry,
             featureProviders: this.featureProviderRegistry,
             layerTree: this.treeStore,
@@ -109,6 +108,12 @@ export class RootStore implements StoreRegistry {
         };
         this.moduleContext = {
             ...this.toolContext,
+            // Spread members carry the runtime slice's declared read-only
+            // types; these lines restore the registration views.
+            protocols: this.protocolRegistry,
+            featureProviders: this.featureProviderRegistry,
+            locale: this.localeStore,
+            settings: this.settingsStore,
             sourceAdapterFactory: this.sourceAdapterFactory,
             widgets: this.widgetStore,
             layerTools: this.layerToolStore,

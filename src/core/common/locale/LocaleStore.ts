@@ -1,5 +1,9 @@
 import { makeAutoObservable, observable } from "mobx";
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type {
+    LocaleRegistrationPort,
+    SupportedLanguage,
+    TranslationDict,
+} from "@core/contracts";
 
 /**
  * Namespace-based locale store.
@@ -11,7 +15,7 @@ import type { SupportedLanguage, TranslationDict } from "@core/contracts";
 /** Default language used as fallback — owned by the locale subsystem. */
 const DEFAULT_LANGUAGE: SupportedLanguage = "en";
 
-export class LocaleStore {
+export class LocaleStore implements LocaleRegistrationPort {
     /** Current active language */
     currentLang: SupportedLanguage = DEFAULT_LANGUAGE;
 

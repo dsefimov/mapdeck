@@ -13,6 +13,7 @@ import type {
     AttributeFetchRequest,
     AttributeFetchResult,
 } from "@core/contracts";
+import type { RegisterOptions } from "@core/lib/registry";
 
 /** Links a layer node to a protocol at a specific data source. */
 export interface ProtocolBinding {
@@ -66,7 +67,7 @@ export interface RelatedObject {
  * A protocol defines how to render data on a map and optionally
  * how to fetch attribute data. It carries no role-resolution state:
  * which slot a protocol serves on a given node is decided by the
- * source that creates the node (ADR-0009).
+ * source that creates the node.
  *
  * @typeParam C - Protocol-specific config type for RenderDescriptor
  */
@@ -107,4 +108,14 @@ export interface ProtocolRegistry {
     getById(id: string): Protocol | undefined;
 
     getAll(): Protocol[];
+}
+
+/**
+ * Registration view of the protocol set — the port through which modules
+ * add their own protocols on top of the built-in set. Extends
+ * the read-only {@link ProtocolRegistry} that tool panels and domains see.
+ */
+export interface ProtocolRegistrationPort extends ProtocolRegistry {
+    /** Duplicates throw unless `opts.override`. */
+    register(protocol: Protocol, opts?: RegisterOptions): void;
 }

@@ -85,11 +85,11 @@ export interface SettingsGroup {
 }
 
 /**
- * Port over the settings subsystem (ADR-0004): what contexts expose. Today
- * only registration is consumed through the context; read access is added
- * when a real reader appears.
+ * Registration port over the settings subsystem: what modules
+ * declare their settings through. A read port joins the runtime slice when
+ * a real reader appears.
  */
-export interface SettingsApi {
+export interface SettingsRegistrationPort {
     /** Declare an owner's settings — values initialize to their defaults. */
     registerSettings(
         ownerId: string,

@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { SupportedLanguage, TranslationDict } from "@core/contracts";
+import type { TranslationDict } from "@core/contracts";
 import { LocaleStore } from "./LocaleStore";
 
-/**
- * The store is typed over SupportedLanguage ("en" today) but its runtime
- * genuinely serves any registered language; the casts below pin that
- * multi-language behavior before a second language enters the type.
- */
+/** A language that enters only through registration — the library ships no "de". */
 const DE = "de";
 
 const deDict = (entries: Record<string, string>) =>
@@ -45,7 +41,7 @@ describe("LocaleStore.registerTranslations", () => {
         });
         store.registerTranslations("panel", deDict({ open: "Öffnen" }));
 
-        store.setLanguage(DE as SupportedLanguage);
+        store.setLanguage(DE);
         expect(store.t("panel")).toEqual(dict({ open: "Öffnen" }));
 
         store.setLanguage("en");
@@ -60,7 +56,7 @@ describe("LocaleStore fallback", () => {
             ["en"]: dict({ open: "Open", close: "Close" }),
         });
 
-        store.setLanguage(DE as SupportedLanguage);
+        store.setLanguage(DE);
 
         expect(store.t("panel")).toEqual(
             dict({ open: "Open", close: "Close" }),
@@ -77,7 +73,7 @@ describe("LocaleStore fallback", () => {
             ["en"]: dict({ hint: "Hint" }),
         });
 
-        store.setLanguage(DE as SupportedLanguage);
+        store.setLanguage(DE);
 
         expect(store.t("bilingual")).toEqual(dict({ title: "Karte" }));
         expect(store.t("englishOnly")).toEqual(dict({ hint: "Hint" }));

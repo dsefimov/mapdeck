@@ -1,4 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
+import type {
+    FeatureProvider,
+    LayerAdapter,
+    Protocol,
+} from "@core/contracts";
 import { RootStore } from "./rootStore";
 
 describe("RootStore composition", () => {
@@ -14,6 +19,92 @@ describe("RootStore composition", () => {
         const store = new RootStore();
 
         expect(Object.keys(store.localeStore.t("core"))).not.toHaveLength(0);
+    });
+});
+
+/** Registration exercises registry identity, never rendering. */
+const noopAdapter: LayerAdapter = {
+    nativeLayerOrdering: false,
+    addToMap: () => {},
+    removeFromMap: () => {},
+    updateVisibility: () => {},
+    updateConfig: () => {},
+};
+
+const moduleProtocol: Protocol = {
+    id: "module-protocol",
+    label: "Module-registered protocol",
+    defaultStyle: {},
+    createRenderDescriptor: (sourceUrl) => ({ sourceUrl, config: {} }),
+    getLayerAdapter: () => noopAdapter,
+};
+
+describe("RootStore module context: registration surfaces", () => {
+    it("registers a protocol through moduleContext.protocols and reads it back", () => {
+        const store = new RootStore();
+
+        store.moduleContext.protocols.register(moduleProtocol);
+
+        expect(store.moduleContext.protocols.getById("module-protocol")).toBe(
+            moduleProtocol,
+        );
+    });
+
+    it("rejects a duplicate protocol id without override", () => {
+        const store = new RootStore();
+        store.moduleContext.protocols.register(moduleProtocol);
+
+        expect(() =>
+            store.moduleContext.protocols.register(moduleProtocol),
+        ).toThrow();
+    });
+
+    it("registers a feature provider through moduleContext.featureProviders", () => {
+        const store = new RootStore();
+        const provider: FeatureProvider = { collect: () => [] };
+
+        store.moduleContext.featureProviders.register(
+            "module-provider",
+            provider,
+        );
+
+        expect(
+            store.moduleContext.featureProviders.has("module-provider"),
+        ).toBe(true);
+        expect(store.moduleContext.featureProviders.getAll()).toContain(
+            provider,
+        );
+    });
+
+    it("registers translations through moduleContext.locale and reads them back", () => {
+        const store = new RootStore();
+
+        store.moduleContext.locale.registerTranslations("module-ns", {
+            en: { greeting: "Hello" },
+        });
+
+        expect(store.moduleContext.locale.t("module-ns")).toEqual({
+            greeting: "Hello",
+        });
+    });
+
+    it("declares settings through moduleContext.settings", () => {
+        const store = new RootStore();
+
+        store.moduleContext.settings.registerSettings(
+            "module-owner",
+            "Module owner",
+            [
+                {
+                    id: "module.flag",
+                    label: "Flag",
+                    type: "boolean",
+                    defaultValue: false,
+                },
+            ],
+        );
+
+        expect(store.settingsStore.getBooleanSetting("module.flag")).toBe(false);
     });
 });
 

@@ -35,23 +35,32 @@ export interface FeatureProvider {
 }
 
 /**
- * Port over the feature-provider registry (ADR-0004): what modules and the
- * composition root register feature providers through.
+ * Read view of the registered feature-provider set — the port the
+ * feature-info tool collects through. Registration happens in the
+ * composition root and modules only.
  */
 export interface FeatureProviderRegistry {
+    /** All registered providers in registration order. */
+    getAll(): FeatureProvider[];
+    /** Whether a provider with the given id is registered. */
+    has(id: string): boolean;
+}
+
+/**
+ * Registration view of the feature-provider set — the port through which
+ * modules add their own providers on top of the built-in set.
+ */
+export interface FeatureProviderRegistrationPort
+    extends FeatureProviderRegistry {
     /**
      * Register a provider under a unique id. Duplicate ids throw unless
-     * `opts.override` — the explicit replacement of ADR-0005.
+     * `opts.override`.
      */
     register(
         id: string,
         provider: FeatureProvider,
         opts?: RegisterOptions,
     ): void;
-    /** All registered providers in registration order. */
-    getAll(): FeatureProvider[];
-    /** Whether a provider with the given id is registered. */
-    has(id: string): boolean;
 }
 
 /** Features of one layer, grouped for display. */

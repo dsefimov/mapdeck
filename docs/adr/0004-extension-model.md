@@ -45,11 +45,14 @@ widget grid.
 **Module as primary container.** Domain-specific functionality — widgets, layer tools,
 map tools, source adapters, protocols, any combination — is delivered as a module.
 `register(context)` receives a `ModuleContext` — the map of declared extension points:
-`sourceAdapterFactory`, `protocolRegistry`, `featureProviderRegistry`, widget /
-layer-tool / map-tool registration (including tool-to-protocol links, ADR-0007),
-`stateStore`, locale and settings. Every member is typed by a port declared in
-`contracts/` — `SourceAdapterFactory`, `ProtocolRegistry` (already there),
-`FeatureProviderRegistry`, `LocaleApi`, `SettingsApi`; `StateStore` is already a `lib`
+`sourceAdapterFactory`, `protocols`, `featureProviders`, widget / layer-tool / map-tool
+registration (including tool-to-protocol links, ADR-0007), locale and settings; the
+runtime service `stateStore` is shared by both slices. Every member is typed by a port
+declared in `contracts/` — the registration ports `SourceAdapterFactory`,
+`ProtocolRegistrationPort`, `FeatureProviderRegistrationPort`, `LocaleRegistrationPort`,
+`SettingsRegistrationPort`, each extending or accompanying the read-only port the
+runtime slice exposes (`ProtocolRegistry`, `FeatureProviderRegistry`, `LocaleApi`; a
+settings read port appears when a real reader does). `StateStore` is already a `lib`
 type — so the context family imports neither `common/` nor a domain. The family has one
 shape: a runtime slice shared by every consumer (services and read ports) plus a
 registration slice (`register*` functions) that only modules receive; tool panels get

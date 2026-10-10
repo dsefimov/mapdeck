@@ -15,7 +15,10 @@ Two facts make those assertions unnecessary. First, the en dictionary is
 registration-complete: every extension's en literal is authored next to its
 consumer and auto-registered with it (ADR-0005 mechanics), and the store
 falls back to the en dictionary whole-dict when a language is missing
-(`LocaleStore`). Second, the language set today is exactly `["en"]`.
+(`LocaleStore`). Second, `"en"` is the only language the library itself
+ships; every other language enters as registered data (module dictionaries),
+and a namespace without a registration in the current language resolves
+through that whole-dict en fallback — so every lookup still resolves.
 
 ## Decision
 

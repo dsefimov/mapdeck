@@ -4,6 +4,7 @@ import type {
     SettingMetadata,
     SettingOption,
     SettingsGroup,
+    SettingsRegistrationPort,
 } from "@core/contracts";
 import { logger } from "@core/lib/logger";
 import { groupSettingsByOwner } from "./logic/groupSettingsByOwner";
@@ -67,7 +68,7 @@ function withValue(
     }
 }
 
-export class SettingsStore {
+export class SettingsStore implements SettingsRegistrationPort {
     private _settings = new Map<string, RegisteredSetting>();
 
     constructor() {
@@ -76,7 +77,7 @@ export class SettingsStore {
 
     /**
      * Register a batch of settings under one owner. An empty array is a no-op.
-     * Duplicate ids throw — the registry policy of ADR-0005: a colliding id
+     * Duplicate ids throw — registry policy: a colliding id
      * is a programming error that must surface at registration, not silently
      * replace another extension's setting.
      */

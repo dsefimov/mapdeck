@@ -1,6 +1,6 @@
 import type {
     FeatureProvider,
-    FeatureProviderRegistry as FeatureProviderRegistryPort,
+    FeatureProviderRegistrationPort,
 } from "@core/contracts";
 import { KeyedRegistry, type RegisterOptions } from "@core/lib/registry";
 
@@ -10,7 +10,7 @@ import { KeyedRegistry, type RegisterOptions } from "@core/lib/registry";
  * its own registry, so a bootstrap retry registers into an empty one.
  */
 export class FeatureProviderRegistry
-    implements FeatureProviderRegistryPort
+    implements FeatureProviderRegistrationPort
 {
     private readonly providers = new KeyedRegistry<string, FeatureProvider>(
         "Feature provider",
@@ -18,7 +18,7 @@ export class FeatureProviderRegistry
 
     /**
      * Register a feature provider under a unique ID. Duplicate IDs throw
-     * unless `opts.override` — the explicit replacement of ADR-0005.
+     * unless `opts.override`.
      */
     register(
         id: string,
