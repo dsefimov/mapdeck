@@ -1,1 +1,2 @@
-export { logger } from "./logger";
+export { logger, configureLogger } from "./logger";
+export type { LogLevel } from "./logger";
