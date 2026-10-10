@@ -7,6 +7,7 @@ import { registerMapTools } from "@map-tools/registerMapTools";
 import { registerBasemaps } from "@map-tools/registerBasemaps";
 import { registerModules } from "@modules/registerModules";
 import { assertKnownProtocols } from "@core/domain/layer-tree";
+import { logger } from "@core/lib/logger";
 
 /**
  * Everything bootstrap consumes — supplied by the assembly: the demo's
@@ -16,10 +17,12 @@ import { assertKnownProtocols } from "@core/domain/layer-tree";
 export interface BootstrapOptions {
     /** Source type served when none is named — must match a registered source adapter. */
     readonly defaultSourceType: string;
-    /** Per-basemap raster tile URL overrides of the deployment's runtime config. */
-    readonly basemapTileOverrides?: Readonly<
-        Record<string, readonly string[]>
-    >;
+    /**
+     * Whether the built-in basemap set registers. `false` is the assembly
+     * saying the box ships without built-in basemaps — a module (or nothing)
+     * provides them instead.
+     */
+    readonly builtinBasemaps?: boolean;
     /** Where the LazPerf decoder binary lives — point-cloud (COPC) only. */
     readonly lazPerfWasmUrl?: string;
     /** Modules in execution order: built-ins first, the consumer's after. */
@@ -45,7 +48,9 @@ export async function bootstrap(
         await registerWidgets(rootStore);
         await registerTools(rootStore);
         registerMapTools(rootStore);
-        await registerBasemaps(rootStore, options.basemapTileOverrides);
+        if (options.builtinBasemaps !== false) {
+            await registerBasemaps(rootStore);
+        }
         registerProtocols(
             rootStore,
             options.lazPerfWasmUrl
@@ -53,6 +58,7 @@ export async function bootstrap(
                 : {},
         );
         await registerModules(rootStore.moduleContext, options.modules);
+        finalizeBasemaps(rootStore);
         assertKnownProtocols(
             rootStore.layerToolStore.boundProtocolIds,
             new Set(
@@ -66,4 +72,18 @@ export async function bootstrap(
         return;
     }
     await rootStore.initialize(options.defaultSourceType);
+}
+
+/**
+ * Close the basemap channel once every registration ran: repair the select
+ * setting even when nothing registered at all, and say so — an assembly
+ * without a single basemap renders a baseless map.
+ */
+function finalizeBasemaps(rootStore: RootStore): void {
+    rootStore.basemapStore.syncSettingOptions();
+    if (rootStore.basemapStore.availableBasemaps.length === 0) {
+        logger.warn(
+            "No basemaps registered — the map will render without a base layer",
+        );
+    }
 }

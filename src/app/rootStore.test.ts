@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type {
+    BaseMapConfig,
     FeatureProvider,
     LayerAdapter,
     Protocol,
@@ -105,6 +106,31 @@ describe("RootStore module context: registration surfaces", () => {
         );
 
         expect(store.settingsStore.getBooleanSetting("module.flag")).toBe(false);
+    });
+
+    it("registers basemaps through moduleContext.basemap", async () => {
+        const store = new RootStore();
+        const moduleBasemap: BaseMapConfig = {
+            id: "module-basemap",
+            name: "Module basemap",
+            style: {
+                version: 8,
+                sources: {
+                    corp: {
+                        type: "raster",
+                        tiles: ["https://tiles.corp.local/{z}/{x}/{y}.png"],
+                        tileSize: 256,
+                    },
+                },
+                layers: [],
+            },
+        };
+
+        await store.moduleContext.basemap.registerConfigs([moduleBasemap]);
+
+        expect(
+            store.moduleContext.basemap.availableBasemaps.map((bm) => bm.id),
+        ).toContain("module-basemap");
     });
 });
 

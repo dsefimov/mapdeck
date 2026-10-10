@@ -1,5 +1,6 @@
 export { MapStore } from "./stores/MapStore";
 export { BasemapStore, BASEMAP_SETTING_ID } from "./stores/BasemapStore";
+export { validateBasemapConfig } from "./basemap/validateBasemapConfig";
 export { useOverlayLayers } from "./hooks";
 export { MapToolStore } from "./stores/MapToolStore";
 export type { MapClickPoint } from "./stores/MapToolStore";

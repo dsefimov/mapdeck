@@ -20,7 +20,10 @@ import type {
     FeatureProviderRegistrationPort,
 } from "../domain/feature-info";
 import type { LayerCatalogPort, BindingSlot } from "../domain/tree";
-import type { BasemapPort } from "../domain/basemap";
+import type {
+    BasemapPort,
+    BasemapRegistrationPort,
+} from "../domain/basemap";
 import type { LocaleApi, LocaleRegistrationPort } from "./locale";
 import type { SettingsRegistrationPort } from "./settings";
 import type { MapTool, MapToolStatePort } from "./map-tool";
@@ -83,6 +86,7 @@ export interface ModuleContext extends ToolRuntimeContext {
     readonly featureProviders: FeatureProviderRegistrationPort;
     readonly locale: LocaleRegistrationPort;
     readonly settings: SettingsRegistrationPort;
+    readonly basemap: BasemapRegistrationPort;
     readonly sourceAdapterFactory: SourceAdapterFactory;
     readonly widgets: WidgetRegistrationPort;
     readonly layerTools: LayerToolRegistrationPort;

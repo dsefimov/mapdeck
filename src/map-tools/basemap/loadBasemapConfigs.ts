@@ -1,11 +1,14 @@
 import type { BaseMapConfig } from "@core/contracts";
+import { validateBasemapConfig } from "@core/domain/map";
 import basemapConfigData from "./config.json";
 
 /**
  * Parse raw basemap config entries into BaseMapConfig. The asset is
  * authored in-repo, so a malformed entry is a programming error and
  * fails loudly at startup — with the entry's id in the message, not as a
- * silent runtime break deep in the basemap UI.
+ * silent runtime break deep in the basemap UI. Semantic rules (id, name,
+ * style-or-styleUrl) live in the shared validator the registration port
+ * applies to every config, built-in or module-registered.
  */
 export function parseBasemapConfigs(raw: unknown): BaseMapConfig[] {
     if (!Array.isArray(raw)) {
@@ -26,23 +29,17 @@ function parseEntry(entry: unknown, index: number): BaseMapConfig {
     }
     const record = entry as Record<string, unknown>;
 
-    requireString(record.id, "id", label);
-    requireString(record.name, "name", label);
     if (
         record.attribution !== undefined &&
         typeof record.attribution !== "string"
     ) {
         throw new Error(`Basemap config entry ${label}: attribution must be a string`);
     }
-
     if (record.styleUrl !== undefined) {
         requireString(record.styleUrl, "styleUrl", label);
-    } else if (!hasSources(record.style)) {
-        throw new Error(
-            `Basemap config entry ${label}: must carry an inline style with sources or a styleUrl`,
-        );
     }
 
+    validateBasemapConfig(entry as BaseMapConfig, `Basemap config entry ${label}`);
     return entry as BaseMapConfig;
 }
 
@@ -56,16 +53,6 @@ function requireString(
             `Basemap config entry ${label}: "${field}" must be a non-empty string`,
         );
     }
-}
-
-/** An inline style is load-bearing only through its sources (rendering
- * and the health probe both read them) — deeper StyleSpecification
- * internals stay maplibre's to validate. */
-function hasSources(style: unknown): boolean {
-    if (!style || typeof style !== "object") return false;
-    const sources = (style as Record<string, unknown>).sources;
-    if (!sources || typeof sources !== "object") return false;
-    return Object.keys(sources).length > 0;
 }
 
 function describe(entry: unknown, index: number): string {

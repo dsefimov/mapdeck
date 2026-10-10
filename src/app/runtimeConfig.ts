@@ -3,7 +3,7 @@ import { logger } from "@core/lib/logger";
 /**
  * Deployment configuration that changes per install, not per build: read
  * from `runtime-config.json` next to `index.html`, so a deployment retunes
- * asset paths and basemap tile servers without rebuilding the bundle.
+ * asset paths without rebuilding the bundle.
  */
 
 /** The shape of `runtime-config.json`. */
@@ -14,13 +14,10 @@ export interface RuntimeConfig {
      * (e.g. "assets/" or "/portal/").
      */
     readonly assetsBase: string;
-    /** Basemap id → tile URL templates replacing the baked raster tiles. */
-    readonly basemapTileOverrides: Readonly<Record<string, readonly string[]>>;
 }
 
 const DEFAULT_CONFIG: RuntimeConfig = {
     assetsBase: "",
-    basemapTileOverrides: {},
 };
 
 /**
@@ -57,24 +54,5 @@ export function parseRuntimeConfig(raw: unknown): RuntimeConfig {
     return {
         assetsBase:
             typeof record.assetsBase === "string" ? record.assetsBase : "",
-        basemapTileOverrides: parseTileOverrides(
-            record.basemapTileOverrides,
-        ),
     };
-}
-
-function parseTileOverrides(raw: unknown): Record<string, readonly string[]> {
-    if (typeof raw !== "object" || raw === null) return {};
-    const result: Record<string, readonly string[]> = {};
-    for (const [id, value] of Object.entries(
-        raw as Record<string, unknown>,
-    )) {
-        if (
-            Array.isArray(value) &&
-            value.every((url) => typeof url === "string")
-        ) {
-            result[id] = value;
-        }
-    }
-    return result;
 }

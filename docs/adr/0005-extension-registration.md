@@ -41,9 +41,26 @@ Then the map tools (`registerMapTools`). A map tool registers itself plus the th
 comes with: its panel widget and its translations. Those belong to the tool, so they are
 registered in the same step rather than in the widget or locale steps.
 
-Then the basemap configurations and the fetch of external style definitions
-(`registerBasemaps`). Basemaps are map infrastructure, not tools — previously this work
-was buried inside the map-tools step, which made the step do several unrelated jobs.
+Then the built-in basemap configurations (`registerBasemaps`). Basemaps are map
+infrastructure, not tools — previously this work was buried inside the map-tools step,
+which made the step do several unrelated jobs. The step is conditional: whether the box
+ships with built-in basemaps at all is assembly policy (the `builtinBasemaps` option,
+the same authority as the default source type). A module registers its own basemaps —
+and may replace a built-in by id with the explicit override — through the module
+context; everything a config needs on the way in (validation, style-Url fetch, the
+duplicate policy, the select-setting repair) lives in the store's registration path,
+shared by both channels. Hiding a single built-in without replacing it is deliberately
+unsupported — no consumer has needed it, and it would be removal, which the model does
+not have.
+
+Per-stand basemap tile retuning without a rebuild, previously a runtime-config
+parameter rewriting the baked tiles, is now module content: the consumer's module
+registers (or overrides) configs pointing at its own tile cache. Module unregister was
+rejected — the context reference outlives bootstrap, so an assembly-only unregister
+would in fact be a runtime API, and without an ownership ledger any module could
+remove any other module's or the built-in registrations. Passing a basemap list as a
+constructor option was rejected for duplicating the module channel; shipping no
+built-in set at all was rejected for losing the batteries-included default.
 
 Then the data protocols and feature providers (`registerProtocols`). Providers belong to
 the protocols domain; previously they were also registered inside the map-tools step,
@@ -77,8 +94,10 @@ assembled behavior depend on registration order. Grouped registries (protocol→
 links) are a no-op on a duplicate within the same group — linking the same tool to the
 same protocol twice is harmless, while the same id in different groups is allowed. The
 policy covers every replacement-capable registration surface, `SourceAdapterFactory`
-included: a module replacing a base adapter does it with the same explicit override,
-never by out-registering it. Register-once surfaces — settings, translations — throw
+and basemap configs included: a module replacing a base adapter or a built-in basemap
+does it with the same explicit override, never by out-registering it. An overridden
+basemap drops its stale health status and re-applies when the replaced id was the
+active one. Register-once surfaces — settings, translations — throw
 on duplicates without an override path: their entries are declared once at bootstrap,
 so a collision is always a programming error with nothing legitimate to replace.
 

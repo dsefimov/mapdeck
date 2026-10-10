@@ -5,13 +5,18 @@ import {
     runInAction,
     type IReactionDisposer,
 } from "mobx";
+import type { RegisterOptions } from "@core/lib/registry";
+import { applyRegistration } from "@core/lib/registry";
 import type { StoreRegistry } from "@core/store-registry";
 import type { BaseMapConfig, BasemapStatus } from "@core/contracts";
 import {
     checkBasemapHealth,
     DEFAULT_PROBE_TIMEOUT_MS,
 } from "../basemap/checkBasemapHealth";
+import { fetchBasemapStyle } from "../basemap/fetchBasemapStyle";
+import { validateBasemapConfig } from "../basemap/validateBasemapConfig";
 import { pickInitialBasemap } from "../logic/pickInitialBasemap";
+import { repairBasemapSetting } from "../logic/repairBasemapSetting";
 import { withSourceAttribution } from "../logic/withSourceAttribution";
 import { logger } from "@core/lib/logger";
 
@@ -20,7 +25,12 @@ export const BASEMAP_SETTING_ID = "basemap.basemap";
 const BASEMAP_ID_PREFIX = "basemap_";
 
 export class BasemapStore {
-    private _configs: BaseMapConfig[] = [];
+    /**
+     * id → config, insertion-ordered: an override replaces in place (the
+     * entry keeps its position), and the observable map keeps late
+     * registrations visible to the panel.
+     */
+    private readonly _configs = observable.map<string, BaseMapConfig>();
     /** Last known health per basemap id — sticky for the session. */
     readonly healthStatuses = observable.map<string, BasemapStatus>();
     private _ownedIds: Set<string> = new Set();
@@ -28,31 +38,85 @@ export class BasemapStore {
     private _lastApplied: BaseMapConfig | undefined;
     private _syncDisposer: IReactionDisposer | null = null;
     private _initInProgress = false;
+    /** Default the setting was last synced to — the repair's own memory. */
+    private _lastSyncedDefault: string | undefined;
 
     constructor(readonly rootStore: StoreRegistry) {
-        makeAutoObservable<this, "healthStatuses">(this, {
+        makeAutoObservable<this, "healthStatuses" | "_configs">(this, {
             rootStore: false,
             healthStatuses: false,
+            _configs: false,
         });
     }
 
     /**
-     * Register basemap configs. Additive — new configs are appended
-     * (duplicates by id are skipped). Re-syncs the setting options
-     * so modules can register configs after init.
+     * Register basemap configs — the single registration path for the
+     * built-in set and modules. Validates every config, fetches the styles
+     * of `styleUrl` configs concurrently (a failed fetch keeps the config
+     * registered and the health probe reports it unavailable), then applies
+     * everything in one synchronous section: duplicate ids throw unless
+     * `opts.override`, an override replaces in place, drops the stale health
+     * status, and re-applies the active basemap when its config was the one
+     * replaced. The basemap setting's options and a dangling value/default
+     * are repaired in the same section.
      */
-    registerConfigs(configs: BaseMapConfig[]): void {
+    async registerConfigs(
+        configs: readonly BaseMapConfig[],
+        opts?: RegisterOptions,
+    ): Promise<void> {
+        const batchIds = new Set<string>();
         for (const config of configs) {
-            if (!this._configs.some((c) => c.id === config.id)) {
-                this._configs.push(config);
+            validateBasemapConfig(config, `Basemap config "${config.id}"`);
+            if (batchIds.has(config.id)) {
+                throw new Error(
+                    `Basemap config "${config.id}" appears twice in one registration.`,
+                );
             }
+            batchIds.add(config.id);
         }
-        this._syncSettingOptions();
+
+        const resolved = await Promise.all(
+            configs.map(async (config) => ({
+                config,
+                style:
+                    config.styleUrl && !config.style
+                        ? await fetchBasemapStyle(config.styleUrl)
+                        : undefined,
+            })),
+        );
+
+        const replacedActiveIds = new Set<string>();
+        runInAction(() => {
+            for (const { config, style } of resolved) {
+                const entry =
+                    style === undefined ? config : { ...config, style };
+                const existed = this._configs.has(entry.id);
+                applyRegistration(this._configs, {
+                    label: "Basemap",
+                    key: entry.id,
+                    item: entry,
+                    opts,
+                });
+                if (existed) {
+                    this.healthStatuses.delete(entry.id);
+                    replacedActiveIds.add(entry.id);
+                }
+            }
+            const active = this.activeBasemap;
+            if (
+                active &&
+                replacedActiveIds.has(active.id) &&
+                this._lastApplied
+            ) {
+                this.applyBasemap(active);
+            }
+            this.syncSettingOptions();
+        });
     }
 
     /** All registered basemap configs (no filtering). */
     get availableBasemaps(): BaseMapConfig[] {
-        return this._configs;
+        return Array.from(this._configs.values());
     }
 
     /** Currently active basemap config, resolved from the setting. */
@@ -60,7 +124,7 @@ export class BasemapStore {
         const id =
             this.rootStore.settingsStore.getStringSetting(BASEMAP_SETTING_ID);
         if (!id) return undefined;
-        return this._configs.find((bm) => bm.id === id);
+        return this._configs.get(id);
     }
 
     /** Switch the active basemap setting. */
@@ -73,7 +137,7 @@ export class BasemapStore {
      * concurrently and idempotently — repeated calls never re-probe.
      */
     refreshHealthStatuses(): void {
-        for (const config of this._configs) {
+        for (const config of this._configs.values()) {
             if (!this.healthStatuses.has(config.id)) {
                 void this._probeHealth(config.id);
             }
@@ -214,7 +278,7 @@ export class BasemapStore {
         this.healthStatuses.clear();
         this._ownedIds.clear();
         this._lastApplied = undefined;
-        this._configs = [];
+        this._configs.clear();
     }
 
     /**
@@ -225,7 +289,7 @@ export class BasemapStore {
         basemapId: string,
         timeoutMs = DEFAULT_PROBE_TIMEOUT_MS,
     ): Promise<BasemapStatus> {
-        const basemap = this._configs.find((bm) => bm.id === basemapId);
+        const basemap = this._configs.get(basemapId);
         if (!basemap) return "error";
 
         runInAction(() => this.healthStatuses.set(basemapId, "loading"));
@@ -236,19 +300,34 @@ export class BasemapStore {
     }
 
     /**
-     * Sync the basemap select setting options from registered configs.
-     * Updates options in place — no re-registration, no duplicate warning,
-     * current value preserved.
+     * Sync the basemap select setting with the registered configs: rebuild
+     * the options and repair a value/default that no longer names a
+     * registered basemap. Called after every registration and once more at
+     * the end of assembly, so an empty custom assembly leaves the setting
+     * consistent too.
      */
-    private _syncSettingOptions(): void {
-        const options = this._configs.map((bm) => ({
-            label: bm.name,
-            value: bm.id,
-        }));
+    syncSettingOptions(): void {
+        const repair = repairBasemapSetting(this.availableBasemaps, {
+            value: this.rootStore.settingsStore.getStringSetting(
+                BASEMAP_SETTING_ID,
+            ),
+            defaultValue: this._lastSyncedDefault,
+        });
+        if (repair.options.length === 0) return;
 
         this.rootStore.settingsStore.updateSettingOptions(
             BASEMAP_SETTING_ID,
-            options,
+            repair.options,
+            repair.defaultValue,
         );
+        if (repair.defaultValue !== undefined) {
+            this._lastSyncedDefault = repair.defaultValue;
+        }
+        if (repair.value !== undefined) {
+            this.rootStore.settingsStore.setSetting(
+                BASEMAP_SETTING_ID,
+                repair.value,
+            );
+        }
     }
 }

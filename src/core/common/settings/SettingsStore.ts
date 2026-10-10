@@ -162,9 +162,15 @@ export class SettingsStore implements SettingsRegistrationPort {
     /**
      * Replace the declared options of a registered select setting in place,
      * preserving owner and current value. Non-select or unregistered ids are
-     * a no-op.
+     * a no-op. When `defaultValue` is provided it replaces the declared
+     * default — the basemap registry uses this to keep the default pointing
+     * at a registered basemap after a custom assembly.
      */
-    updateSettingOptions(settingId: string, options: SettingOption[]): void {
+    updateSettingOptions(
+        settingId: string,
+        options: SettingOption[],
+        defaultValue?: string,
+    ): void {
         const setting = this._settings.get(settingId);
         if (!setting) {
             logger.warn(
@@ -179,7 +185,11 @@ export class SettingsStore implements SettingsRegistrationPort {
             return;
         }
 
-        this._settings.set(settingId, { ...setting, options });
+        this._settings.set(settingId, {
+            ...setting,
+            options,
+            ...(defaultValue === undefined ? {} : { defaultValue }),
+        });
     }
 
     /**

@@ -1,4 +1,5 @@
 import type { StyleSpecification } from "maplibre-gl";
+import type { RegisterOptions } from "@core/lib/registry";
 
 /** Health status of a basemap source. */
 export type BasemapStatus = "loading" | "success" | "error";
@@ -22,8 +23,7 @@ export interface BaseMapConfig {
 
 /**
  * Runtime-slice port over the basemap subsystem: the surface the
- * basemap tool's panel consumes. Registration (`registerConfigs`) stays on
- * the composition-root side.
+ * basemap tool's panel consumes.
  */
 export interface BasemapPort {
     /** All registered basemap configs (no filtering). */
@@ -36,4 +36,23 @@ export interface BasemapPort {
     refreshHealthStatuses(): Promise<void> | void;
     /** Switch the active basemap. */
     setActiveBasemap(id: string): void;
+}
+
+/**
+ * Registration view over the basemap subsystem — the port through which
+ * the composition root registers the built-in set and modules register
+ * their own basemaps (replacing built-ins by id with `override`).
+ * Configs carrying a `styleUrl` get their style fetched during
+ * registration; a failed fetch keeps the config registered and the health
+ * probe reports it unavailable.
+ */
+export interface BasemapRegistrationPort extends BasemapPort {
+    /**
+     * Register basemaps under their ids. Duplicate ids throw unless
+     * `opts.override` — the explicit replacement semantics.
+     */
+    registerConfigs(
+        configs: readonly BaseMapConfig[],
+        opts?: RegisterOptions,
+    ): Promise<void>;
 }

@@ -113,6 +113,7 @@ export class RootStore implements StoreRegistry {
             featureProviders: this.featureProviderRegistry,
             locale: this.localeStore,
             settings: this.settingsStore,
+            basemap: this.basemapStore,
             sourceAdapterFactory: this.sourceAdapterFactory,
             widgets: this.widgetStore,
             layerTools: this.layerToolStore,

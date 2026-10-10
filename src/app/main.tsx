@@ -39,7 +39,6 @@ async function launch(): Promise<void> {
         // The empty value keeps appConfig's contract: a missing source type
         // fails initialization visibly, not silently.
         defaultSourceType: appConfig.defaultSourceType ?? "",
-        basemapTileOverrides: runtime.basemapTileOverrides,
         lazPerfWasmUrl: joinAssetBase(runtime.assetsBase, "laz-perf.wasm"),
         modules: builtInModules,
     });

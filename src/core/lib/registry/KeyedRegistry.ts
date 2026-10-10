@@ -1,15 +1,13 @@
-import { logger } from "@core/lib/logger";
 import type { RegisterOptions } from "./Registry";
+import { applyRegistration } from "./applyRegistration";
 
 /**
  * Unique-key registry: `key → T`, where the key is external to the item.
  *
- * The single home of the registration-override semantics: registering under
- * an occupied key throws — the extension set is fixed at build time, so an
- * accidental duplicate is a programming error caught at startup; a
- * deliberate replacement passes `{ override: true }` and is visible as a
- * logged warning. `Registry` (items carrying their own `id`) delegates
- * here, and the domain's externally-keyed registries compose it.
+ * The registration-override semantics live in `applyRegistration` — this
+ * class is its Map-owning wrapper. `Registry` (items carrying their own
+ * `id`) delegates here, and the domain's externally-keyed registries
+ * compose it.
  */
 export class KeyedRegistry<K, T> {
     private readonly _entries = new Map<K, T>();
@@ -23,17 +21,12 @@ export class KeyedRegistry<K, T> {
     /** Register an item under `key`. Throws on an occupied key unless
      * `override` is set. */
     register(key: K, item: T, opts?: RegisterOptions): void {
-        if (this._entries.has(key)) {
-            if (!opts?.override) {
-                throw new Error(
-                    `${this.label} "${String(key)}" is already registered.`,
-                );
-            }
-            logger.warn(
-                `${this.label} registry: overriding "${String(key)}" (explicit override).`,
-            );
-        }
-        this._entries.set(key, item);
+        applyRegistration(this._entries, {
+            label: this.label,
+            key,
+            item,
+            opts,
+        });
     }
 
     /** Get the item by key, or `undefined` when absent. */

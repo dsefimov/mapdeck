@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Module, SourceAdapter } from "@core/contracts";
+import { logger } from "@core/lib/logger";
 import { bootstrap } from "./bootstrap";
 import { RootStore } from "./rootStore";
 
@@ -41,6 +42,30 @@ describe("bootstrap", () => {
 
         expect(store.isInitialized).toBe(true);
         expect(store.initError).toBeNull();
+    });
+
+    it("registers the built-in basemap set by default", async () => {
+        const store = new RootStore();
+        store.sourceAdapterFactory.register(stubAdapter());
+
+        await bootstrap(store, testOptions());
+
+        expect(store.basemapStore.availableBasemaps.map((bm) => bm.id)).toEqual(
+            ["osm_standard", "esri_world_imagery"],
+        );
+    });
+
+    it("skips the built-in basemaps and warns when the assembly opts out", async () => {
+        const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+        const store = new RootStore();
+        store.sourceAdapterFactory.register(stubAdapter());
+
+        await bootstrap(store, { ...testOptions(), builtinBasemaps: false });
+
+        expect(store.basemapStore.availableBasemaps).toHaveLength(0);
+        expect(warn).toHaveBeenCalledWith(
+            expect.stringContaining("No basemaps registered"),
+        );
     });
 
     it("passes the module list through to registerModules", async () => {
