@@ -15,11 +15,10 @@ import type {
     ModuleContext,
     ToolRuntimeContext,
 } from "@core/contracts";
-import { appConfig } from "./appConfig";
 
 import type { StoreRegistry } from "@core/store-registry";
 
-/** A store that releases acquired resources in `dispose()`; the contract is ADR-0003. */
+/** A store that releases acquired resources in `dispose()`. */
 interface Disposable {
     dispose(): void;
 }
@@ -29,17 +28,17 @@ function isDisposable(store: object): store is Disposable {
 }
 
 /**
- * The composition root (ADR-0002): the one place where the kernel's stores
+ * The composition root: the one place where the kernel's stores
  * are instantiated and wired into the {@link StoreRegistry}.
  *
  * Three responsibilities beyond the store graph itself:
  * - extension contexts — narrow declared-points views over the same store
  *   instances for modules and tool panels; extensions never receive the
- *   registry itself, so kernel refactorings cannot break them (ADR-0004/0006);
+ *   registry itself, so kernel refactorings cannot break them;
  * - initialization gate — `isInitialized`/`initError` switch the App between
- *   loading / error / workspace screens (ADR-0003);
+ *   loading / error / workspace screens;
  * - teardown — `dispose()` walks the construction order reversed, which is
- *   what makes the fresh-store retry in main.tsx safe (ADR-0003).
+ *   what makes the fresh-store retry in main.tsx safe.
  */
 export class RootStore implements StoreRegistry {
     readonly sourceAdapterFactory: SourceAdapterFactory;
@@ -56,13 +55,13 @@ export class RootStore implements StoreRegistry {
     readonly mapToolStore: MapToolStore;
     readonly widgetStore: WidgetStore;
 
-    /** Declared-points context for tool panels (ADR-0006). */
+    /** Declared-points context for tool panels. */
     readonly toolContext: ToolRuntimeContext;
 
-    /** Declared-points registration context for modules (ADR-0004). */
+    /** Declared-points registration context for modules. */
     readonly moduleContext: ModuleContext;
 
-    /** Whether `initialize()` has completed successfully; the App's boot gate (ADR-0003). */
+    /** Whether `initialize()` has completed successfully; the App's boot gate. */
     isInitialized = false;
 
     /** Failure message of the last `initialize()` run; null while loading or initialized. */
@@ -76,7 +75,7 @@ export class RootStore implements StoreRegistry {
     private readonly _constructionOrder: object[] = [];
 
     constructor() {
-        // Construction order is the dependency graph (ADR-0002): registries
+        // Construction order is the dependency graph: registries
         // and service stores (locale, settings, state) are read during later
         // construction, so they are created first.
         this.sourceAdapterFactory = this._track(new SourceAdapterFactory());
@@ -135,7 +134,7 @@ export class RootStore implements StoreRegistry {
         return store;
     }
 
-    /** Disposes every store that acquired resources, in reverse construction order (ADR-0003). */
+    /** Disposes every store that acquired resources, in reverse construction order. */
     dispose(): void {
         const storesInReverse = [...this._constructionOrder].reverse();
         for (const store of storesInReverse) {
@@ -143,15 +142,18 @@ export class RootStore implements StoreRegistry {
         }
     }
 
-    /** Boots the initial source adapter and the first tree fetch; records the outcome. */
-    initialize = flow(function* (this: RootStore) {
+    /**
+     * Boots the initial source adapter and the first tree fetch; records the
+     * outcome. The default source type is assembly policy — the caller
+     * (bootstrap) passes it in.
+     */
+    initialize = flow(function* (this: RootStore, defaultSourceType: string) {
         this.clearInitError();
         this.isInitialized = false;
         try {
-            const defaultSourceType = appConfig.defaultSourceType;
             if (!defaultSourceType) {
                 throw new Error(
-                    "appConfig declares no default source type — the assembly must declare one (ADR-0005).",
+                    "No default source type declared — the assembly must declare one.",
                 );
             }
             this.treeStore.initAdapter(defaultSourceType);

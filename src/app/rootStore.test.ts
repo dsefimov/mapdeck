@@ -116,12 +116,21 @@ describe("RootStore initialization state", () => {
         expect(store.initError).toBeNull();
     });
 
+    it("rejects an empty default source type with a visible error", async () => {
+        const store = new RootStore();
+
+        await store.initialize("");
+
+        expect(store.isInitialized).toBe(false);
+        expect(store.initError).toMatch(/default source type/);
+    });
+
     it("marks itself initialized once the tree refresh settles", async () => {
         const store = new RootStore();
         vi.spyOn(store.treeStore, "initAdapter").mockImplementation(() => {});
         vi.spyOn(store.treeStore, "refresh").mockResolvedValue(undefined);
 
-        await store.initialize();
+        await store.initialize("stac");
 
         expect(store.isInitialized).toBe(true);
         expect(store.initError).toBeNull();
@@ -134,7 +143,7 @@ describe("RootStore initialization state", () => {
             new Error("no data source"),
         );
 
-        await store.initialize();
+        await store.initialize("stac");
 
         expect(store.isInitialized).toBe(false);
         expect(store.initError).toBe("no data source");
@@ -148,7 +157,7 @@ describe("RootStore initialization state", () => {
         vi.spyOn(store.treeStore, "initAdapter").mockImplementation(() => {});
         vi.spyOn(store.treeStore, "refresh").mockRejectedValue(thrown);
 
-        await store.initialize();
+        await store.initialize("stac");
 
         expect(store.initError).toBe(expected);
     });
@@ -161,8 +170,8 @@ describe("RootStore initialization state", () => {
             .mockRejectedValueOnce(new Error("offline"))
             .mockResolvedValueOnce(undefined);
 
-        await store.initialize();
-        await store.initialize();
+        await store.initialize("stac");
+        await store.initialize("stac");
 
         expect(refresh).toHaveBeenCalledTimes(2);
         expect(store.isInitialized).toBe(true);
@@ -177,8 +186,8 @@ describe("RootStore initialization state", () => {
             flagDuringSecondRun = store.isInitialized;
         });
 
-        await store.initialize();
-        await store.initialize();
+        await store.initialize("stac");
+        await store.initialize("stac");
 
         expect(flagDuringSecondRun).toBe(false);
         expect(store.isInitialized).toBe(true);
@@ -191,8 +200,8 @@ describe("RootStore initialization state", () => {
             .mockResolvedValueOnce(undefined)
             .mockRejectedValueOnce(new Error("offline again"));
 
-        await store.initialize();
-        await store.initialize();
+        await store.initialize("stac");
+        await store.initialize("stac");
 
         expect(store.isInitialized).toBe(false);
         expect(store.initError).toBe("offline again");

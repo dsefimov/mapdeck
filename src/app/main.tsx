@@ -3,6 +3,9 @@ import ReactDOM from "react-dom/client";
 import { RootStore } from "./rootStore";
 import { configureMobX } from "./mobxConfig";
 import { installGlobalErrorHandlers } from "./globalErrorHandlers";
+import { appConfig } from "./appConfig";
+import { joinAssetBase, loadRuntimeConfig } from "./runtimeConfig";
+import { builtInModules } from "@modules/registerModules";
 import "./index.css";
 import App from "./App";
 import { bootstrap } from "./bootstrap";
@@ -22,7 +25,7 @@ installGlobalErrorHandlers();
 const reactRoot = ReactDOM.createRoot(rootElement);
 let currentStore: RootStore | null = null;
 
-function launch(): void {
+async function launch(): Promise<void> {
     currentStore?.dispose();
     const store = new RootStore();
     currentStore = store;
@@ -31,7 +34,15 @@ function launch(): void {
             <App store={store} onRestart={launch} />
         </React.StrictMode>,
     );
-    void bootstrap(store);
+    const runtime = await loadRuntimeConfig();
+    void bootstrap(store, {
+        // The empty value keeps appConfig's contract: a missing source type
+        // fails initialization visibly, not silently.
+        defaultSourceType: appConfig.defaultSourceType ?? "",
+        basemapTileOverrides: runtime.basemapTileOverrides,
+        lazPerfWasmUrl: joinAssetBase(runtime.assetsBase, "laz-perf.wasm"),
+        modules: builtInModules,
+    });
 }
 
-launch();
+void launch();
