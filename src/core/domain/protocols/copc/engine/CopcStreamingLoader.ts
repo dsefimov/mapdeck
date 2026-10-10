@@ -14,6 +14,9 @@ import type {
     StreamingSource,
 } from "../types";
 import { WorkerPool } from "./workers/WorkerPool";
+// The bundler inlines the worker as a blob URL — the package emits no
+// worker asset file for the host to host.
+import PointProcessingWorker from "./workers/pointProcessing.worker?worker&inline";
 import {
     computeGeometricError,
     computeRootSpacingMeters,
@@ -233,14 +236,7 @@ export class CopcStreamingLoader {
     /** Worker pool and the node-data services running over it. */
     private _buildDataRuntime(copc: CopcType): void {
         this._workerPool = new WorkerPool(
-            () =>
-                new Worker(
-                    new URL(
-                        "./workers/pointProcessing.worker.ts",
-                        import.meta.url,
-                    ),
-                    { type: "module" },
-                ),
+            () => new PointProcessingWorker(),
             CopcStreamingLoader.getWorkerPoolSize(),
             DEFAULT_WORKER_REQUEST_TIMEOUT_MS,
         );
