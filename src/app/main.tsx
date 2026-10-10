@@ -1,47 +1,44 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { RootStore } from "./rootStore";
-import { configureMobX } from "./mobxConfig";
+import { configureLogger } from "@core/lib/logger";
 import { installGlobalErrorHandlers } from "./globalErrorHandlers";
 import { appConfig } from "./appConfig";
 import { joinAssetBase, loadRuntimeConfig } from "./runtimeConfig";
-import { builtInModules } from "@modules/registerModules";
+import { createMapdeck } from "./embed";
+import { MapdeckRoot } from "./MapdeckRoot";
 import "./index.css";
-import App from "./App";
-import { bootstrap } from "./bootstrap";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
     throw new Error("Root element not found");
 }
 
-configureMobX();
+// Demo assembly policy, not the library's: global error handlers stay the
+// host's right, and the dev build is loud on purpose.
+if (import.meta.env.DEV) {
+    configureLogger("debug");
+}
 installGlobalErrorHandlers();
 
-// Composition root: the only module that creates stores and starts the app.
-// Each launch owns a fresh RootStore — the previous one is disposed first, so
-// a retry registers into empty registries instead of re-registering into
-// populated ones.
+// The dogfood entry rides the public API: the instance owns boot and
+// retry (MapdeckRoot wires the error screen's retry to restart()).
 const reactRoot = ReactDOM.createRoot(rootElement);
-let currentStore: RootStore | null = null;
 
 async function launch(): Promise<void> {
-    currentStore?.dispose();
-    const store = new RootStore();
-    currentStore = store;
-    reactRoot.render(
-        <React.StrictMode>
-            <App store={store} onRestart={launch} />
-        </React.StrictMode>,
-    );
     const runtime = await loadRuntimeConfig();
-    void bootstrap(store, {
+    const mapdeck = createMapdeck({
         // The empty value keeps appConfig's contract: a missing source type
-        // fails initialization visibly, not silently.
+        // fails initialization visibly, not silently. The built-in module
+        // set is merged in by the facade — the demo has no modules of its own.
         defaultSourceType: appConfig.defaultSourceType ?? "",
         lazPerfWasmUrl: joinAssetBase(runtime.assetsBase, "laz-perf.wasm"),
-        modules: builtInModules,
     });
+
+    reactRoot.render(
+        <React.StrictMode>
+            <MapdeckRoot mapdeck={mapdeck} />
+        </React.StrictMode>,
+    );
 }
 
 void launch();

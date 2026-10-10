@@ -1,12 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
-import type { LayerAdapter, Module, Protocol } from "@core/contracts";
+import type {
+    LayerAdapter,
+    Module,
+    ModuleContext,
+    Protocol,
+} from "@core/contracts";
 import { createMapdeck } from "./embed";
 
-// The built-in module set would register the real STAC adapter and reach
-// for the network on initialize; the subject here is the embed plumbing.
+const SHARED_PROTOCOL_ID = "shared-protocol";
+
+// The real built-in module set registers the STAC adapter and would reach
+// for the network on initialize; the subject here is the embed plumbing —
+// a network-free stub proves the merge order just as well.
 vi.mock("@modules/registerModules", async (importOriginal) => ({
     ...(await importOriginal<object>()),
-    builtInModules: [],
+    builtInModules: [
+        {
+            id: "builtin-stub",
+            name: "Built-in stub",
+            register(context: ModuleContext) {
+                context.protocols.register({
+                    ...consumerProtocol,
+                    id: SHARED_PROTOCOL_ID,
+                    label: "Built-in version",
+                });
+            },
+        },
+    ],
 }));
 
 /** Registration exercises registry identity, never rendering. */
@@ -39,15 +59,37 @@ const consumerModule: Module = {
     },
 };
 
-describe("createMapdeck", () => {
-    it("registers the consumer module's content through the context", async () => {
-        const instance = createMapdeck({ modules: [consumerModule] });
+/** Overrides the built-in stub's shared protocol — legal only after it. */
+const overridingModule: Module = {
+    id: "overriding-consumer",
+    name: "Overriding consumer",
+    register(context) {
+        context.protocols.register(
+            {
+                ...consumerProtocol,
+                id: SHARED_PROTOCOL_ID,
+                label: "Consumer version",
+            },
+            { override: true },
+        );
+    },
+};
 
+describe("createMapdeck", () => {
+    it("merges the built-in set before the consumer's modules", async () => {
+        const instance = createMapdeck({ modules: [overridingModule] });
+
+        // Were the merge order reversed, the built-in stub's non-override
+        // registration of the shared id would throw into initError.
         await vi.waitFor(() => {
             expect(
-                instance.store.protocolRegistry.getById(CONSUMER_PROTOCOL_ID),
-            ).toBeDefined();
+                instance.store.protocolRegistry.getById(SHARED_PROTOCOL_ID)
+                    ?.label,
+            ).toBe("Consumer version");
         });
+        // No adapter for "stac" in this fixture — that init failure is
+        // expected; a duplicate registration is the failure being excluded.
+        expect(instance.initError ?? "").not.toMatch(/already registered/);
         instance.dispose();
     });
 
