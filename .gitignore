@@ -30,10 +30,3 @@ Thumbs.db
 
 # Logs
 *.log
-
-# Images dumped at the repo root during manual UI work —
-# root-anchored on purpose: tracked images under public/ stay tracked.
-/*.png
-/*.jpeg
-/*.jpg
-/*.webp

@@ -222,6 +222,7 @@ Each rule names how it is checked. A rule that cannot be checked is not a rule.
 ### Never
 
 - Commit a task plan or other working artifacts.
+- Leave screenshots or scratch files in the working tree — they live outside the repo.
 - Duplicate logic without explicit justification.
 - Use framework state hooks for business data.
 - Write inline comments to explain business logic instead of clearer code.
