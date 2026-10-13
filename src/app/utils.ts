@@ -1,8 +1,7 @@
 /**
- * The `mapdeck/utils` subpath: pure helpers extension code needs. The
- * geo formatters are `lib` code — no stores, no React — so panels format
- * distances and coordinates exactly like the built-in tools (ADR-0017).
- * Point-cloud picking helpers already travel through
+ * The `mapdeck/utils` subpath: pure helpers extension code needs — no
+ * React, no stores — so panels format distances and coordinates exactly
+ * like the built-in tools. Point-cloud picking helpers travel through
  * `mapdeck/contracts`.
  */
 

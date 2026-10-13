@@ -6,9 +6,9 @@ Extension modules build panels and compute output strings. Before this
 decision the library exposed only the embed facade and the contracts barrel:
 the UI kit (`@core/ui`) and the pure helpers (`@core/lib/geo/formatters`)
 were internal, so a consumer module either duplicated the design system or
-fell back to raw HTML. The `MapTool.icon` contract already assumes consumer
-validation through the kit's `isIconName` — the export was intended but
-never shaped.
+fell back to raw HTML. The `MapTool.icon` contract typed icons as plain
+strings and pointed at the kit's `isIconName` for validation — the export
+was implied but never shaped.
 
 ## Decision
 

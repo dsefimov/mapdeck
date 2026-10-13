@@ -86,9 +86,8 @@ export interface AssetMappingResult {
 /**
  * The declared extension point of asset mapping: modules register
  * matching rules and protocol slots; source adapters map assets through
- * the same instance. One port, both directions — the only reader of
- * `mapAssets` today is a module's own source adapter, so a read/write
- * split would have a single-consumer read side.
+ * the same instance. One port, both directions — splitting off a read
+ * side would serve a single consumer (a module's own source adapter).
  */
 export interface AssetMappingPort {
     /** Adds a rule to the chain; ordered by priority, insertion breaks ties. */

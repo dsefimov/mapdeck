@@ -54,17 +54,15 @@ weight and was removed.
 **Default slots live with the protocols.** The built-in fitness values are
 declared at each built-in protocol's registration site
 (`BUILTIN_PROTOCOLS` in `registerProtocols.ts`) and applied through the
-registration's declaration — `register(protocol, opts?, { slots?, rules? })`.
+registration's declaration — `register(protocol, opts?, { slots?, rules? })`:
+a module ships a protocol, its slot fitness, and its matching rules as one
+call, the knowledge sitting with its author.
 `ProtocolRegistry` forwards a declaration to the mapper under the same
-options (overriding a protocol overrides its declaration). The mapper
+options (overriding a protocol overrides its declaration);
+`assetMapping.registerRule`/`registerSlots` remain the explicit
+lower-level path for rules and slots that register separately. The mapper
 itself starts empty: the kernel holds the mechanism, the protocols hold
 the knowledge. The former STAC fitness table no longer exists anywhere.
-
-**Amended 2026-10-13 (same change set): declaration sugar.** The
-`register` third parameter landed together with the mapper — a module
-ships a protocol, its slot fitness, and its matching rules as one
-declaration; `assetMapping.registerRule`/`registerSlots` remain the
-explicit lower-level path.
 
 Why a new ADR rather than amending 0004/0005: ADR-0004 describes the
 context family's shape (this adds one member of the already-decided

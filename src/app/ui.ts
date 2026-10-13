@@ -2,8 +2,8 @@
  * The `mapdeck/ui` subpath: the design-system surface for extension
  * panels — primitives, shared composites, hooks, and the theme helpers.
  *
- * The composition is a stability contract (ADR-0017): everything a tool
- * panel needs, nothing that is application chrome. Grid shells
+ * The composition is a stability contract: everything a tool panel
+ * needs, nothing that is application chrome. Grid shells
  * (`WidgetGrid`, `WidgetShell`) and boot screens (`ErrorScreen`,
  * `LoadingScreen`, `ErrorBoundary`) stay internal — they render inside
  * the library's own root component, and the grid is store-driven.

@@ -37,8 +37,8 @@ const GEOJSON_TILED_PROTOCOL_ID = "geojson-tiled";
 
 /**
  * The built-in protocol set. Each entry declares its own slot fitness —
- * the knowledge lives with the protocol, not in a mapping table — and
- * applies at registration (ADR-0018).
+ * the knowledge lives with the protocol, not in a central mapping
+ * table — and applies at registration.
  */
 const BUILTIN_PROTOCOLS: readonly BuiltinProtocolEntry[] = [
     {
