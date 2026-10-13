@@ -80,8 +80,9 @@ interface BaseMapTool {
     readonly id: string;
     /**
      * SVG icon name to display in the toolbar. A plain string — the ui and
-     * contracts layers must not import each other; consumers validate with
-     * the ui kit's `isIconName`.
+     * contracts layers must not import each other. Registry names render
+     * built-in artwork; any other name renders the `--icon-<name>` token
+     * the host or module defines, so no registry change is needed.
      */
     readonly icon: string;
     /** Settings declared by the tool — auto-registered by MapToolStore */

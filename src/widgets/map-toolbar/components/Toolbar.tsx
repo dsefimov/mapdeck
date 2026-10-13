@@ -1,6 +1,5 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { isIconName } from "@core/ui/components";
 import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
 import { LOCALE_KEY_TOOL_NAME, MAP_TOOL_KIND } from "@core/contracts";
 import { useRootStore } from "@core/shell";
@@ -41,7 +40,7 @@ const ToolbarComponent: (props: ToolbarProps) => React.ReactNode = observer(
                         return (
                             <IconButton
                                 key={tool.id}
-                                icon={isIconName(tool.icon) ? tool.icon : null}
+                                icon={tool.icon}
                                 label={toolName}
                                 variant="tile"
                                 size="md"

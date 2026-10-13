@@ -2,7 +2,9 @@
  * Icons render as masks painted with currentColor: the glyph comes from
  * the --icon-<name> theme token, so artwork and color are host-set the
  * same way as every other token. A rule exists for every registry name —
- * kept in sync by a unit test, not by convention.
+ * kept in sync by a unit test, not by convention. Names outside the
+ * registry skip these rules and take the token inline (customIconStyle),
+ * so modules add artwork without touching this file.
  */
 .icon {
     display: block;

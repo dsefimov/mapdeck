@@ -6,11 +6,12 @@ import styles from "./IconButton.module.css";
 
 export interface IconButtonProps {
     /**
-     * Icon from the registry (src/core/ui/icons/registry.ts). Extension data
-     * types icons as plain string — validate with `isIconName` and pass
-     * `null` to render an empty placeholder.
+     * Icon from the registry (autocomplete) or a custom `--icon-<name>`
+     * token defined on the container — extension data arrives as a plain
+     * string and renders through the token without registry changes.
+     * `null` renders an empty placeholder.
      */
-    icon: IconName | null;
+    icon: IconName | (string & {}) | null;
     /** Accessible name (title + aria-label) */
     label: string;
     /** Visual treatment: ghost — borderless, tile — bordered box */
