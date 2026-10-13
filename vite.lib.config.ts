@@ -106,6 +106,8 @@ export default defineConfig({
             entry: {
                 mapdeck: resolve(import.meta.dirname, "src/app/index.ts"),
                 contracts: resolve(import.meta.dirname, "src/app/contracts.ts"),
+                ui: resolve(import.meta.dirname, "src/app/ui.ts"),
+                utils: resolve(import.meta.dirname, "src/app/utils.ts"),
             },
             formats: ["es"],
         },

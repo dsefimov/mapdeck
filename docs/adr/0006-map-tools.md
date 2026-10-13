@@ -87,6 +87,15 @@ not implement; corner grouping, if ever wanted, becomes a feature with its own c
 `registerMapTools` (ADR-0005). Registration also auto-registers the tool's settings with
 `SettingsStore` under the tool id; a duplicate id throws (ADR-0005 duplicate policy).
 
+**Amended 2026-10-13: the panel widget factory is public.** `createToolPanelWidget`
+is exported from the package's main entry: a module delivering an interactive map
+tool registers its panel explicitly — locale, tool, then
+`context.widgets.registerWidget(createToolPanelWidget(tool))`, the same three
+steps the built-in `registerMapTools` takes. Auto-registering the panel inside
+`MapToolStore.registerTool` was rejected: it would make the store do the widget
+catalog's job and change its behavior for every existing registration site;
+explicit registration is sufficient and keeps the store's single responsibility.
+
 ## Consequences
 
 - Module developers learn one contract: a `MapTool` of `kind` `"interactive"` or

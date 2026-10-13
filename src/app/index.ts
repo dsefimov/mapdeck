@@ -24,5 +24,6 @@ export type {
     Feature,
 } from "@core/contracts";
 export type { RegisterOptions } from "@core/lib/registry";
+export { createToolPanelWidget } from "@map-tools/shared/toolPanelWidget";
 export { StoreProvider, useRootStore } from "@core/shell";
 export type { StoreRegistry } from "@core/store-registry";

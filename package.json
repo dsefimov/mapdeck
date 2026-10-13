@@ -14,11 +14,19 @@
             "types": "./dist/app/index.d.ts",
             "import": "./dist/mapdeck.js"
         },
-        "./contracts": {
-            "types": "./dist/app/contracts.d.ts",
-            "import": "./dist/contracts.js"
-        },
-        "./styles.css": "./dist/mapdeck.css",
+    "./contracts": {
+      "types": "./dist/app/contracts.d.ts",
+      "import": "./dist/contracts.js"
+    },
+    "./ui": {
+      "types": "./dist/app/ui.d.ts",
+      "import": "./dist/ui.js"
+    },
+    "./utils": {
+      "types": "./dist/app/utils.d.ts",
+      "import": "./dist/utils.js"
+    },
+    "./styles.css": "./dist/mapdeck.css",
         "./package.json": "./package.json"
     },
     "main": "./dist/mapdeck.js",
