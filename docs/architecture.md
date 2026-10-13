@@ -176,6 +176,7 @@ updated in place. The whole machinery is invisible outside the protocol (ADR-001
 | `src/widgets`, `src/layer-tools`, `src/map-tools` | built-in extensions |
 | `src/modules` | domain modules (`stac`) |
 | `docs/adr`, `docs/glossary.md` | decisions and terms |
+| `docs/extending.md` | how-to for extension modules |
 
 ## Error channels
 
