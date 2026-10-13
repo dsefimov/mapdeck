@@ -3,6 +3,7 @@ import {
     applyKvSorting,
     applyRowFilters,
     compareValues,
+    formatValue,
 } from "./utils";
 
 const DICT: Record<string, string> = {};
@@ -29,6 +30,10 @@ describe("compareValues", () => {
 
 describe("applyRowFilters", () => {
     const row = { name: "Autzen", points: 1200, active: true };
+    // Number grouping is host-locale — the expected filter strings are
+    // derived from the table's own formatter, so the suite stays green
+    // in any locale.
+    const grouped = formatValue(1200, DICT).slice(0, 2);
 
     it("passes when no filter is set", () => {
         expect(applyRowFilters(row, {}, DICT)).toBe(true);
@@ -41,7 +46,7 @@ describe("applyRowFilters", () => {
 
     it("requires every column filter to match", () => {
         expect(
-            applyRowFilters(row, { name: "autz", points: "1,2" }, DICT),
+            applyRowFilters(row, { name: "autz", points: grouped }, DICT),
         ).toBe(true);
         expect(
             applyRowFilters(row, { name: "autz", points: "9" }, DICT),
@@ -49,7 +54,7 @@ describe("applyRowFilters", () => {
     });
 
     it("matches the global filter against any formatted value", () => {
-        expect(applyRowFilters(row, { _global: "1,2" }, DICT)).toBe(true);
+        expect(applyRowFilters(row, { _global: grouped }, DICT)).toBe(true);
         expect(applyRowFilters(row, { _global: "zzz" }, DICT)).toBe(false);
     });
 
