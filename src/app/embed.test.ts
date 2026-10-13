@@ -40,6 +40,9 @@ const noopAdapter: LayerAdapter = {
 
 const CONSUMER_PROTOCOL_ID = "consumer-protocol";
 
+const DATA_SOURCE_ID = "test.data-source-url";
+const OVERRIDDEN_URL = "https://api.example/stac";
+
 const consumerProtocol: Protocol = {
     id: CONSUMER_PROTOCOL_ID,
     label: "Consumer protocol",
@@ -72,6 +75,29 @@ const overridingModule: Module = {
             },
             { override: true },
         );
+    },
+};
+
+/** Host-module shape: declares a setting and the adapter initialize() needs. */
+const settingsModule: Module = {
+    id: "settings-host",
+    name: "Settings host",
+    register(context) {
+        context.settings.registerSettings("settings-host", "Settings host", [
+            {
+                id: DATA_SOURCE_ID,
+                type: "string",
+                defaultValue: "./catalog.json",
+                label: "Data source URL",
+            },
+        ]);
+        context.sourceAdapterFactory.register({
+            type: "stac",
+            fetchRoot: () => Promise.resolve([]),
+            fetchChildren: () => Promise.resolve([]),
+            initialize: () => undefined,
+            dispose: () => undefined,
+        });
     },
 };
 
@@ -114,6 +140,58 @@ describe("createMapdeck", () => {
             expect(instance.initError).toMatch(/No source adapter registered/);
         });
         expect(instance.isInitialized).toBe(false);
+    });
+
+    it("applies settingsOverrides after all registrations", async () => {
+        const instance = createMapdeck({
+            modules: [settingsModule],
+            settingsOverrides: { [DATA_SOURCE_ID]: OVERRIDDEN_URL },
+        });
+
+        await vi.waitFor(() => {
+            expect(instance.isInitialized).toBe(true);
+        });
+        expect(
+            instance.store.settingsStore.getStringSetting(
+                DATA_SOURCE_ID,
+            ),
+        ).toBe(OVERRIDDEN_URL);
+        instance.dispose();
+    });
+
+    it("an unknown settingsOverrides id fails initialization visibly", async () => {
+        const instance = createMapdeck({
+            modules: [settingsModule],
+            settingsOverrides: { "test.ghost": "value" },
+        });
+
+        await vi.waitFor(() => {
+            expect(instance.initError).toMatch(/test\.ghost \(notfound\)/);
+        });
+        expect(instance.isInitialized).toBe(false);
+        instance.dispose();
+    });
+
+    it("restart() re-applies settingsOverrides over the defaults", async () => {
+        const instance = createMapdeck({
+            modules: [settingsModule],
+            settingsOverrides: { [DATA_SOURCE_ID]: OVERRIDDEN_URL },
+        });
+        await vi.waitFor(() => {
+            expect(instance.isInitialized).toBe(true);
+        });
+
+        await instance.restart();
+
+        await vi.waitFor(() => {
+            expect(instance.isInitialized).toBe(true);
+        });
+        expect(
+            instance.store.settingsStore.getStringSetting(
+                DATA_SOURCE_ID,
+            ),
+        ).toBe(OVERRIDDEN_URL);
+        instance.dispose();
     });
 
     it("restart() swaps in a fresh store and re-registers", async () => {

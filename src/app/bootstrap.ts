@@ -7,6 +7,10 @@ import { registerMapTools } from "@map-tools/registerMapTools";
 import { registerBasemaps } from "@map-tools/registerBasemaps";
 import { registerModules } from "@modules/registerModules";
 import { assertKnownProtocols } from "@core/domain/layer-tree";
+import {
+    applySettingsOverrides,
+    type SettingsOverrides,
+} from "./applySettingsOverrides";
 import { logger } from "@core/lib/logger";
 
 /**
@@ -25,6 +29,12 @@ export interface BootstrapOptions {
     readonly builtinBasemaps?: boolean;
     /** Where the LazPerf decoder binary lives — point-cloud (COPC) only. */
     readonly lazPerfWasmUrl?: string;
+    /**
+     * Host-declared values for registered settings, applied after all
+     * registration waves and before `initialize` — ahead of the first
+     * tree fetch.
+     */
+    readonly settingsOverrides?: SettingsOverrides;
     /** Modules in execution order: built-ins first, the consumer's after. */
     readonly modules: readonly Module[];
 }
@@ -66,6 +76,10 @@ export async function bootstrap(
                     .getAll()
                     .map((protocol) => protocol.id),
             ),
+        );
+        applySettingsOverrides(
+            rootStore.settingsStore,
+            options.settingsOverrides,
         );
     } catch (error) {
         rootStore.setInitError(error);

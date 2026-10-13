@@ -1,12 +1,18 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Module, SourceAdapter } from "@core/contracts";
+import type {
+    Module,
+    ModuleContext,
+    SourceAdapter,
+} from "@core/contracts";
 import { logger } from "@core/lib/logger";
 import { bootstrap } from "./bootstrap";
 import { RootStore } from "./rootStore";
 
 // The subject is bootstrap sequencing, not module internals: the real STAC
 // module would reach for the network.
-const registerModulesMock = vi.hoisted(() => vi.fn(async () => {}));
+const registerModulesMock = vi.hoisted(() =>
+    vi.fn(async (_context: ModuleContext, _modules: readonly Module[]) => {}),
+);
 vi.mock("@modules/registerModules", () => ({
     registerModules: registerModulesMock,
 }));
@@ -79,6 +85,44 @@ describe("bootstrap", () => {
             store.moduleContext,
             modules,
         );
+    });
+
+    it("applies settingsOverrides after the last registration wave", async () => {
+        registerModulesMock.mockImplementationOnce(async (context, modules) => {
+            for (const module of modules) {
+                await module.register(context);
+            }
+        });
+        const lateModule: Module = {
+            id: "late-registrar",
+            name: "Late registrar",
+            register(context) {
+                context.settings.registerSettings(
+                    "late-registrar",
+                    "Late registrar",
+                    [
+                        {
+                            id: "late.source",
+                            type: "string",
+                            defaultValue: "./default.json",
+                            label: "Source",
+                        },
+                    ],
+                );
+            },
+        };
+        const store = new RootStore();
+        store.sourceAdapterFactory.register(stubAdapter());
+
+        await bootstrap(store, {
+            ...testOptions([lateModule]),
+            settingsOverrides: { "late.source": "https://api.example/stac" },
+        });
+
+        expect(store.isInitialized).toBe(true);
+        expect(
+            store.settingsStore.getStringSetting("late.source"),
+        ).toBe("https://api.example/stac");
     });
 
     it("a configured source type with no registered adapter fails initialization visibly", async () => {

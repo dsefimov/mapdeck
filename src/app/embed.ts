@@ -6,6 +6,7 @@ import { builtInModules } from "@modules/registerModules";
 import { configureMobX } from "./mobxConfig";
 import { RootStore } from "./rootStore";
 import { bootstrap, type BootstrapOptions } from "./bootstrap";
+import type { SettingsOverrides } from "./applySettingsOverrides";
 
 /**
  * The source adapter used when the assembly names none — the built-in
@@ -36,6 +37,13 @@ export interface MapdeckOptions {
     readonly language?: string;
     /** Log threshold. Default: "warn" — a shipped library is quiet. */
     readonly logLevel?: LogLevel;
+    /**
+     * Values for registered settings, applied after all registrations and
+     * before the first tree fetch. Deployment data: where this install's
+     * sources live (e.g. "layer-tree.data-source-url"). Unknown ids and
+     * invalid values fail initialization visibly.
+     */
+    readonly settingsOverrides?: SettingsOverrides;
     /** Consumer modules, registered after the built-in set (may override). */
     readonly modules?: readonly Module[];
 }
@@ -126,6 +134,9 @@ class EmbedInstance implements MapdeckInstance {
                 : {}),
             ...(options.lazPerfWasmUrl !== undefined
                 ? { lazPerfWasmUrl: options.lazPerfWasmUrl }
+                : {}),
+            ...(options.settingsOverrides !== undefined
+                ? { settingsOverrides: options.settingsOverrides }
                 : {}),
             modules: [...builtInModules, ...(options.modules ?? [])],
         };
