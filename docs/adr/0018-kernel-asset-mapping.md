@@ -51,11 +51,20 @@ fresh store — a fresh mapper — and bootstrap re-registers the built-in
 rules; the STAC module's old `resolversRegistered` guard became dead
 weight and was removed.
 
-**Default slots seed the built-ins.** The former STAC fitness table
-moves into the mapper's construction defaults, so an assembly that
-registers nothing still maps the built-in protocol set. Behavior of the
-built-in roles is unchanged; the STAC rule set is pinned by a dedicated
-test over the kernel mapper.
+**Default slots live with the protocols.** The built-in fitness values are
+declared at each built-in protocol's registration site
+(`BUILTIN_PROTOCOLS` in `registerProtocols.ts`) and applied through the
+registration's declaration — `register(protocol, opts?, { slots?, rules? })`.
+`ProtocolRegistry` forwards a declaration to the mapper under the same
+options (overriding a protocol overrides its declaration). The mapper
+itself starts empty: the kernel holds the mechanism, the protocols hold
+the knowledge. The former STAC fitness table no longer exists anywhere.
+
+**Amended 2026-10-13 (same change set): declaration sugar.** The
+`register` third parameter landed together with the mapper — a module
+ships a protocol, its slot fitness, and its matching rules as one
+declaration; `assetMapping.registerRule`/`registerSlots` remain the
+explicit lower-level path.
 
 Why a new ADR rather than amending 0004/0005: ADR-0004 describes the
 context family's shape (this adds one member of the already-decided

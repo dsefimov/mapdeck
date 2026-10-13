@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import type { STACAsset } from "../types";
-import { AssetProtocolMapper } from "@core/domain/protocols";
+import {
+    AssetProtocolMapper,
+    BUILTIN_PROTOCOL_SLOTS,
+} from "@core/domain/protocols";
 import { ReportRoleResolver } from "../roles/resolvers/ReportRoleResolver";
 import { AttributeRoleResolver } from "../roles/resolvers/AttributeRoleResolver";
 import { PointCloudRoleResolver } from "../roles/resolvers/PointCloudRoleResolver";
@@ -17,9 +20,9 @@ const asset = (overrides: Partial<STACAsset>): STACAsset => ({
     ...overrides,
 });
 
-/** The module's real rule chain over the kernel mapper's default slots. */
+/** The module's real rule chain over the built-in protocol slots. */
 function mapper(): AssetProtocolMapper {
-    const m = new AssetProtocolMapper();
+    const m = new AssetProtocolMapper(BUILTIN_PROTOCOL_SLOTS);
     m.registerRule(new ReportRoleResolver());
     m.registerRule(new AttributeRoleResolver());
     m.registerRule(new RasterTileRoleResolver());

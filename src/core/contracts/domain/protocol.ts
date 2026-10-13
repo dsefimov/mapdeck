@@ -14,6 +14,7 @@ import type {
     AttributeFetchResult,
 } from "@core/contracts";
 import type { RegisterOptions } from "@core/lib/registry";
+import type { AssetRule, ProtocolSlots } from "./asset-mapping";
 
 /** Links a layer node to a protocol at a specific data source. */
 export interface ProtocolBinding {
@@ -100,6 +101,19 @@ export interface Protocol<C = Record<string, unknown>> {
 }
 
 /**
+ * What a protocol's registration declares alongside the protocol itself:
+ * how the asset mapper serves it. Knowledge a protocol's author owns —
+ * its slot fitness and its asset-matching rules — arrives with the
+ * protocol in one call.
+ */
+export interface ProtocolDeclaration {
+    /** Slot fitness the mapper serves this protocol with. */
+    readonly slots?: ProtocolSlots;
+    /** Rules claiming source assets for this protocol. */
+    readonly rules?: readonly AssetRule[];
+}
+
+/**
  * Read-only view of the registered protocol set — the port through which
  * map and layer-tree consume protocols without depending on their domain.
  * Registration happens in the composition root only.
@@ -116,6 +130,13 @@ export interface ProtocolRegistry {
  * the read-only {@link ProtocolRegistry} that tool panels and domains see.
  */
 export interface ProtocolRegistrationPort extends ProtocolRegistry {
-    /** Duplicates throw unless `opts.override`. */
-    register(protocol: Protocol, opts?: RegisterOptions): void;
+    /**
+     * Duplicates throw unless `opts.override`. A declaration registers
+     * its slots and rules with the asset mapper under the same options.
+     */
+    register(
+        protocol: Protocol,
+        opts?: RegisterOptions,
+        declaration?: ProtocolDeclaration,
+    ): void;
 }

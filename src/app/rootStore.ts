@@ -82,11 +82,11 @@ export class RootStore implements StoreRegistry {
         // and service stores (locale, settings, state) are read during later
         // construction, so they are created first.
         this.sourceAdapterFactory = this._track(new SourceAdapterFactory());
-        this.protocolRegistry = this._track(new ProtocolRegistry());
+        this.assetMapper = new AssetProtocolMapper();
+        this.protocolRegistry = this._track(new ProtocolRegistry(this.assetMapper));
         this.featureProviderRegistry = this._track(
             new FeatureProviderRegistry(),
         );
-        this.assetMapper = new AssetProtocolMapper();
         this.localeStore = this._track(new LocaleStore());
         this.localeStore.registerTranslations("core", coreTranslations);
         this.settingsStore = this._track(new SettingsStore());

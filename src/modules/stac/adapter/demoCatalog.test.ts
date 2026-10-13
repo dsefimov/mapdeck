@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { GroupNode, LayerNode } from "@core/contracts";
 import { STACTreeAdapter } from "./STACTreeAdapter";
-import { AssetProtocolMapper } from "@core/domain/protocols";
+import {
+    AssetProtocolMapper,
+    BUILTIN_PROTOCOL_SLOTS,
+} from "@core/domain/protocols";
 import { ReportRoleResolver } from "../roles/resolvers/ReportRoleResolver";
 import { AttributeRoleResolver } from "../roles/resolvers/AttributeRoleResolver";
 import { PointCloudRoleResolver } from "../roles/resolvers/PointCloudRoleResolver";
@@ -57,7 +60,7 @@ const capabilitySource: CapabilitySource = {
 };
 
 function buildAdapter(): STACTreeAdapter {
-    const mapper = new AssetProtocolMapper();
+    const mapper = new AssetProtocolMapper(BUILTIN_PROTOCOL_SLOTS);
     mapper.registerRule(new ReportRoleResolver());
     mapper.registerRule(new AttributeRoleResolver());
     mapper.registerRule(new PointCloudRoleResolver());
@@ -203,7 +206,7 @@ describe("extension rules over the kernel mapper (end-to-end)", () => {
     function adapterWithCustomCloud(
         fitness: number | null,
     ): STACTreeAdapter {
-        const mapper = new AssetProtocolMapper();
+        const mapper = new AssetProtocolMapper(BUILTIN_PROTOCOL_SLOTS);
         mapper.registerRule(new ReportRoleResolver());
         mapper.registerRule(new AttributeRoleResolver());
         mapper.registerRule(new RasterTileRoleResolver());

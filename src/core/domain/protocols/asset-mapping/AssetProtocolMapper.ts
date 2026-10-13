@@ -11,34 +11,22 @@ import { applyRegistration } from "@core/lib/registry";
 import { mapAssetsToSlots } from "./logic/mapAssetsToSlots";
 
 /**
- * Slot fitness of the built-in protocols — seeded at construction so an
- * assembly that registers nothing still maps the built-in set.
- */
-const DEFAULT_PROTOCOL_SLOTS: Readonly<Record<string, ProtocolSlots>> = {
-    wms: { renderer: 100 },
-    xyz: { renderer: 100 },
-    copc: { renderer: 90 },
-    "vector-tile": { renderer: 80 },
-    "geojson-tiled": { renderer: 70 },
-    wfs: { data: 100 },
-    "ogc-features": { renderer: 70, data: 100 },
-};
-
-/**
  * The kernel's asset→protocol mapper: holds the rule chain and the slot
  * table, maps source assets to node bindings. Not a MobX store — rules
  * and slots register during bootstrap before any observer renders, and
  * mapping runs inside fetch flows. One instance per RootStore: a
  * restart builds a fresh store and bootstrap re-registers everything.
+ * The built-in protocols declare their slots at their registration
+ * (`registerProtocols`), so the mapper starts empty by design.
  */
 export class AssetProtocolMapper implements AssetMappingPort {
     private _rules: AssetRule[] = [];
     private _slots = new Map<string, ProtocolSlots>();
 
     constructor(
-        defaultSlots: Readonly<Record<string, ProtocolSlots>> = DEFAULT_PROTOCOL_SLOTS,
+        seedSlots: Readonly<Record<string, ProtocolSlots>> = {},
     ) {
-        for (const [protocolId, slots] of Object.entries(defaultSlots)) {
+        for (const [protocolId, slots] of Object.entries(seedSlots)) {
             this._slots.set(protocolId, slots);
         }
     }
