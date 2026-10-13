@@ -1,4 +1,4 @@
-import type { STACAsset } from "../types";
+import type { SourceAsset } from "@core/contracts";
 
 /**
  * STAC roles (best practices) indicating a document or report.
@@ -25,7 +25,7 @@ const REPORT_MIMES = new Set([
  *   1. Asset has role "report" or "metadata"
  *   2. Asset MIME type matches a known document format
  */
-export function isReportAsset(asset: STACAsset): boolean {
+export function isReportAsset(asset: SourceAsset): boolean {
     if (asset.roles?.some((r) => REPORT_ROLES.has(r))) return true;
     return !!asset.type && REPORT_MIMES.has(asset.type);
 }

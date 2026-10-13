@@ -1,13 +1,12 @@
-import type { STACAsset } from "../types";
-import type { ResolveContext } from "./IRoleResolver";
+import type { AssetContext, SourceAsset } from "@core/contracts";
 
 /**
- * The params every resolver starts from: the asset's display name and its
- * declared MIME type. Role-specific keys spread on top.
+ * The params every rule starts from: the asset's display name and its
+ * declared MIME type. Rule-specific keys spread on top.
  */
 export function baseAssetParams(
-    asset: STACAsset,
-    ctx: ResolveContext,
+    asset: SourceAsset,
+    ctx: AssetContext,
 ): Record<string, unknown> {
     return {
         title: asset.title ?? ctx.assetKey,

@@ -1,16 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { ResolveContext } from "../IRoleResolver";
-import type { STACAsset } from "../../types";
+import type { AssetContext, SourceAsset } from "@core/contracts";
 import { WmsRoleResolver } from "./WmsRoleResolver";
 
-const ctx: ResolveContext = { assetKey: "tiles" };
+const ctx: AssetContext = { assetKey: "tiles" };
 
 const ENDPOINT = "https://wms.example.test/service";
 
 function wmsAsset(
     href: string,
-    fields: Partial<STACAsset> = {},
-): STACAsset {
+    fields: Partial<SourceAsset> = {},
+): SourceAsset {
     return { href, roles: ["wms"], ...fields };
 }
 

@@ -1,9 +1,9 @@
 import type {
-    IRoleResolver,
-    ResolveContext,
+    AssetContext,
+    AssetRule,
     ProtocolAssignment,
-} from "../IRoleResolver";
-import type { STACAsset } from "../../types";
+    SourceAsset,
+} from "@core/contracts";
 import { baseAssetParams } from "../baseAssetParams";
 
 /**
@@ -13,14 +13,14 @@ import { baseAssetParams } from "../baseAssetParams";
  * pass through params to the render adapter — MapLibre cannot style a
  * vector layer without a source layer.
  */
-export class VectorTileRoleResolver implements IRoleResolver {
+export class VectorTileRoleResolver implements AssetRule {
     readonly priority = 30;
 
-    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
+    canResolve(asset: SourceAsset, _ctx: AssetContext): boolean {
         return asset.roles?.includes("vector-tile") ?? false;
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
+    resolve(asset: SourceAsset, ctx: AssetContext): ProtocolAssignment {
         return {
             protocolId: "vector-tile",
             sourceUrl: asset.href,

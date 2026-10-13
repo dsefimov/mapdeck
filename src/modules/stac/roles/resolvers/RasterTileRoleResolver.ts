@@ -1,9 +1,9 @@
 import type {
-    IRoleResolver,
-    ResolveContext,
+    AssetContext,
+    AssetRule,
     ProtocolAssignment,
-} from "../IRoleResolver";
-import type { STACAsset } from "../../types";
+    SourceAsset,
+} from "@core/contracts";
 import { baseAssetParams } from "../baseAssetParams";
 
 /** MIME of Mapbox Vector Tiles — their URLs share the {z}/{x}/{y} shape. */
@@ -16,17 +16,17 @@ const MVT_MIME = "application/vnd.mapbox-vector-tile";
  * runs at a lower priority number than VectorTileRoleResolver, so without
  * the guard it would claim MVT templates first.
  */
-export class RasterTileRoleResolver implements IRoleResolver {
+export class RasterTileRoleResolver implements AssetRule {
     readonly priority = 20;
 
-    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
+    canResolve(asset: SourceAsset, _ctx: AssetContext): boolean {
         if (asset.roles?.includes("raster-tile")) return true;
         if (asset.roles?.includes("vector-tile")) return false;
         if (asset.type === MVT_MIME) return false;
         return /\{z\}\/\{x\}\/\{y\}/.test(asset.href);
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
+    resolve(asset: SourceAsset, ctx: AssetContext): ProtocolAssignment {
         return {
             protocolId: "xyz",
             sourceUrl: asset.href,

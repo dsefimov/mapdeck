@@ -1,21 +1,21 @@
 import type {
-    IRoleResolver,
-    ResolveContext,
+    AssetContext,
+    AssetRule,
     ProtocolAssignment,
-} from "../IRoleResolver";
-import type { STACAsset } from "../../types";
+    SourceAsset,
+} from "@core/contracts";
 import { baseAssetParams } from "../baseAssetParams";
 
 const ATTRIBUTE_ROLES = new Set(["wfs", "ogc-feature-api"]);
 
-export class AttributeRoleResolver implements IRoleResolver {
+export class AttributeRoleResolver implements AssetRule {
     readonly priority = 10;
 
-    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
+    canResolve(asset: SourceAsset, _ctx: AssetContext): boolean {
         return asset.roles?.some((r) => ATTRIBUTE_ROLES.has(r)) ?? false;
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
+    resolve(asset: SourceAsset, ctx: AssetContext): ProtocolAssignment {
         const adapterType =
             asset.roles?.find((r) => ATTRIBUTE_ROLES.has(r)) ?? "wfs";
         const protocolId =

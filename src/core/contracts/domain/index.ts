@@ -2,6 +2,7 @@ export * from "./tree";
 export * from "./render";
 export * from "./map-context";
 export * from "./protocol";
+export * from "./asset-mapping";
 export * from "./source";
 export * from "./attribute";
 export * from "./basemap";

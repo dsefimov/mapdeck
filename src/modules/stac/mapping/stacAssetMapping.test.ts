@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { STACAsset } from "../types";
-import { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
+import { AssetProtocolMapper } from "@core/domain/protocols";
 import { ReportRoleResolver } from "../roles/resolvers/ReportRoleResolver";
 import { AttributeRoleResolver } from "../roles/resolvers/AttributeRoleResolver";
 import { PointCloudRoleResolver } from "../roles/resolvers/PointCloudRoleResolver";
@@ -8,7 +8,6 @@ import { RasterTileRoleResolver } from "../roles/resolvers/RasterTileRoleResolve
 import { WmsRoleResolver } from "../roles/resolvers/WmsRoleResolver";
 import { VectorTileRoleResolver } from "../roles/resolvers/VectorTileRoleResolver";
 import { GeoJsonRoleResolver } from "../roles/resolvers/GeoJsonRoleResolver";
-import { mapAssetsToProtocols } from "./RoleMapper";
 
 const OGC_PROTOCOL_ID = "ogc-features";
 const MVT_PROTOCOL_ID = "vector-tile";
@@ -18,24 +17,24 @@ const asset = (overrides: Partial<STACAsset>): STACAsset => ({
     ...overrides,
 });
 
-/** The module's real resolver chain, in registration order. */
-function registry(): RoleResolverRegistry {
-    const r = new RoleResolverRegistry();
-    r.register(new ReportRoleResolver());
-    r.register(new AttributeRoleResolver());
-    r.register(new PointCloudRoleResolver());
-    r.register(new WmsRoleResolver());
-    r.register(new VectorTileRoleResolver());
-    r.register(new GeoJsonRoleResolver());
-    r.register(new RasterTileRoleResolver());
-    return r;
+/** The module's real rule chain over the kernel mapper's default slots. */
+function mapper(): AssetProtocolMapper {
+    const m = new AssetProtocolMapper();
+    m.registerRule(new ReportRoleResolver());
+    m.registerRule(new AttributeRoleResolver());
+    m.registerRule(new RasterTileRoleResolver());
+    m.registerRule(new WmsRoleResolver());
+    m.registerRule(new VectorTileRoleResolver());
+    m.registerRule(new GeoJsonRoleResolver());
+    m.registerRule(new PointCloudRoleResolver());
+    return m;
 }
 
 function map(assets: Record<string, STACAsset>) {
-    return mapAssetsToProtocols(assets, registry());
+    return mapper().mapAssets(assets);
 }
 
-describe("mapAssetsToProtocols — per-slot selection", () => {
+describe("STAC asset mapping — the rule set over the kernel mapper", () => {
     it("a visual-only asset renders without a data binding", () => {
         const result = map({
             visual: asset({ roles: ["wms"], "wms:layers": "base" }),

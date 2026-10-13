@@ -5,6 +5,7 @@ import {
     SourceAdapterFactory,
     ProtocolRegistry,
     FeatureProviderRegistry,
+    AssetProtocolMapper,
 } from "@core/domain/protocols";
 import { SettingsStore } from "@core/common/settings";
 import { WidgetStore } from "@core/common/widget";
@@ -44,6 +45,8 @@ export class RootStore implements StoreRegistry {
     readonly sourceAdapterFactory: SourceAdapterFactory;
     readonly protocolRegistry: ProtocolRegistry;
     readonly featureProviderRegistry: FeatureProviderRegistry;
+    /** Asset→protocol mapping: rules and slot fitness, exposed to modules as the `assetMapping` port. */
+    readonly assetMapper: AssetProtocolMapper;
 
     readonly localeStore: LocaleStore;
     readonly settingsStore: SettingsStore;
@@ -83,6 +86,7 @@ export class RootStore implements StoreRegistry {
         this.featureProviderRegistry = this._track(
             new FeatureProviderRegistry(),
         );
+        this.assetMapper = new AssetProtocolMapper();
         this.localeStore = this._track(new LocaleStore());
         this.localeStore.registerTranslations("core", coreTranslations);
         this.settingsStore = this._track(new SettingsStore());
@@ -118,6 +122,7 @@ export class RootStore implements StoreRegistry {
             widgets: this.widgetStore,
             layerTools: this.layerToolStore,
             mapTools: this.mapToolStore,
+            assetMapping: this.assetMapper,
         };
 
         // Wiring, not state: stable views and teardown bookkeeping stay
@@ -125,6 +130,7 @@ export class RootStore implements StoreRegistry {
         makeAutoObservable<this, "_constructionOrder">(this, {
             toolContext: false,
             moduleContext: false,
+            assetMapper: false,
             _constructionOrder: false,
         });
     }

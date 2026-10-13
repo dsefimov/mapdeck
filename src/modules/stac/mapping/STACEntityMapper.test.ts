@@ -1,15 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProtocolBinding } from "@core/contracts";
+import type {
+    AssetMappingPort,
+    ProtocolBinding,
+} from "@core/contracts";
 import type { STACCollection, STACItem } from "../types";
 import { STACCache } from "../core/STACCache";
 import type { CapabilitySource } from "./capabilities";
-import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { STACEntityMapper } from "./STACEntityMapper";
-import { mapAssetsToProtocols } from "./RoleMapper";
 
-vi.mock("./RoleMapper", () => ({
-    mapAssetsToProtocols: vi.fn(),
-}));
+const mapAssetsMock = vi.hoisted(() => vi.fn());
 
 const emptyCapabilitySource: CapabilitySource = {
     linkedToolIds: () => [],
@@ -19,7 +18,7 @@ const emptyCapabilitySource: CapabilitySource = {
 function makeMapper(): STACEntityMapper {
     return new STACEntityMapper(
         new STACCache(),
-        {} as unknown as RoleResolverRegistry,
+        { mapAssets: mapAssetsMock } as unknown as AssetMappingPort,
         emptyCapabilitySource,
     );
 }
@@ -96,8 +95,8 @@ describe("mapItemToLayerNode bbox handling", () => {
             sourceUrl: "https://tiles.test/{z}/{x}/{y}",
             params: {},
         };
-        vi.mocked(mapAssetsToProtocols).mockReset();
-        vi.mocked(mapAssetsToProtocols).mockReturnValue({
+        mapAssetsMock.mockReset();
+        mapAssetsMock.mockReturnValue({
             renderer: binding,
             relatedObjects: [],
         });

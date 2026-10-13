@@ -1,9 +1,9 @@
 import type {
-    IRoleResolver,
-    ResolveContext,
+    AssetContext,
+    AssetRule,
     ProtocolAssignment,
-} from "../IRoleResolver";
-import type { STACAsset } from "../../types";
+    SourceAsset,
+} from "@core/contracts";
 import { baseAssetParams } from "../baseAssetParams";
 
 /** What a full GetMap href splits into at the source boundary. */
@@ -42,14 +42,14 @@ function splitGetMapUrl(href: string): SplitGetMapUrl {
     }
 }
 
-export class WmsRoleResolver implements IRoleResolver {
+export class WmsRoleResolver implements AssetRule {
     readonly priority = 25;
 
-    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
+    canResolve(asset: SourceAsset, _ctx: AssetContext): boolean {
         return asset.roles?.includes("wms") ?? false;
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
+    resolve(asset: SourceAsset, ctx: AssetContext): ProtocolAssignment {
         const split = splitGetMapUrl(asset.href);
         // Query parameters win over the asset fields — one precedence,
         // everywhere the layers are read.

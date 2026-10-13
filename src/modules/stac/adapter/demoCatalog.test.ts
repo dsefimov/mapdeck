@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { GroupNode, LayerNode } from "@core/contracts";
 import { STACTreeAdapter } from "./STACTreeAdapter";
-import { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
+import { AssetProtocolMapper } from "@core/domain/protocols";
 import { ReportRoleResolver } from "../roles/resolvers/ReportRoleResolver";
 import { AttributeRoleResolver } from "../roles/resolvers/AttributeRoleResolver";
 import { PointCloudRoleResolver } from "../roles/resolvers/PointCloudRoleResolver";
@@ -57,15 +57,15 @@ const capabilitySource: CapabilitySource = {
 };
 
 function buildAdapter(): STACTreeAdapter {
-    const resolvers = new RoleResolverRegistry();
-    resolvers.register(new ReportRoleResolver());
-    resolvers.register(new AttributeRoleResolver());
-    resolvers.register(new PointCloudRoleResolver());
-    resolvers.register(new WmsRoleResolver());
-    resolvers.register(new VectorTileRoleResolver());
-    resolvers.register(new GeoJsonRoleResolver());
-    resolvers.register(new RasterTileRoleResolver());
-    return new STACTreeAdapter(resolvers, capabilitySource);
+    const mapper = new AssetProtocolMapper();
+    mapper.registerRule(new ReportRoleResolver());
+    mapper.registerRule(new AttributeRoleResolver());
+    mapper.registerRule(new PointCloudRoleResolver());
+    mapper.registerRule(new WmsRoleResolver());
+    mapper.registerRule(new VectorTileRoleResolver());
+    mapper.registerRule(new GeoJsonRoleResolver());
+    mapper.registerRule(new RasterTileRoleResolver());
+    return new STACTreeAdapter(mapper, capabilitySource);
 }
 
 function layersOf(nodes: Awaited<ReturnType<STACTreeAdapter["fetchChildren"]>>): LayerNode[] {
@@ -192,5 +192,63 @@ describe("demo catalog (public/) end-to-end", () => {
             expect(resolution.descriptor.config.sourceLayer).toBe("countries");
             expect(resolution.descriptor.config.layerType).toBe("fill");
         }
+    });
+});
+
+describe("extension rules over the kernel mapper (end-to-end)", () => {
+    const POINT_CLOUD_ROLE = "point-cloud";
+    const CONSUMER_PROTOCOL_ID = "consumer-pc";
+
+    /** The built-in rule set plus a consumer rule claiming point clouds. */
+    function adapterWithCustomCloud(
+        fitness: number | null,
+    ): STACTreeAdapter {
+        const mapper = new AssetProtocolMapper();
+        mapper.registerRule(new ReportRoleResolver());
+        mapper.registerRule(new AttributeRoleResolver());
+        mapper.registerRule(new RasterTileRoleResolver());
+        mapper.registerRule(new WmsRoleResolver());
+        mapper.registerRule(new VectorTileRoleResolver());
+        mapper.registerRule(new GeoJsonRoleResolver());
+        mapper.registerRule(new PointCloudRoleResolver());
+        mapper.registerRule({
+            priority: 5,
+            canResolve: (asset) =>
+                asset.roles?.includes(POINT_CLOUD_ROLE) ?? false,
+            resolve: (asset) => ({
+                protocolId: CONSUMER_PROTOCOL_ID,
+                sourceUrl: asset.href,
+                params: {},
+            }),
+        });
+        if (fitness !== null) {
+            mapper.registerSlots(CONSUMER_PROTOCOL_ID, { renderer: fitness });
+        }
+        return new STACTreeAdapter(mapper, capabilitySource);
+    }
+
+    async function cloudLayer(adapter: STACTreeAdapter): Promise<LayerNode> {
+        adapter.initialize({ url: CATALOG_URL });
+        const groups = (await adapter.fetchRoot()) as GroupNode[];
+        return layersOf(await adapter.fetchChildren(groups[2]!))[0]!;
+    }
+
+    it("a consumer rule with slot registration steers the item", async () => {
+        const layer = await cloudLayer(adapterWithCustomCloud(95));
+
+        expect(layer.renderer.protocolId).toBe(CONSUMER_PROTOCOL_ID);
+        expect(layer.renderer.sourceUrl).toBe(
+            "https://hobu-lidar.s3.amazonaws.com/autzen-classified.copc.laz",
+        );
+    });
+
+    it("a rule without slot registration renders no layer", async () => {
+        const adapter = adapterWithCustomCloud(null);
+
+        adapter.initialize({ url: CATALOG_URL });
+        const groups = (await adapter.fetchRoot()) as GroupNode[];
+        const children = await adapter.fetchChildren(groups[2]!);
+
+        expect(layersOf(children)).toHaveLength(0);
     });
 });

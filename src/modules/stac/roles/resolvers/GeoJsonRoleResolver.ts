@@ -1,9 +1,9 @@
 import type {
-    IRoleResolver,
-    ResolveContext,
+    AssetContext,
+    AssetRule,
     ProtocolAssignment,
-} from "../IRoleResolver";
-import type { STACAsset } from "../../types";
+    SourceAsset,
+} from "@core/contracts";
 import { baseAssetParams } from "../baseAssetParams";
 
 /**
@@ -15,10 +15,10 @@ import { baseAssetParams } from "../baseAssetParams";
  * overlaps with COG, GeoTIFF, LAZ, and other formats. GeoJSON detection
  * relies on explicit roles or specific MIME types only.
  */
-export class GeoJsonRoleResolver implements IRoleResolver {
+export class GeoJsonRoleResolver implements AssetRule {
     readonly priority = 35;
 
-    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
+    canResolve(asset: SourceAsset, _ctx: AssetContext): boolean {
         if (asset.roles?.includes("geojson")) return true;
         if (asset.roles?.includes("ogc")) return true;
         return (
@@ -27,7 +27,7 @@ export class GeoJsonRoleResolver implements IRoleResolver {
         );
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
+    resolve(asset: SourceAsset, ctx: AssetContext): ProtocolAssignment {
         const protocolId = asset.roles?.includes("ogc")
             ? "ogc-features"
             : "geojson-tiled";

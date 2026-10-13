@@ -24,6 +24,7 @@ import type {
     BasemapPort,
     BasemapRegistrationPort,
 } from "../domain/basemap";
+import type { AssetMappingPort } from "../domain/asset-mapping";
 import type { LocaleApi, LocaleRegistrationPort } from "./locale";
 import type { SettingsRegistrationPort } from "./settings";
 import type { MapTool, MapToolStatePort } from "./map-tool";
@@ -91,4 +92,5 @@ export interface ModuleContext extends ToolRuntimeContext {
     readonly widgets: WidgetRegistrationPort;
     readonly layerTools: LayerToolRegistrationPort;
     readonly mapTools: MapToolRegistrationPort;
+    readonly assetMapping: AssetMappingPort;
 }

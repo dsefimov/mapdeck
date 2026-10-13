@@ -1,20 +1,20 @@
 import type {
-    IRoleResolver,
-    ResolveContext,
+    AssetContext,
+    AssetRule,
     ProtocolAssignment,
-} from "../IRoleResolver";
-import type { STACAsset } from "../../types";
+    SourceAsset,
+} from "@core/contracts";
 import { isReportAsset } from "../../assets/AssetClassifier";
 import { baseAssetParams } from "../baseAssetParams";
 
-export class ReportRoleResolver implements IRoleResolver {
+export class ReportRoleResolver implements AssetRule {
     readonly priority = 0;
 
-    canResolve(asset: STACAsset, _ctx: ResolveContext): boolean {
+    canResolve(asset: SourceAsset, _ctx: AssetContext): boolean {
         return isReportAsset(asset);
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
+    resolve(asset: SourceAsset, ctx: AssetContext): ProtocolAssignment {
         return {
             protocolId: "report",
             sourceUrl: asset.href,

@@ -1,10 +1,10 @@
 import { bboxFromTuple } from "@core/lib/geo";
 import type {
-    IRoleResolver,
-    ResolveContext,
+    AssetContext,
+    AssetRule,
     ProtocolAssignment,
-} from "../IRoleResolver";
-import type { STACAsset } from "../../types";
+    SourceAsset,
+} from "@core/contracts";
 import { POINTCLOUD_MIMES } from "../../types/extensions/pointcloud";
 import { baseAssetParams } from "../baseAssetParams";
 
@@ -15,10 +15,10 @@ import { baseAssetParams } from "../baseAssetParams";
  *   - role "data" + MIME from POINTCLOUD_MIMES (laszip, copc)
  *   - application/octet-stream only when role "data" AND pc:encoding in properties
  */
-export class PointCloudRoleResolver implements IRoleResolver {
+export class PointCloudRoleResolver implements AssetRule {
     readonly priority = 22;
 
-    canResolve(asset: STACAsset, ctx: ResolveContext): boolean {
+    canResolve(asset: SourceAsset, ctx: AssetContext): boolean {
         if (asset.roles?.includes("point-cloud")) return true;
 
         const hasDataRole = asset.roles?.includes("data") ?? false;
@@ -30,7 +30,7 @@ export class PointCloudRoleResolver implements IRoleResolver {
         return isOctetStream && !!ctx.properties?.["pc:encoding"];
     }
 
-    resolve(asset: STACAsset, ctx: ResolveContext): ProtocolAssignment {
+    resolve(asset: SourceAsset, ctx: AssetContext): ProtocolAssignment {
         const params: Record<string, unknown> = baseAssetParams(asset, ctx);
 
         const bbox = bboxFromTuple(ctx.itemBbox);

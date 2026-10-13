@@ -1,12 +1,17 @@
 import type { SourceAdapter } from "@core/contracts";
-import { type TreeNode, type GroupNode, type LayerNode, LayerTreeNodeTypes } from "@core/contracts";
+import {
+    type TreeNode,
+    type GroupNode,
+    type LayerNode,
+    type AssetMappingPort,
+    LayerTreeNodeTypes,
+} from "@core/contracts";
 import { logger } from "@core/lib/logger";
 import { type STACConfig } from "../core/STACConfig";
 import { STACClient } from "../core/STACClient";
 import { STACCache } from "../core/STACCache";
 import { STACEntityMapper } from "../mapping/STACEntityMapper";
 import type { CapabilitySource } from "../mapping/capabilities";
-import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { resolveBaseUrl, filterLinksByRel } from "../utils/url";
 import {
     isSTACCollection,
@@ -28,7 +33,7 @@ export class STACTreeAdapter implements SourceAdapter {
     private state: InitializedState | null = null;
 
     constructor(
-        readonly roleRegistry: RoleResolverRegistry,
+        readonly assetMapping: AssetMappingPort,
         private capabilitySource: CapabilitySource,
     ) {}
 
@@ -42,7 +47,7 @@ export class STACTreeAdapter implements SourceAdapter {
             client: new STACClient(stacConfig),
             mapper: new STACEntityMapper(
                 cache,
-                this.roleRegistry,
+                this.assetMapping,
                 this.capabilitySource,
             ),
         };

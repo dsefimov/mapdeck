@@ -2,6 +2,7 @@ export { ProtocolRegistry } from "./stores/ProtocolRegistry";
 export { SourceAdapterFactory } from "./stores/SourceAdapterFactory";
 export { FeatureProviderRegistry } from "./stores/FeatureProviderRegistry";
 export { resolveStyle } from "./logic/resolveStyle";
+export { AssetProtocolMapper } from "./asset-mapping/AssetProtocolMapper";
 export { WmsProtocol } from "./wms/WmsProtocol";
 export { createXyzProtocol } from "./xyz/XyzProtocol";
 export { createCogProtocol } from "./cog/CogProtocol";

@@ -1,13 +1,12 @@
 /**
  * STAC Module implementation
- * Registers the STAC adapter with the SourceAdapterFactory.
- * Does not manage settings — the data source URL is configured
- * via the layer-tree widget settings.
+ * Registers the STAC adapter with the SourceAdapterFactory and the STAC
+ * role rules with the kernel asset mapper. Does not manage settings —
+ * the data source URL is configured via the layer-tree widget settings.
  */
 
 import type { Module, ModuleContext } from "@core/contracts";
 import { STACTreeAdapter } from "../adapter/STACTreeAdapter";
-import { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { ReportRoleResolver } from "../roles/resolvers/ReportRoleResolver";
 import { AttributeRoleResolver } from "../roles/resolvers/AttributeRoleResolver";
 import { RasterTileRoleResolver } from "../roles/resolvers/RasterTileRoleResolver";
@@ -21,30 +20,21 @@ export class STACModule implements Module {
     readonly id = "stac";
     readonly name = "STAC Catalog Module";
 
-    /**
-     * Public resolver registry — other modules register their
-     * STAC asset resolvers here to add support for new protocols.
-     */
-    readonly resolverRegistry = new RoleResolverRegistry();
-
-    private resolversRegistered = false;
-
     async register(context: ModuleContext): Promise<void> {
-        if (!this.resolversRegistered) {
-            this.resolverRegistry.register(new ReportRoleResolver());
-            this.resolverRegistry.register(new AttributeRoleResolver());
-            this.resolverRegistry.register(new RasterTileRoleResolver());
-            this.resolverRegistry.register(new WmsRoleResolver());
-            this.resolverRegistry.register(new VectorTileRoleResolver());
-            this.resolverRegistry.register(new GeoJsonRoleResolver());
-            this.resolverRegistry.register(new PointCloudRoleResolver());
-            this.resolversRegistered = true;
-        }
+        // Rules go into the per-store mapper — a restart builds a fresh
+        // store, so this registration is simply repeated.
+        context.assetMapping.registerRule(new ReportRoleResolver());
+        context.assetMapping.registerRule(new AttributeRoleResolver());
+        context.assetMapping.registerRule(new RasterTileRoleResolver());
+        context.assetMapping.registerRule(new WmsRoleResolver());
+        context.assetMapping.registerRule(new VectorTileRoleResolver());
+        context.assetMapping.registerRule(new GeoJsonRoleResolver());
+        context.assetMapping.registerRule(new PointCloudRoleResolver());
 
         logger.debug("Registering STAC adapter...");
 
         const adapter = new STACTreeAdapter(
-            this.resolverRegistry,
+            context.assetMapping,
             context.layerTools,
         );
         context.sourceAdapterFactory.register(adapter);

@@ -3,13 +3,13 @@ import {
     LayerTreeNodeTypes,
     type LayerNode,
     type GroupNode,
+    type AssetMappingPort,
+    type AssetMappingResult,
     isGroupNode,
 } from "@core/contracts";
 import type { STACCollection, STACItem, STACEntity } from "../types";
 import { isSTACCollection } from "../types";
-import { mapAssetsToProtocols, type ProtocolMappingResult } from "./RoleMapper";
 import { assignCapabilities, type CapabilitySource } from "./capabilities";
-import type { RoleResolverRegistry } from "../roles/RoleResolverRegistry";
 import { bboxFromTuple, flattenTo2D, type Bbox } from "@core/lib/geo";
 import { logger } from "@core/lib/logger";
 import type { STACCache } from "../core/STACCache";
@@ -28,7 +28,7 @@ function toNodeBbox(bbox: readonly number[] | undefined): Bbox | null {
 export class STACEntityMapper {
     constructor(
         private cache: STACCache,
-        private roleRegistry: RoleResolverRegistry,
+        private assetMapping: AssetMappingPort,
         private capabilitySource: CapabilitySource,
     ) {}
 
@@ -39,7 +39,7 @@ export class STACEntityMapper {
         ).length;
 
         const reports = collection.assets
-            ? (mapAssetsToProtocols(collection.assets, this.roleRegistry)
+            ? (this.assetMapping.mapAssets(collection.assets)
                   ?.relatedObjects ?? [])
             : [];
 
@@ -60,16 +60,15 @@ export class STACEntityMapper {
 
     /** Map a STAC item to a LayerNode via protocol resolution. Returns null when no renderer can be selected. */
     mapItemToLayerNode(item: STACItem): LayerNode | null {
-        const result = mapAssetsToProtocols(item.assets, this.roleRegistry, {
-                ...(item.properties
-                    ? { properties: item.properties as Record<string, unknown> }
-                    : {}),
-                ...(item.bbox ? { itemBbox: item.bbox } : {}),
-                ...(item.stac_extensions
-                    ? { stac_extensions: item.stac_extensions }
-                    : {}),
-            },
-        );
+        const result = this.assetMapping.mapAssets(item.assets, {
+            ...(item.properties
+                ? { properties: item.properties as Record<string, unknown> }
+                : {}),
+            ...(item.bbox ? { itemBbox: item.bbox } : {}),
+            ...(item.stac_extensions
+                ? { extensions: item.stac_extensions }
+                : {}),
+        });
         if (!result || !result.renderer) return null;
         return this.buildLayerNode(item, {
             ...result,
@@ -80,8 +79,8 @@ export class STACEntityMapper {
     /** The caller has checked `renderer` is present (see mapItemToLayerNode). */
     private buildLayerNode(
         item: STACItem,
-        result: ProtocolMappingResult & {
-            renderer: NonNullable<ProtocolMappingResult["renderer"]>;
+        result: AssetMappingResult & {
+            renderer: NonNullable<AssetMappingResult["renderer"]>;
         },
     ): LayerNode {
         const { capabilities, unimplemented } = assignCapabilities(
