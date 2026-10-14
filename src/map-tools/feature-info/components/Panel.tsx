@@ -43,8 +43,7 @@ export const FeatureInfoComponent: (
         useEscapeKey(deactivate);
         useMapCursor(map, "crosshair");
 
-        const { groups, selectedIndex, setSelectedIndex, loading, hasClicked } =
-            store;
+        const { groups, selectedIndex, loading, hasClicked } = store;
 
         const selectedGroup = groups[selectedIndex];
         const totalGroups = groups.length;
@@ -74,7 +73,7 @@ export const FeatureInfoComponent: (
                     selectedIndex={selectedIndex}
                     totalGroups={totalGroups}
                     dict={dict}
-                    onSelect={setSelectedIndex}
+                    onSelect={(index) => store.setSelectedIndex(index)}
                 />
 
                 {selectedGroup && selectedGroup.features.length > 0 && (
