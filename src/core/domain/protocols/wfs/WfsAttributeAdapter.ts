@@ -31,6 +31,7 @@ export class WfsAttributeAdapter implements AttributeAdapter {
                 maxFeatures: request.maxFeatures ?? DEFAULT_MAX_FEATURES,
                 sortBy: request.sortBy,
                 sortDirection: request.sortDirection,
+                srsName: "EPSG:4326",
             },
             signal,
         );
