@@ -292,11 +292,7 @@ describe("refreshTree", () => {
                     ? node.childrenIds.map((id) => nodes[id]!)
                     : [];
             },
-            ensureChildrenLoaded: vi.fn(async (id: string) => {
-                // The store rebuilds the group on load — the child group
-                // only becomes addressable through childrenOf afterwards.
-                if (id === "A") nodes["A"] = { ...nodes["A"]! };
-            }),
+            ensureChildrenLoaded: vi.fn(async () => {}),
             refresh: vi.fn(async () => {}),
         };
         const vm = new LayerTreeViewModel({

@@ -20,7 +20,6 @@ const DICT = {
     "noFeatures": "No features",
     "layer.label": "Layer",
     "select.placeholder": "Select…",
-    [String.fromCharCode(0x2026)]: "",
 } as Record<string, string>;
 
 const group = (layerName: string): FeatureGroup => ({
@@ -36,7 +35,7 @@ const group = (layerName: string): FeatureGroup => ({
     ],
 });
 
-function renderPanel(store: FeatureInfoStore): MapToolComponentProps {
+function renderPanel(store: FeatureInfoStore): void {
     const props = {
         context: {
             stateStore: {
@@ -57,7 +56,6 @@ function renderPanel(store: FeatureInfoStore): MapToolComponentProps {
         store,
     } as unknown as MapToolComponentProps & { store: FeatureInfoStore };
     render(<FeatureInfoComponent {...props} />);
-    return props;
 }
 
 afterEach(cleanup);
