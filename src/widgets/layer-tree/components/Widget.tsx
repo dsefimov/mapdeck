@@ -126,10 +126,14 @@ const LayerTreeComponent: (props: LayerTreeProps) => React.ReactNode = observer(
     ({ className = "" }) => {
         const rootStore = useRootStore();
         const treeStore = rootStore.treeStore;
+        const viewModel = rootStore.stateStore.get(
+            LAYER_TREE_ID,
+            () => new LayerTreeViewModel(rootStore),
+        );
         return (
             <div className={`layer-tree ${styles.layerTree} ${className}`}>
                 <LayerTreeHeader
-                    onUpdateClick={() => treeStore.refresh()}
+                    onUpdateClick={() => viewModel.refreshTree()}
                     disabled={treeStore.isLoading()}
                 />
                 <LayerTreeBody />

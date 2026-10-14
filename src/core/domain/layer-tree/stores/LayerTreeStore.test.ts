@@ -231,6 +231,22 @@ describe("LayerTreeStore lazy loading", () => {
         expect(fetchChildren).toHaveBeenCalledTimes(2);
     });
 
+    it("a root refresh re-enables lazy loading for a surviving emptied group", async () => {
+        const group = groupNode("group");
+        const { store, fetchChildren } = createTreeStore(
+            [[group], [{ ...groupNode("group") }]],
+            { group: [layerNode("layer-1")] },
+        );
+        await store.refresh();
+        await store.ensureChildrenLoaded("group");
+
+        await store.refresh();
+
+        await store.ensureChildrenLoaded("group");
+
+        expect(fetchChildren).toHaveBeenCalledTimes(2);
+    });
+
     it("a group removed by a later reconcile starts unloaded again", async () => {
         const { store, fetchChildren } = createTreeStore(
             [[groupNode("group")], [], [groupNode("group")]],

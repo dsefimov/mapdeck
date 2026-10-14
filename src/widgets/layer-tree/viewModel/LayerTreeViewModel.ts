@@ -91,6 +91,14 @@ export class LayerTreeViewModel {
         }
     }
 
+    async refreshTree(signal?: AbortSignal): Promise<void> {
+        await this.treeStore.refresh(undefined, signal);
+        if (signal?.aborted) return;
+        for (const nodeId of [...this.expandedIds]) {
+            void this._loadChildren(nodeId);
+        }
+    }
+
     /** Opens the node's menu, or closes it when the same node is toggled. */
     openMenu(nodeId: string): void {
         this.openMenuId = this.openMenuId === nodeId ? null : nodeId;

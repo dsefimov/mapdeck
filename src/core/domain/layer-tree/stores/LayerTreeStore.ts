@@ -17,6 +17,7 @@ import type { StoreRegistry } from "@core/store-registry";
 import {
     isGroupNode,
     isLayerNode,
+    type GroupNode,
     type LayerNode,
     type LayerStyle,
     type SnapshotItem,
@@ -363,7 +364,16 @@ export class LayerTreeStore {
 
         runInAction(() => {
             this._deleteNodes(result.removed);
+            const emptiedGroups = nodes.filter(
+                (n): n is GroupNode =>
+                    isGroupNode(n) &&
+                    n.childrenIds.length === 0 &&
+                    this._loadedGroups.has(n.id),
+            );
             this._registerNodes(nodes, parentId);
+            for (const group of emptiedGroups) {
+                this._loadedGroups.delete(group.id);
+            }
             this._updateChildrenIds(parentId, newIds);
         });
     }

@@ -76,9 +76,11 @@ function wireParents(nodes: Record<string, TreeNode>): void {
 function createVm(
     nodes: Record<string, TreeNode>,
     ensureChildrenLoaded = vi.fn(async () => {}),
+    refresh = vi.fn(async () => {}),
 ): {
     vm: LayerTreeViewModel;
     ensureChildrenLoaded: ReturnType<typeof vi.fn>;
+    refresh: ReturnType<typeof vi.fn>;
 } {
     wireParents(nodes);
     const treeStore = {
@@ -93,11 +95,12 @@ function createVm(
         rootNodes: Object.values(nodes).filter((n) => n.parentId === null),
         node: (id: string) => nodes[id],
         ensureChildrenLoaded,
+        refresh,
     };
     const vm = new LayerTreeViewModel({
         treeStore,
     } as unknown as StoreRegistry);
-    return { vm, ensureChildrenLoaded };
+    return { vm, ensureChildrenLoaded, refresh };
 }
 
 describe("visibleRows", () => {
@@ -230,6 +233,44 @@ describe("toggleExpanded", () => {
         const { vm, ensureChildrenLoaded } = createVm({ A: layerNode("A") });
         vm.toggleExpanded("missing");
         expect(vm.expandedIds.size).toBe(0);
+        expect(ensureChildrenLoaded).not.toHaveBeenCalled();
+    });
+});
+
+describe("refreshTree", () => {
+    it("reloads children of every expanded group after the store refresh", async () => {
+        const { vm, refresh, ensureChildrenLoaded } = createVm({
+            A: groupNode("A", ["A1"]),
+            A1: layerNode("A1"),
+            B: groupNode("B", []),
+            C: groupNode("C", ["C1"]),
+            C1: layerNode("C1"),
+        });
+        vm.toggleExpanded("A");
+        vm.toggleExpanded("B");
+
+        await vm.refreshTree();
+
+        expect(refresh).toHaveBeenCalledWith(undefined, undefined);
+        const reloaded = ensureChildrenLoaded.mock.calls.map(
+            (call) => call[0],
+        );
+        expect(reloaded).toContain("A");
+        expect(reloaded).toContain("B");
+        expect(reloaded).not.toContain("C");
+    });
+
+    it("skips the reload when the refresh was aborted", async () => {
+        const { vm, ensureChildrenLoaded } = createVm({
+            A: groupNode("A", ["A1"]),
+            A1: layerNode("A1"),
+        });
+        vm.toggleExpanded("A");
+        const controller = new AbortController();
+        controller.abort();
+
+        await vm.refreshTree(controller.signal);
+
         expect(ensureChildrenLoaded).not.toHaveBeenCalled();
     });
 });
