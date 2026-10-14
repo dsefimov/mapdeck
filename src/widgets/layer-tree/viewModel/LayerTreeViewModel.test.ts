@@ -94,6 +94,13 @@ function createVm(
         },
         rootNodes: Object.values(nodes).filter((n) => n.parentId === null),
         node: (id: string) => nodes[id],
+        childrenOf: (parentId: string) => {
+            const node = nodes[parentId];
+            if (!node || !isGroupNode(node)) return [];
+            return node.childrenIds
+                .map((id) => nodes[id])
+                .filter((child): child is TreeNode => child !== undefined);
+        },
         ensureChildrenLoaded,
         refresh,
     };
@@ -258,6 +265,53 @@ describe("refreshTree", () => {
         expect(reloaded).toContain("A");
         expect(reloaded).toContain("B");
         expect(reloaded).not.toContain("C");
+    });
+
+    it("reloads expanded groups level by level, deepest after their parents", async () => {
+        const nodes: Record<string, TreeNode> = {
+            A: groupNode("A", ["B"]),
+            B: groupNode("B", ["C"]),
+            C: groupNode("C", ["C1"]),
+            C1: layerNode("C1"),
+        };
+        wireParents(nodes);
+        const treeStore = {
+            treeState: {
+                getNode: (id: string) => nodes[id],
+                childrenOf: (parentId: string) => {
+                    const node = nodes[parentId];
+                    return node && isGroupNode(node) ? node.childrenIds : [];
+                },
+                rootIds: [] as string[],
+            },
+            rootNodes: [nodes["A"]!],
+            node: (id: string) => nodes[id],
+            childrenOf: (parentId: string) => {
+                const node = nodes[parentId];
+                return node && isGroupNode(node)
+                    ? node.childrenIds.map((id) => nodes[id]!)
+                    : [];
+            },
+            ensureChildrenLoaded: vi.fn(async (id: string) => {
+                // The store rebuilds the group on load — the child group
+                // only becomes addressable through childrenOf afterwards.
+                if (id === "A") nodes["A"] = { ...nodes["A"]! };
+            }),
+            refresh: vi.fn(async () => {}),
+        };
+        const vm = new LayerTreeViewModel({
+            treeStore,
+        } as unknown as StoreRegistry);
+        vm.toggleExpanded("A");
+        vm.toggleExpanded("B");
+        vm.toggleExpanded("C");
+
+        await vm.refreshTree();
+
+        const order = (treeStore.ensureChildrenLoaded as ReturnType<
+            typeof vi.fn
+        >).mock.calls.map((call) => call[0]);
+        expect(order).toEqual(["A", "B", "C"]);
     });
 
     it("skips the reload when the refresh was aborted", async () => {

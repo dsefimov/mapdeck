@@ -94,9 +94,35 @@ export class LayerTreeViewModel {
     async refreshTree(signal?: AbortSignal): Promise<void> {
         await this.treeStore.refresh(undefined, signal);
         if (signal?.aborted) return;
-        for (const nodeId of [...this.expandedIds]) {
-            void this._loadChildren(nodeId);
+        await this._reloadExpandedLevels(signal);
+    }
+
+    private async _reloadExpandedLevels(
+        signal?: AbortSignal,
+    ): Promise<void> {
+        let level = this._expandedAmong(
+            this.treeStore.rootNodes.map((node) => node.id),
+        );
+        while (level.length > 0) {
+            if (signal?.aborted) return;
+            const nextLevel: string[] = [];
+            for (const nodeId of level) {
+                await this._loadChildren(nodeId);
+                if (signal?.aborted) return;
+                nextLevel.push(
+                    ...this._expandedAmong(
+                        this.treeStore
+                            .childrenOf(nodeId)
+                            .map((node) => node.id),
+                    ),
+                );
+            }
+            level = nextLevel;
         }
+    }
+
+    private _expandedAmong(ids: readonly string[]): string[] {
+        return ids.filter((id) => this.expandedIds.has(id));
     }
 
     /** Opens the node's menu, or closes it when the same node is toggled. */
