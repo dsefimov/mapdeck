@@ -10,14 +10,6 @@ import { groupLayersByTitle } from "../utils/groupLayersByTitle";
 import type { AttributeTableWidgetProps } from "../types";
 import styles from "./Widget.module.css";
 
-function getSelectedLayerTitle(
-    selectedLayerId: string | null,
-    layers: AttributeLayerInfo[],
-): string | undefined {
-    if (!selectedLayerId) return undefined;
-    return layers.find((l) => l.id === selectedLayerId)?.title;
-}
-
 /** Flat/grouped select options built from the layer list. */
 function buildSelectOptions(layers: AttributeLayerInfo[]): {
     groups: SelectGroup[];
@@ -100,10 +92,6 @@ const AttributeTableWidget = observer<AttributeTableWidgetProps>(
         );
 
         const attributeLayers = store.attributeLayers;
-        const selectedLayerTitle = getSelectedLayerTitle(
-            store.selectedLayerId,
-            attributeLayers,
-        );
 
         return (
             <div className={`${styles.widget} ${className}`}>
@@ -137,9 +125,6 @@ const AttributeTableWidget = observer<AttributeTableWidgetProps>(
                             rows={store.loadedFeatures}
                             {...(store.columns.length > 0 && {
                                 columns: store.columns,
-                            })}
-                            {...(selectedLayerTitle && {
-                                header: selectedLayerTitle,
                             })}
                             totalRows={store.totalFeatures}
                             loading={store.isBusy}
