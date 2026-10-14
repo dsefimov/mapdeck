@@ -4,6 +4,7 @@
  */
 
 import type { WfsRequestParams } from "./types";
+import { parseUrl } from "@core/lib/url/parseUrl";
 
 /**
  * Detect WFS version from URL params or use default.
@@ -30,10 +31,10 @@ export function buildWfsUrl(params: WfsRequestParams): string {
 
     let parsedUrl: URL;
     try {
-        parsedUrl = new URL(url);
+        parsedUrl = parseUrl(url);
     } catch {
         throw new Error(
-            `Invalid WFS endpoint URL: "${url}". Ensure the URL is absolute and properly encoded.`,
+            `Invalid WFS endpoint URL: "${url}". Ensure the URL is absolute or document-relative and properly encoded.`,
         );
     }
     const qp = parsedUrl.searchParams;

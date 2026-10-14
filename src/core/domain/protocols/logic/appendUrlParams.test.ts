@@ -25,4 +25,12 @@ describe("appendUrlParams", () => {
         });
         expect(new URL(url).searchParams.getAll("limit")).toEqual(["5000"]);
     });
+
+    it("resolves a document-relative URL against the document base", () => {
+        const url = appendUrlParams("/items?limit=10", { f: "json" });
+        const parsed = new URL(url, "https://host.io/");
+        expect(parsed.pathname).toBe("/items");
+        expect(parsed.searchParams.get("f")).toBe("json");
+        expect(parsed.searchParams.get("limit")).toBe("10");
+    });
 });

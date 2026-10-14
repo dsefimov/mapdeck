@@ -69,14 +69,46 @@ describe("WmsRoleResolver binding from a full GetMap URL", () => {
         expect(assignment.params).not.toHaveProperty("layers");
     });
 
-    it("passes an unparseable href through as the base URL", () => {
+    it("yields an empty endpoint for an unparseable href", () => {
         const resolver = new WmsRoleResolver();
 
         const assignment = resolver.resolve(
-            wmsAsset("not a url"),
+            wmsAsset("https://localhost:99999"),
             ctx,
         );
 
-        expect(assignment.sourceUrl).toBe("not a url");
+        expect(assignment.sourceUrl).toBe("");
+        expect(assignment.params).not.toHaveProperty("layers");
+    });
+
+    it("yields an empty endpoint for a non-http href", () => {
+        const resolver = new WmsRoleResolver();
+
+        const assignment = resolver.resolve(
+            wmsAsset("javascript:alert(1)?LAYERS=roads"),
+            ctx,
+        );
+
+        expect(assignment.sourceUrl).toBe("");
+        expect(assignment.params).not.toHaveProperty("layers");
+    });
+
+    it("splits a document-relative GetMap href", () => {
+        const resolver = new WmsRoleResolver();
+
+        const assignment = resolver.resolve(
+            wmsAsset(
+                "/geoserver/main/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=roads&STYLES=&FORMAT=image/png",
+            ),
+            ctx,
+        );
+
+        expect(assignment.sourceUrl.endsWith("/geoserver/main/wms")).toBe(
+            true,
+        );
+        expect(assignment.params).toMatchObject({
+            layers: "roads",
+            format: "image/png",
+        });
     });
 });

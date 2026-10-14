@@ -5,6 +5,8 @@ import type {
     SourceAsset,
 } from "@core/contracts";
 import { baseAssetParams } from "../baseAssetParams";
+import { logger } from "@core/lib/logger";
+import { parseUrl } from "@core/lib/url/parseUrl";
 
 /** What a full GetMap href splits into at the source boundary. */
 interface SplitGetMapUrl {
@@ -20,11 +22,13 @@ interface SplitGetMapUrl {
  * URL is the clean endpoint, params are the single source of truth for
  * request parameters). Static catalogs often embed a full GetMap URL —
  * LAYERS/STYLES/VERSION/FORMAT move into params; unrecognized vendor
- * parameters are dropped.
+ * parameters are dropped. An href that does not parse into a plain
+ * HTTP(S) URL yields an empty endpoint — a broken asset stays visible
+ * in the log instead of leaking a raw string into the network layer.
  */
 function splitGetMapUrl(href: string): SplitGetMapUrl {
     try {
-        const parsed = new URL(href);
+        const parsed = parseUrl(href);
         const query = (name: string): string | undefined =>
             parsed.searchParams.get(name) ?? undefined;
         const split: SplitGetMapUrl = {
@@ -37,8 +41,11 @@ function splitGetMapUrl(href: string): SplitGetMapUrl {
         parsed.search = "";
         split.baseUrl = parsed.toString();
         return split;
-    } catch {
-        return { baseUrl: href };
+    } catch (error) {
+        logger.warn(
+            `WmsRoleResolver: unparseable WMS href "${href}": ${error}`,
+        );
+        return { baseUrl: "" };
     }
 }
 

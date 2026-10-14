@@ -102,9 +102,16 @@ describe("buildWfsUrl", () => {
         expect(query.get("SERVICE")).toBe("WFS");
     });
 
-    it("rejects a non-absolute endpoint", () => {
-        expect(() => buildWfsUrl(params({ url: "not a url" }))).toThrow(
-            /Invalid WFS endpoint URL/,
-        );
+    it("rejects an unparseable endpoint", () => {
+        expect(() =>
+            buildWfsUrl(params({ url: "https://localhost:99999" })),
+        ).toThrow(/Invalid WFS endpoint URL/);
+    });
+
+    it("resolves a document-relative endpoint against the document base", () => {
+        const url = buildWfsUrl(params({ url: "/geoserver/main/wfs" }));
+        const parsed = new URL(url);
+        expect(parsed.pathname).toBe("/geoserver/main/wfs");
+        expect(parsed.searchParams.get("SERVICE")).toBe("WFS");
     });
 });
