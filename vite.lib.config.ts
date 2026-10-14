@@ -102,6 +102,7 @@ export default defineConfig({
     build: {
         outDir: "dist",
         sourcemap: true,
+        minify: false,
         lib: {
             entry: {
                 mapdeck: resolve(import.meta.dirname, "src/app/index.ts"),
