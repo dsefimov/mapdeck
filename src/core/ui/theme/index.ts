@@ -22,6 +22,7 @@ export {
     getMeasureColors,
     getThemeValue,
     getThemeColor,
+    setThemeRoot,
     subscribeTheme,
     type MeasureColors,
 } from "./themeColors";

@@ -1,9 +1,12 @@
 // @vitest-environment happy-dom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import {
     DEFAULT_COLOR_ACCENT,
     getMeasureColors,
     getThemeColor,
+    getThemeValue,
+    setThemeRoot,
+    subscribeTheme,
 } from "./themeColors";
 
 // happy-dom loads no stylesheets: every custom property is missing, so the
@@ -25,5 +28,59 @@ describe("getThemeColor browser fallbacks", () => {
         const colors = getMeasureColors();
         expect(colors.stroke).toEqual([0, 81, 202, 200]);
         expect(colors.fill).toEqual([0, 81, 202, 60]);
+    });
+});
+
+describe("theme root", () => {
+    const TOKEN = "--tool-measure-stroke";
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        setThemeRoot(document.documentElement);
+    });
+
+    it("reads tokens from the set root instead of <html>", () => {
+        const container = document.createElement("div");
+        // happy-dom resolves no custom properties, so the stub stands in for
+        // the CSSOM: the subject is WHICH element the reader queries.
+        const computed = vi
+            .spyOn(window, "getComputedStyle")
+            .mockImplementation((element) =>
+                (element === container
+                    ? { getPropertyValue: () => "#123456" }
+                    : { getPropertyValue: () => "" }) as unknown as CSSStyleDeclaration,
+            );
+
+        setThemeRoot(container);
+        expect(getThemeValue(TOKEN)).toBe("#123456");
+        expect(getThemeColor(TOKEN)).toEqual([0x12, 0x34, 0x56, 255]);
+
+        setThemeRoot(document.documentElement);
+        expect(getThemeValue(TOKEN)).toBe("");
+        expect(computed).toHaveBeenLastCalledWith(document.documentElement);
+    });
+
+    it("re-pointing the root notifies subscribers", () => {
+        const listener = vi.fn();
+        const unsubscribe = subscribeTheme(listener);
+        setThemeRoot(document.createElement("div"));
+
+        expect(listener).toHaveBeenCalledTimes(1);
+        unsubscribe();
+    });
+
+    it("a data-theme switch on the root notifies subscribers", async () => {
+        const container = document.createElement("div");
+        document.body.append(container);
+        setThemeRoot(container);
+
+        const listener = vi.fn();
+        const unsubscribe = subscribeTheme(listener);
+
+        container.setAttribute("data-theme", "dark");
+        await vi.waitFor(() => expect(listener).toHaveBeenCalled());
+
+        unsubscribe();
+        container.remove();
     });
 });

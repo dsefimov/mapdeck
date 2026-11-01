@@ -93,9 +93,10 @@ export function getMeasureColors(): MeasureColors {
 }
 
 /**
- * Read a CSS custom property value from :root as a raw string.
- * Falls back to the provided default when the property is not set
- * or when document is unavailable (SSR, test).
+ * Read a CSS custom property value from the theme root (default `<html>`;
+ * `setThemeRoot` points an embedded instance at its container). Falls back
+ * to the provided default when the property is not set or when document is
+ * unavailable (SSR, test).
  */
 export function getThemeValue(
     cssVariable: string,
@@ -105,7 +106,7 @@ export function getThemeValue(
         return fallback;
     }
     const value = window
-        .getComputedStyle(document.documentElement)
+        .getComputedStyle(currentThemeRoot())
         .getPropertyValue(cssVariable)
         .trim();
     return value || fallback;
@@ -121,7 +122,7 @@ function withAlpha(
 
 /**
  * Get a theme color as an RGBA array [r, g, b, a]
- * Reads from CSS custom properties on :root
+ * Reads from CSS custom properties on the theme root (default `<html>`)
  * @param cssVariable - CSS custom property name (e.g., "--color-accent")
  * @param alpha - Alpha value 0-255 (default: 255) — honored in every branch,
  *                including the fallbacks
@@ -138,7 +139,7 @@ export function getThemeColor(
     }
 
     const value = window
-        .getComputedStyle(document.documentElement)
+        .getComputedStyle(currentThemeRoot())
         .getPropertyValue(cssVariable)
         .trim();
 
@@ -156,30 +157,51 @@ export function getThemeColor(
 type ThemeListener = () => void;
 
 const themeListeners = new Set<ThemeListener>();
-let themeObserverStarted = false;
+let themeRoot: HTMLElement | null = null;
+let themeObserver: MutationObserver | null = null;
 
-function startThemeObserver(): void {
-    if (themeObserverStarted) return;
-    if (typeof window === "undefined" || typeof document === "undefined")
-        return;
+function currentThemeRoot(): HTMLElement {
+    return themeRoot ?? document.documentElement;
+}
+
+function notifyThemeListeners(): void {
+    for (const listener of themeListeners) listener();
+}
+
+function observeThemeRoot(): void {
+    themeObserver?.disconnect();
+    themeObserver = null;
     if (typeof MutationObserver === "undefined") return;
-    themeObserverStarted = true;
-    const observer = new MutationObserver(() => {
-        for (const listener of themeListeners) listener();
-    });
-    observer.observe(document.documentElement, {
+    themeObserver = new MutationObserver(notifyThemeListeners);
+    themeObserver.observe(currentThemeRoot(), {
         attributes: true,
         attributeFilter: ["data-theme"],
     });
 }
 
 /**
+ * Points the theme reader and observer at an element. Defaults to `<html>`;
+ * an embedded instance points it at its container so the library reads and
+ * watches its own token carrier instead of the host page. One theme root
+ * per page: the reader is module-level, so a second call re-points every
+ * reader — a page running two instances picks one root for both.
+ */
+export function setThemeRoot(element: HTMLElement): void {
+    themeRoot = element;
+    observeThemeRoot();
+    notifyThemeListeners();
+}
+
+/**
  * Subscribe to theme switches. The theme changes when the `data-theme`
- * attribute on <html> changes (see theme.css). SSR-safe: without a DOM the
- * observer never starts and the returned unsubscribe is a no-op.
+ * attribute on the theme root changes (see theme.css); re-pointing the root
+ * via `setThemeRoot` notifies too. SSR-safe: without a DOM the observer
+ * never starts and the returned unsubscribe is a no-op.
  */
 export function subscribeTheme(listener: ThemeListener): () => void {
-    startThemeObserver();
+    if (themeObserver === null && typeof document !== "undefined") {
+        observeThemeRoot();
+    }
     themeListeners.add(listener);
     return () => themeListeners.delete(listener);
 }

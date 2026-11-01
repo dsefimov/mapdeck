@@ -5,7 +5,8 @@
    - shared by ≥2 components outside core/ui, or needed by a TS bridge → here;
    - for a single tool → its CSS module, not here.
    ═══════════════════════════════════════════════════════════════ */
-:root {
+:root,
+.mapdeck-root {
     /* Measure colors (deck.gl-readable, flat hex).
        Single source for maplibre paint + deck.gl layers. */
     --tool-measure-stroke: var(--color-accent);

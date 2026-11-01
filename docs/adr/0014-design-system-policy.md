@@ -5,9 +5,12 @@
 The UI layer serves two consumers at once: DOM components and the map
 renderers. deck.gl and maplibre take colors as RGBA arrays and CSS strings,
 and painted map objects must visually match the interface exactly — so both
-resolve color from the same named CSS custom properties on `:root`
-(`getThemeColor`). Component styling therefore needs one flat, machine-readable
-source of truth. The interface itself lives over a live map canvas (widget
+resolve color from the same named CSS custom properties on the theme root
+(`getThemeColor`): `:root` for a full page, `.mapdeck-root` for an embedded
+instance, which points the reader at its container via `setThemeRoot` — one
+theme root per page. Component styling therefore needs one flat,
+machine-readable source of truth. The interface itself lives over a live map
+canvas (widget
 grid, tool panels, overlay slots) — a surface generic component catalogs do
 not cover — and grows deliberately, one extension at a time.
 
