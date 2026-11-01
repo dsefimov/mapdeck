@@ -44,8 +44,9 @@ delivers no map tool never receives the map instance.
 
 **Panels and actions receive a tool context, not the registry.** A tool panel's props
 carry `ToolRuntimeContext` — the same declared-points surface modules get (ADR-0004): the
-runtime slice of the context family (state store, locale, settings, the protocol and
-feature-provider ports) plus the tool's own controller, `map` (platform technology,
+runtime slice of the context family (state store, locale, the protocol and
+feature-provider read ports, layer-tree catalog, map-tool state, basemap) plus the
+tool's own controller, `map` (platform technology,
 above), `overlayManager`, and `deactivate`. An action tool's `execute` receives
 `{context, map}`. The full `StoreRegistry` is not part of the map-tool contract:
 built-in and module-delivered tools are identical to consumers (ADR-0004), so one
@@ -61,6 +62,15 @@ renders outside the shared grid: `MapWorkspace` renders it over the map next to 
 toolbar, without chrome, and the panel component returns null while its tool is inactive.
 Visibility is therefore owned solely by the tool's active state; the widget open/close
 state does not apply to panels.
+
+**The panel widget factory is public.** `createToolPanelWidget` is exported from the
+package's main entry: a module delivering an interactive map tool registers its panel
+explicitly — locale, tool, then
+`context.widgets.registerWidget(createToolPanelWidget(tool))`, the same three steps the
+built-in `registerMapTools` takes. Auto-registering the panel inside
+`MapToolStore.registerTool` was rejected: it would make the store do the widget
+catalog's job and change its behavior for every existing registration site; explicit
+registration is sufficient and keeps the store's single responsibility.
 
 **Single active tool, state owned by the store.** `MapToolStore.activeToolId` is the only
 record of which interactive tool is active — a tool never carries its own active flag.
@@ -86,15 +96,6 @@ not implement; corner grouping, if ever wanted, becomes a feature with its own c
 **Registration.** Tools register explicitly via `MapToolStore.registerTool` in
 `registerMapTools` (ADR-0005). Registration also auto-registers the tool's settings with
 `SettingsStore` under the tool id; a duplicate id throws (ADR-0005 duplicate policy).
-
-**Amended 2026-10-13: the panel widget factory is public.** `createToolPanelWidget`
-is exported from the package's main entry: a module delivering an interactive map
-tool registers its panel explicitly — locale, tool, then
-`context.widgets.registerWidget(createToolPanelWidget(tool))`, the same three
-steps the built-in `registerMapTools` takes. Auto-registering the panel inside
-`MapToolStore.registerTool` was rejected: it would make the store do the widget
-catalog's job and change its behavior for every existing registration site;
-explicit registration is sufficient and keeps the store's single responsibility.
 
 ## Consequences
 
