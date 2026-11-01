@@ -40,10 +40,9 @@ import { ToolPanel, useEscapeKey } from "mapdeck/ui";
 const distanceTool: InteractiveMapTool = {
     kind: "interactive",
     id: "my-distance",
-    name: "Distance",
     icon: "ruler",            // registry name, or a custom --icon-<name>
     component: DistancePanel, // receives { context, map, overlayManager, deactivate }
-    localeTranslations: { ru: { name: "Замер" } },
+    localeTranslations: { ru: { "tool.name": "Замер" } },
 };
 
 export const myModule: Module = {
