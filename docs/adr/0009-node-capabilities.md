@@ -38,14 +38,16 @@ goes through `data`. Capabilities are tool names assigned to the node. The slot 
 source modules.
 
 **The source assigns capabilities; the core never does.** The source adapter is a parser
-plus an assignment step that produces ready-to-show `TreeNode`s: per asset,
-module-owned resolution rules pick one protocol per slot, the capability list, and may
-attach a style. Protocol priorities exist only inside the module — the core owns no
-resolver machinery and no priority semantics. A source that resolves several candidates
-for one slot collapses them to one before creating the node; assets that fit neither
-slot become `relatedObjects` entries of type `"report"`. Why the source and not the
-core: the source knows its data best; the core never decides what a format looks like
-or offers — it manages the tree, the visibility and the bridge to the map.
+plus an assignment step that produces ready-to-show `TreeNode`s: it calls the kernel's
+`assetMapping.mapAssets` (ADR-0018) — priority-ordered `AssetRule`s claim each asset,
+the first claiming rule wins it, the best slot fitness picks the slot — and builds nodes
+from the resulting `ProtocolAssignment`s, attaching the capability list and possibly a
+style. Slot-less assets become `relatedObjects` entries of type `"report"` — the
+mapper's own output. Why a kernel mapper and not module-owned resolvers: the kernel
+holds the mechanism (the matching rules and their priorities), the protocols hold the
+knowledge (their slot fitness, declared at registration), and the source holds the
+classification vocabulary — what its assets are. The core never decides what a format
+looks like or offers — it manages the tree, the visibility and the bridge to the map.
 
 **Every assigned capability is verified at assignment.** The core exposes one pure
 operation: a capability is implemented when a tool link `(protocolId of the node's
@@ -107,14 +109,13 @@ moves "protocol implements a style" from a runtime check to a type check.
 `contracts/domain/protocol.ts`: the contract has two kernel consumers — layer-tree
 resolves descriptors through it, map builds render units — so the ≥2-consumers rule
 puts it in the kernel. Protocol implementations, their adapters and their configs stay
-in `domain/protocols/<id>/`. (An earlier revision of this ADR placed the interface in
-the domain; it moved when the second consumer appeared, and the registry port followed.)
+in `domain/protocols/<id>/`.
 
 **Legend is metadata, not a model.** A node's `legend` is descriptive metadata; it
 deliberately has no item model.
 
 **Registration.** Built-in protocols register in `registerProtocols` during bootstrap,
-before modules — which add their own through `context.protocolRegistry`. Duplicate ids
+before modules — which add their own through `context.protocols`. Duplicate ids
 throw (ADR-0005). A node whose protocol id is unregistered stays in the tree and
 produces no map layer — the snapshot excludes it — and the capability check at
 assignment logs a warning for its capabilities; the tree marks such nodes as
@@ -129,7 +130,8 @@ stays empty until the user opts in.
   core changes never.
 - What a node can do is data on the node, assigned by the source; the menu is derived by
   resolving ids, never by recomputing availability.
-- Priority and resolution rules live in one module; the core has no role-resolution
+- Priority and resolution live in one place — the kernel's asset mapper; protocols
+  contribute slot fitness at registration, so no module carries private resolution
   machinery to drift.
 - A node's capability list is honest by construction: unimplementable capabilities never
   reach the menu.
