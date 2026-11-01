@@ -7,12 +7,12 @@ import pkg from "./package.json";
 
 /**
  * Library build: prebuilt ESM, one mapdeck.css, and declarations with
- * aliases rewritten. The reference host's toolchain (webpack 5 +
- * ts-loader) does not compile TS or CSS Modules from node_modules, so
- * everything arrives ready to import; every runtime dependency stays
- * external — npm and the host's shared-singleton config deduplicate
- * versions. Demo-only code (main.tsx and its config readers) is not
- * part of the package surface and is excluded from declarations.
+ * aliases rewritten. Consumers that do not compile TS or CSS Modules
+ * from node_modules get everything ready to import; every runtime
+ * dependency stays external — npm and the host's shared-singleton
+ * config deduplicate versions. Demo-only code (main.tsx and its config
+ * readers) is not part of the package surface and is excluded from
+ * declarations.
  */
 
 const DEMO_ONLY_SOURCES = [
@@ -60,8 +60,8 @@ const EXTERNAL_MODULES = [
 
 function isExternalModule(id: string): boolean {
     // Vendor stylesheets (maplibre, react-grid-layout, react-resizable)
-    // join the single mapdeck.css: the reference host's pipeline does
-    // not process css from node_modules, so the package must ship it.
+    // join the single mapdeck.css: consumers that do not process CSS
+    // from node_modules still get a working package.
     if (id.endsWith(".css")) {
         return false;
     }
