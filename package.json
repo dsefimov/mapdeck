@@ -1,6 +1,7 @@
 {
     "name": "mapdeck",
     "version": "1.2.7",
+    "license": "MIT",
     "type": "module",
     "sideEffects": [
         "**/*.css"
@@ -27,9 +28,14 @@
             "import": "./dist/utils.js"
         },
         "./styles.css": "./dist/mapdeck.css",
+        "./laz-perf.wasm": "./dist/laz-perf.wasm",
         "./package.json": "./package.json"
     },
     "main": "./dist/mapdeck.js",
+    "types": "./dist/app/index.d.ts",
+    "engines": {
+        "node": ">=20.11"
+    },
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build",
