@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SettingMetadata } from "@core/contracts";
 import type { CommonRegistry } from "@core/common/common-registry";
 import type { Widget } from "@core/contracts";
+import { logger } from "@core/lib/logger";
 import { LocaleStore } from "@core/common/locale/LocaleStore";
 import { SettingsStore } from "@core/common/settings/SettingsStore";
 import { WidgetStore } from "./WidgetStore";
@@ -77,13 +78,44 @@ describe("WidgetStore registration chain", () => {
         expect(group?.ownerName).toBe(WIDGET_ID);
     });
 
-    it("registers nothing when the widget declares no settings", () => {
+    it("declares an empty settings batch when the widget has none", () => {
         const { store, settings } = harness();
         const registerSettings = vi.spyOn(settings, "registerSettings");
 
         store.registerWidget(widget());
 
-        expect(registerSettings).not.toHaveBeenCalled();
+        expect(registerSettings).toHaveBeenCalledWith(
+            WIDGET_ID,
+            WIDGET_ID,
+            [],
+            undefined,
+        );
+        expect(settings.allSettingsGrouped).toEqual([]);
+    });
+
+    it("an overridden widget replaces its settings without desync", () => {
+        const { store, settings } = harness();
+        vi.spyOn(logger, "warn").mockImplementation(() => {});
+        store.registerWidget(
+            widget({ settings: [setting("autoscroll"), setting("compact")] }),
+        );
+
+        store.registerWidget(widget({ settings: [setting("autoscroll")] }), {
+            override: true,
+        });
+
+        expect(settings.getOwnerSettings(WIDGET_ID)).toHaveLength(1);
+        expect(settings.getBooleanSetting("compact")).toBeUndefined();
+    });
+
+    it("an overridden widget declaring no settings clears its leftovers", () => {
+        const { store, settings } = harness();
+        vi.spyOn(logger, "warn").mockImplementation(() => {});
+        store.registerWidget(widget({ settings: [setting("autoscroll")] }));
+
+        store.registerWidget(widget(), { override: true });
+
+        expect(settings.getOwnerSettings(WIDGET_ID)).toHaveLength(0);
     });
 
     it("rejects a duplicate widget id", () => {

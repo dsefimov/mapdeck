@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import type {
     RegisteredSetting,
     SettingMetadata,
@@ -89,6 +89,67 @@ describe("SettingsStore.registerSettings", () => {
         expect(() =>
             store.registerSettings("owner-b", "B", [metadata("dup", "number")]),
         ).toThrow(/owner "owner-a"/);
+    });
+});
+
+describe("SettingsStore — override policy", () => {
+    afterEach(() => vi.restoreAllMocks());
+
+    it("throws mid-batch without writing anything — the batch is atomic", () => {
+        const store = storeWith();
+
+        expect(() =>
+            store.registerSettings("owner-b", "B", [
+                metadata("fresh", "string"),
+                select("scheme", [{ label: "Red", value: "red" }]),
+            ]),
+        ).toThrow(/already registered/);
+        expect(store.getStringSetting("fresh")).toBeUndefined();
+        expect(store.getStringSetting("scheme")).toBe("rgb");
+    });
+
+    it("override replaces the owner's batch and drops stale ids", () => {
+        const store = storeWith();
+        const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+
+        store.registerSettings(
+            OWNER,
+            OWNER_NAME,
+            [select("scheme", [{ label: "Red", value: "red" }])],
+            { override: true },
+        );
+
+        expect(warn).toHaveBeenCalledWith(
+            expect.stringContaining('overriding "scheme"'),
+        );
+        expect(store.getStringSetting("scheme")).toBe("red");
+        expect(store.getNumberSetting("threshold")).toBeUndefined();
+        expect(store.getOwnerSettings(OWNER)).toHaveLength(1);
+    });
+
+    it("override replaces a setting owned by another owner", () => {
+        const store = new SettingsStore();
+        store.registerSettings("owner-a", "A", [metadata("shared", "string")]);
+        vi.spyOn(logger, "warn").mockImplementation(() => {});
+
+        store.registerSettings(
+            "owner-b",
+            "B",
+            [metadata("shared", "number")],
+            { override: true },
+        );
+
+        expect(store.getNumberSetting("shared")).toBe(5);
+        expect(store.getOwnerSettings("owner-a")).toHaveLength(0);
+    });
+
+    it("an empty override batch clears the owner's leftovers", () => {
+        const store = storeWith();
+
+        store.registerSettings(OWNER, OWNER_NAME, [], { override: true });
+
+        expect(store.getOwnerSettings(OWNER)).toHaveLength(0);
+        expect(store.allSettingsGrouped).toEqual([]);
     });
 });
 

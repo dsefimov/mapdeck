@@ -6,47 +6,14 @@ import type {
     SettingsGroup,
     SettingsRegistrationPort,
 } from "@core/contracts";
+import type { RegisterOptions } from "@core/lib/registry";
 import { logger } from "@core/lib/logger";
+import { applySettingsRegistration } from "./logic/applySettingsRegistration";
 import { groupSettingsByOwner } from "./logic/groupSettingsByOwner";
 import {
     validateSettingValue,
     type ValidationResult,
 } from "./logic/validateSettingValue";
-
-/** Attaches ownership to a metadata variant — each branch keeps its discriminant. */
-function toRegistered(
-    metadata: SettingMetadata,
-    ownerId: string,
-    ownerName: string,
-): RegisteredSetting {
-    const base = { ownerId, ownerName };
-    switch (metadata.type) {
-        case "string":
-            return {
-                ...metadata,
-                ...base,
-                value: String(metadata.defaultValue),
-            };
-        case "number":
-            return {
-                ...metadata,
-                ...base,
-                value: Number(metadata.defaultValue),
-            };
-        case "select":
-            return {
-                ...metadata,
-                ...base,
-                value: metadata.defaultValue,
-            };
-        case "boolean":
-            return {
-                ...metadata,
-                ...base,
-                value: Boolean(metadata.defaultValue),
-            };
-    }
-}
 
 /**
  * Re-values an already validated setting. The conversions are no-ops —
@@ -76,28 +43,24 @@ export class SettingsStore implements SettingsRegistrationPort {
     }
 
     /**
-     * Register a batch of settings under one owner. An empty array is a no-op.
-     * Duplicate ids throw — registry policy: a colliding id
-     * is a programming error that must surface at registration, not silently
-     * replace another extension's setting.
+     * Register a batch of settings under one owner, following the common
+     * registration policy: an id collision without `{ override: true }`
+     * throws before anything is written — the batch is atomic; an override
+     * replaces the owner's previous batch, dropping stale ids. An empty
+     * array declares "this owner has no settings" and clears its leftovers.
      */
     registerSettings(
         ownerId: string,
         ownerName: string,
         settings: SettingMetadata[],
+        opts?: RegisterOptions,
     ): void {
-        for (const metadata of settings) {
-            const setting = toRegistered(metadata, ownerId, ownerName);
-
-            const existing = this._settings.get(metadata.id);
-            if (existing) {
-                throw new Error(
-                    `Setting "${metadata.id}" is already registered (owner "${existing.ownerId}")`,
-                );
-            }
-
-            this._settings.set(metadata.id, setting);
-        }
+        applySettingsRegistration(this._settings, {
+            ownerId,
+            ownerName,
+            settings,
+            opts,
+        });
     }
 
     /**

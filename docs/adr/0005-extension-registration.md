@@ -97,9 +97,12 @@ policy covers every replacement-capable registration surface, `SourceAdapterFact
 and basemap configs included: a module replacing a base adapter or a built-in basemap
 does it with the same explicit override, never by out-registering it. An overridden
 basemap drops its stale health status and re-applies when the replaced id was the
-active one. Register-once surfaces — settings, translations — throw
-on duplicates without an override path: their entries are declared once at bootstrap,
-so a collision is always a programming error with nothing legitimate to replace.
+active one. Translations merge within a namespace — a re-declared
+dictionary updates its languages, so registration is repeatable. Settings ride their
+owner's registration: `registerSettings` follows the same explicit-override policy, and
+an overridden widget or tool replaces its settings batch atomically, dropping ids the
+new declaration no longer carries — auto-registered settings never block their owner's
+legitimate override.
 
 **Retry-safe registration.** Every bootstrap attempt registers into empty registries — a
 failed attempt leaves no partial registrations behind, so retry is safe by construction.

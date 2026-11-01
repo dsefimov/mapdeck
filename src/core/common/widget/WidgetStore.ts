@@ -62,7 +62,7 @@ export class WidgetStore {
             );
         }
 
-        this._registerWidgetSettings(definition);
+        this._registerWidgetSettings(definition, opts);
 
         runInAction(() => {
             this._instances.set(definition.id, {
@@ -226,13 +226,16 @@ export class WidgetStore {
         return GRID_CONFIG;
     }
 
-    private _registerWidgetSettings(widget: StoredWidget): void {
-        if (!widget.settings || widget.settings.length === 0) return;
+    private _registerWidgetSettings(
+        widget: StoredWidget,
+        opts?: RegisterOptions,
+    ): void {
         this.rootStore.settingsStore.registerSettings(
             widget.id,
             this.rootStore.localeStore.t(widget.id)[LOCALE_KEY_WIDGET_NAME] ??
                 widget.id,
-            widget.settings,
+            widget.settings ?? [],
+            opts,
         );
     }
 }

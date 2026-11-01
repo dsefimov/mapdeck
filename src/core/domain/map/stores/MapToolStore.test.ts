@@ -70,6 +70,23 @@ describe("MapToolStore", () => {
         expect(activateB).toHaveBeenCalledTimes(1);
     });
 
+    it("passes its registration options through to the tool's settings", () => {
+        const registerSettings = vi.fn();
+        const store = new MapToolStore({
+            localeStore: { t: () => ({}) },
+            settingsStore: { registerSettings },
+        } as unknown as StoreRegistry);
+
+        store.registerTool(interactiveTool("t1"), { override: true });
+
+        expect(registerSettings).toHaveBeenCalledWith(
+            "t1",
+            "t1",
+            [],
+            { override: true },
+        );
+    });
+
     it("a failed activation hook leaves the previous tool active", () => {
         vi.spyOn(logger, "error").mockImplementation(() => undefined);
         const store = createStore();
@@ -183,7 +200,12 @@ describe("MapToolStore settings auto-registration", () => {
         store.registerTool(tool);
 
         // The locale carries no "tool.name", so the id doubles as the display name.
-        expect(registerSettings).toHaveBeenCalledWith("measure", "measure", settings);
+        expect(registerSettings).toHaveBeenCalledWith(
+            "measure",
+            "measure",
+            settings,
+            undefined,
+        );
     });
 
     it("a tool without settings still lands as an empty batch", () => {
@@ -195,6 +217,7 @@ describe("MapToolStore settings auto-registration", () => {
             "ruler",
             "ruler",
             [],
+            undefined,
         );
     });
 });

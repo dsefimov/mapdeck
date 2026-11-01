@@ -73,6 +73,7 @@ export class MapToolStore {
             tool.id,
             toolDisplayName,
             tool.settings ?? [],
+            opts,
         );
     }
 

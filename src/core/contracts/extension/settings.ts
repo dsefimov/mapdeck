@@ -2,6 +2,8 @@
  * Settings type definitions for the Mapdeck settings system
  */
 
+import type { RegisterOptions } from "@core/lib/registry";
+
 /** Value types a setting can hold. */
 export type SettingType = "string" | "number" | "select" | "boolean";
 
@@ -90,10 +92,15 @@ export interface SettingsGroup {
  * a real reader appears.
  */
 export interface SettingsRegistrationPort {
-    /** Declare an owner's settings — values initialize to their defaults. */
+    /**
+     * Declare an owner's settings — values initialize to their defaults.
+     * Follows the common registration policy: a colliding id without
+     * `{ override: true }` throws; an override replaces the owner's batch.
+     */
     registerSettings(
         ownerId: string,
         ownerName: string,
         settings: SettingMetadata[],
+        opts?: RegisterOptions,
     ): void;
 }
