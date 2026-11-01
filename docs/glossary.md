@@ -24,8 +24,8 @@ one tool active at a time — or an action, executing once on click. See
 The contract that defines how data for one format is requested and rendered: an `id`,
 a `label`, a required default style, a render-descriptor factory, a layer adapter, and
 optional hooks (`fetchAttributes`, `groupRenderUnits`). It carries no
-resolution knowledge — priorities live with the source adapter that produces the
-nodes. Point queries (feature info) are not a protocol hook: they live on the
+resolution knowledge — priorities live in the kernel's asset-mapping rules
+(ADR-0018). Point queries (feature info) are not a protocol hook: they live on the
 `FeatureProvider` port. See `docs/adr/0009-node-capabilities.md`.
 
 ## Protocol binding
@@ -103,5 +103,6 @@ pattern) and the root store's disposal clears them (ADR-0003).
 
 The port an external data source implements to feed the layer tree: `fetchRoot`,
 `fetchChildren`, `initialize`, `dispose`; one adapter per configured source type. The
-adapter produces ready nodes — bindings, capabilities, styles — and owns all role and
-priority resolution. See `docs/adr/0009-node-capabilities.md`.
+adapter produces ready nodes — bindings, capabilities, styles — routes its assets
+through the kernel asset mapping (ADR-0018) and owns the source-specific
+classification. See `docs/adr/0009-node-capabilities.md`.
