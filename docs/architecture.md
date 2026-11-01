@@ -96,8 +96,9 @@ or unregistered type fails initialization visibly.
 
 Modules register through a declared-points context (`ModuleContext`, ADR-0004): the
 registration surfaces for every extension kind — source adapters, protocols, feature
-providers, basemaps, widgets, both tool kinds, tool-to-protocol links, settings and
-translations — plus the runtime services and read ports (state, locale, protocol and
+providers, basemaps, widgets, both tool kinds, tool-to-protocol links, settings,
+translations and the kernel's asset mapping — plus the runtime services and read
+ports (state, locale, protocol and
 feature-provider reads, the tree catalog, basemap read-and-switch). A module never
 receives the domain stores; it changes kernel behavior through the points, and a
 capability no point covers is a missing point, not an invitation to reach into
@@ -125,11 +126,12 @@ render backends.
 
 **The source.** The `SourceAdapter` port (`fetchRoot`/`fetchChildren`) is the tree's
 only way to data; the adapter is chosen from the configured source type and
-re-initialized when the source URL changes (ADR-0008). The source also decides what
-each node can do: its protocol bindings (which protocol renders it, which serves its
-attributes) and its capabilities (which layer tools apply). A protocol only defines
-how data is requested; the core provides the vocabulary, verifies every assignment,
-and derives the menu. That boundary is ADR-0009.
+re-initialized when the source URL changes (ADR-0008). Assets reach their protocol
+bindings through the kernel's asset mapping (ADR-0018): priority-ordered rules claim
+each asset, a protocol's slot fitness picks the serving slot, and the adapter builds
+nodes from the assignments, attaching capabilities (which layer tools apply). A
+protocol only defines how data is requested; the core provides the vocabulary,
+verifies every assignment, and derives the menu. That boundary is ADR-0009.
 
 **The tree.** `LayerTreeStore` holds nodes in observable maps behind a `TreeState`
 interface; every rule — reconciliation, user-state preservation, the visibility
@@ -216,3 +218,9 @@ Every non-obvious decision and its rationale is an ADR in `docs/adr/`:
 | 0012 | Point-cloud data port at the protocol boundary |
 | 0013 | FeatureRow — typed reserved row keys |
 | 0014 | Design system policy — CSS Modules + semantic tokens, self-owned interactions |
+| 0015 | Locale — en-complete dictionaries, typed key views |
+| 0016 | Embed settings overrides — host-declared setting values |
+| 0017 | Public helper subpaths — `mapdeck/ui` and `mapdeck/utils` |
+| 0018 | Asset→protocol mapping is a kernel domain — the `assetMapping` port |
+| 0019 | The embeddable library — prebuilt ESM over host-singleton peers |
+| 0020 | Kernel external dependencies — one policy, the `lib` import rule |
