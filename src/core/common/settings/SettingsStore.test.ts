@@ -151,6 +151,16 @@ describe("SettingsStore — override policy", () => {
         expect(store.getOwnerSettings(OWNER)).toHaveLength(0);
         expect(store.allSettingsGrouped).toEqual([]);
     });
+
+    it("an empty batch without override leaves the owner's settings alone", () => {
+        const store = storeWith();
+
+        // A tool and its panel widget share the id: the panel's
+        // settings-less registration must not wipe the tool's batch.
+        store.registerSettings(OWNER, OWNER_NAME, []);
+
+        expect(store.getOwnerSettings(OWNER)).toHaveLength(2);
+    });
 });
 
 describe("SettingsStore.setSetting", () => {

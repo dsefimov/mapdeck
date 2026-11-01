@@ -46,8 +46,9 @@ export class SettingsStore implements SettingsRegistrationPort {
      * Register a batch of settings under one owner, following the common
      * registration policy: an id collision without `{ override: true }`
      * throws before anything is written — the batch is atomic; an override
-     * replaces the owner's previous batch, dropping stale ids. An empty
-     * array declares "this owner has no settings" and clears its leftovers.
+     * replaces the owner's previous batch, dropping stale ids. Without an
+     * override an empty batch is a no-op (owners collide across kinds —
+     * a tool and its panel widget share the id).
      */
     registerSettings(
         ownerId: string,

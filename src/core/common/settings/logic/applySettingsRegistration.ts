@@ -81,7 +81,10 @@ function dropStaleOwnerIds(
  * throws before anything is written — the batch is atomic. An override
  * replaces the colliding settings and drops the owner's previous batch,
  * so a re-registered owner (an overridden widget or tool) leaves no
- * stale ids behind. Only the batch-level steps are own code — validation
+ * stale ids behind; without an override an empty batch is a no-op —
+ * owners collide across kinds (a tool and its panel widget share the
+ * id), so a declaration-less registration must not wipe the owner's
+ * settings. Only the batch-level steps are own code — validation
  * (atomicity, the colliding owner in the error) and stale-id cleanup;
  * the per-key write rides `applyRegistration`.
  */
@@ -91,5 +94,7 @@ export function applySettingsRegistration(
 ): void {
     assertBatchRegistrable(settings, registration);
     commitBatch(settings, registration);
-    dropStaleOwnerIds(settings, registration);
+    if (registration.opts?.override) {
+        dropStaleOwnerIds(settings, registration);
+    }
 }
