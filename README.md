@@ -6,6 +6,59 @@ widgets, tools — delivered as extensions. A STAC catalog, a WMS service or a C
 point cloud becomes an interactive layer tree with attribute tables, styling controls
 and measurement tools, and new sources arrive as modules without touching the core.
 
+The same code ships as an embeddable library (`mapdeck` on npm) and as this
+repository's demo application — the demo is a dogfood consumer of the public
+entries, not a separate surface.
+
+## Install
+
+```sh
+npm install mapdeck
+```
+
+React (18 or 19), `mobx` and `mobx-react-lite` are peer dependencies: the host page
+owns them as singletons. npm 7+ installs them automatically; with other managers,
+install them alongside. Everything else the embed needs arrives transitively.
+
+## Minimal embed
+
+```tsx
+import { createMapdeck, MapdeckRoot } from "mapdeck";
+import "mapdeck/styles.css"; // mandatory — the component renders unstyled without it
+
+const mapdeck = createMapdeck({
+    // Deployment data: where this install's data source lives. The URL feeds
+    // whichever source adapter is configured (`defaultSourceType`; the built-in
+    // default is the STAC catalog adapter). Applied after registrations,
+    // before the first tree fetch; unknown ids fail visibly.
+    settingsOverrides: {
+        "layer-tree.data-source-url": "https://example.com/stac/catalog.json",
+    },
+    // Point clouds only: where the host serves the wasm binary (see below).
+    lazPerfWasmUrl: "/assets/laz-perf.wasm",
+});
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+    <MapdeckRoot mapdeck={mapdeck} />,
+);
+```
+
+`createMapdeck` is synchronous and self-bootstrapping: bootstrap failures surface
+through the instance's `initError`, and `MapdeckRoot` renders the error screen with
+a retry wired to `restart()`. The full option surface (`language`, `logLevel`,
+`modules`, the built-in basemap switch) is typed in the shipped
+`MapdeckOptions` declaration. Deep integration — protocols, extension contexts,
+contracts — goes through the `mapdeck/contracts` subpath; panel building and pure
+helpers through `mapdeck/ui` and `mapdeck/utils`.
+
+## Serving the point-cloud decoder
+
+COPC streaming needs the LazPerf wasm binary. The package exports it as
+`mapdeck/laz-perf.wasm` — a copy of the library's `laz-perf` dependency, so its
+version is locked to the installed package, never chosen by the host. Serve that
+file over HTTP from anywhere (a static directory, a CDN) and point
+`lazPerfWasmUrl` at the URL; it is fetched at runtime, never bundler-imported.
+
 ## What it can do
 
 - **Map.** MapLibre GL renders raster and vector layers natively; a deck.gl overlay
@@ -23,7 +76,7 @@ and measurement tools, and new sources arrive as modules without touching the co
   close; domain functionality is delivered as modules (the STAC integration is the
   built-in example).
 
-## Quick start
+## Demo & development
 
 1. Clone the repository.
 2. Install dependencies: `npm install`.
@@ -32,18 +85,19 @@ and measurement tools, and new sources arrive as modules without touching the co
 The demo STAC catalog, basemap configs and the laz-perf decoder ship in
 `public/`, so a fresh checkout runs with sample data out of the box.
 
-## Scripts
+### Scripts
 
 | Script | What it does |
 |---|---|
 | `npm run dev` | development server |
 | `npm run build` | type check + production build |
+| `npm run build:lib` | library build (prebuilt ESM package into `dist/`) |
 | `npm run lint` | TypeScript + ESLint |
 | `npm run test` | Vitest test suite |
 | `npm run test:e2e` | Playwright E2E smoke (see below) |
 | `npm run license-check` | production dependency license check |
 
-## Testing
+### Testing
 
 Unit and store logic run with Vitest (`npm run test`, colocated `*.test.ts`).
 The E2E smoke suite lives in `tests/` and drives the real app in Chromium:
