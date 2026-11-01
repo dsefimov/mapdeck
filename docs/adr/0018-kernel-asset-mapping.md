@@ -2,25 +2,24 @@
 
 ## Context
 
-Which protocol serves a tree node used to be decided inside the STAC
-module: a role-resolver registry and a protocol-slot fitness table lived
-in `src/modules/stac/`, invisible to everyone else. A consumer could
-register a protocol (`context.protocols.register`) but could not route
-any asset to it — no matching rule, no fitness entry (`unknown protocol
-id → report row`). Terrain-3D and WFS-3D protocols would render nothing.
-
-The mapping is not STAC-specific. Its input — an asset: a tagged
-resource at a URL — is source-neutral, and the fitness table ("which
-protocol serves which slot") is knowledge about protocols, sitting in a
-module about a source. A port on the STAC module was rejected: it would
-tie every protocol module to STAC. The seam belongs in the protocols
+Which protocol serves a tree node is a mapping with two candidate
+owners: the source module that parses the catalog, or the kernel. The
+mapping's input — an asset: a tagged resource at a URL — is
+source-neutral, and "which protocol serves which slot" is knowledge
+about protocols, not about a source. A fitness table inside a source
+module ties protocols to that one source: a consumer can register a
+protocol (`context.protocols.register`), yet no asset routes to it —
+no matching rule, no fitness entry (`unknown protocol id → report
+row`); Terrain-3D and WFS-3D protocols would render nothing. A port on
+a source module is rejected for the same reason: it would tie every
+protocol module to that source. The seam belongs in the protocols
 domain, where protocol modules already register.
 
 ## Decision
 
 **A kernel mapper, one declared point.** `AssetProtocolMapper`
-(`src/core/domain/protocols/asset-mapping/`) generalizes the registry,
-the table, and the selection logic (pure, in `logic/`).
+(`src/core/domain/protocols/asset-mapping/`) unifies the matching
+rules, the slot fitness, and the selection logic (pure, in `logic/`).
 `ModuleContext.assetMapping` (`AssetMappingPort`, contracts) exposes:
 
 - `registerRule(rule: AssetRule)` — the matching chain, priority-ordered
@@ -32,7 +31,7 @@ the table, and the selection logic (pure, in `logic/`).
   wins each slot (ties keep the earlier asset), slot-less assignments
   become report rows, `null` when nothing matched.
 
-One port for both directions: today the only `mapAssets` reader is a
+One port for both directions: the only `mapAssets` reader is a
 module's own source adapter (STAC), so a read/write split would have a
 single-consumer read side.
 
@@ -41,15 +40,14 @@ source-specific fields; the kernel never reads them), `AssetContext`
 (the owning entity's per-asset context), `AssetRule`,
 `ProtocolAssignment`, `AssetMappingResult` — all in
 `contracts/domain/asset-mapping.ts`, exported through
-`mapdeck/contracts`. The STAC module's resolvers became plain rules over
+`mapdeck/contracts`. The STAC module's resolvers are plain rules over
 these types; their vocabulary (roles, MIME heuristics) stays STAC-side.
 
 **Boot freshness instead of idempotency guards.** The mapper is created
 by `RootStore`, not observable (registration finishes before any
 observer renders; mapping runs in fetch flows). A restart builds a
 fresh store — a fresh mapper — and bootstrap re-registers the built-in
-rules; the STAC module's old `resolversRegistered` guard became dead
-weight and was removed.
+rules.
 
 **Default slots live with the protocols.** The built-in fitness values are
 declared at each built-in protocol's registration site
@@ -62,14 +60,15 @@ options (overriding a protocol overrides its declaration);
 `assetMapping.registerRule`/`registerSlots` remain the explicit
 lower-level path for rules and slots that register separately. The mapper
 itself starts empty: the kernel holds the mechanism, the protocols hold
-the knowledge. The former STAC fitness table no longer exists anywhere.
+the knowledge.
 
-Why a new ADR rather than amending 0004/0005: ADR-0004 describes the
+Why a new ADR rather than amending 0004/0005/0009: ADR-0004 describes the
 context family's shape (this adds one member of the already-decided
 kind — not a new shape); ADR-0005 governs registration order and the
-duplicate policy (both reused as-is). The decision here — mapping
-changes owner from a source module to the protocols domain — is a
-concept neither record hosts.
+duplicate policy (both reused as-is); ADR-0009 records the node
+capability boundary the mapper serves, not the mapping itself. The
+decision here — the mapping is a kernel domain with its own declared
+point — is a concept none of them hosts.
 
 ## Consequences
 
