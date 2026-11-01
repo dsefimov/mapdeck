@@ -15,9 +15,9 @@ Use MobX as the single state-management library, with strict runtime configurati
 
 - `enforceActions: "always"` — observable mutations are allowed only inside `@action`
   methods or `runInAction()`. The most common MobX bug — mutating an observable in an async
-  callback — fails immediately at runtime.
-- `computedRequiresReaction: true` — reading a computed outside a reactive context throws
-  instead of silently returning a stale value.
+  callback — is flagged at runtime with a `[MobX]` console warning.
+- `computedRequiresReaction: true` — reading a computed outside a reactive context warns
+  at runtime instead of silently returning a stale value.
 - `safeDescriptors: true` — guards against accidental redefinition of observable properties.
 
 Components are wrapped in `observer()` and read observables; MobX tracks dependencies and
@@ -48,11 +48,11 @@ is discarded.
 
 ## Consequences
 
-- Mutating an observable outside an action throws at runtime — async code must wrap
+- Mutating an observable outside an action warns at runtime — async code must wrap
   post-`await` mutations in `runInAction()`.
-- Reading a computed outside a reactive context (e.g. `console.log`) throws — debugging
+- Reading a computed outside a reactive context (e.g. `console.log`) warns — debugging
   reads need `autorun()`. The same applies to unit tests that read computeds: they wrap the
   read in `autorun()` or go through `@action` contexts. This is the most likely place for
   future friction; it is the price of the guard.
-- The strict config applies in production too; violations surface as runtime errors,
-  not silent staleness.
+- The strict config applies in production too; violations surface as loud `[MobX]`
+  console warnings, not silent staleness.
