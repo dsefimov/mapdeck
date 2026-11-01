@@ -14,8 +14,8 @@ exist only as `RootStore` fields — so they are recorded here.
 adapter, refreshes the tree, and only then sets `isInitialized = true`; on failure it stores
 the message and leaves `isInitialized` false. Components observe exactly one of three
 states — initializing (`isInitialized` false, `initError` null), error (`initError` set),
-or initialized (`isInitialized` true) — never an intermediate value. The App component maps
-them to LoadingScreen / ErrorScreen (with retry) / MapWorkspace. Why: one gate prevents
+or initialized (`isInitialized` true) — never an intermediate value. The root component
+(`MapdeckRoot`) maps them to LoadingScreen / ErrorScreen (with retry) / MapWorkspace. Why: one gate prevents
 rendering against a partially assembled store graph.
 
 **Async operation state.** Async operation state uses `AsyncState` / `KeyedAsyncState`

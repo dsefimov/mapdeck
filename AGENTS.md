@@ -1,6 +1,6 @@
 ## Project Context
 
-- **Entry docs**: this file (rules + workflow) → `docs/architecture.md` (system overview) → `docs/glossary.md` (domain terms) → `docs/adr/` (decisions with rationale).
+- **Entry docs**: this file (rules + workflow) → `docs/architecture.md` (system overview) → `docs/glossary.md` (domain terms) → `docs/adr/` (decisions with rationale) → `docs/extending.md` (building modules, tools, protocols).
 
 ---
 
@@ -58,7 +58,7 @@ go stale silently: a review that finds an unimplemented decision without one add
 
 ### Core Structure (`src/core/`)
 
-Five layers, one composition root in `src/app/`:
+Five layers, the `shell/` DI glue, one composition root in `src/app/`:
 
 - `lib/` — technical primitives, no domain words, no React: `async/`, `registry/`, `state/`, `logger/`, `text/`, `color/`, `geo/` (pure geo math incl. `Bbox`, `FrustumPlanes`).
 - `common/` — technical subsystems, reusable without geo coupling: `locale/` (i18n), `settings/`, `widget/` (widget catalog + grid layout state), `state/` (MobX-flavored async-state primitives). Stores here receive `rootStore: CommonRegistry` — the technical slice of the single access point, without domain knowledge.

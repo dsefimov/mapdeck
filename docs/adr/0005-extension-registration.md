@@ -77,11 +77,11 @@ is retried.
 
 **The default source adapter is assembly policy.** Which source adapter serves when no
 type is named is decided by the application composition: the default source type is a
-build-time constant of the assembly (the app config in `src/app/`), and bootstrap
-applies it after modules have registered their adapters. A deployment that names no
-default fails initialization — implicit registration order must not decide (the same
-rule `SourceAdapterFactory.get()` already follows) — and a named type with no registered
-adapter fails initialization too, visibly through `initError`: an empty tree must be a
+facade option (`MapdeckOptions.defaultSourceType`), and the embed facade falls back to
+the built-in STAC adapter when the assembly names none. Bootstrap applies it after
+modules have registered their adapters. A named type with no registered adapter fails
+initialization, visibly through `initError` — implicit registration order must not
+decide (the same rule `SourceAdapterFactory.get()` follows): an empty tree must be a
 source's answer, never a wiring accident. A module cannot capture the global default —
 `setDefault` is not part of the registration context (ADR-0004).
 

@@ -58,10 +58,9 @@ every capability at assignment, drops unimplemented ones and reports each via th
 logger. Because tools and protocols register at bootstrap and nodes are created only
 afterwards, the check always sees the complete link table — nothing registers
 dynamically. A node therefore carries only capabilities that can work; the menu needs
-no capability-level fallback, only a defensive skip for an unknown tool id. The skip
-is defensive: links reference registered tools only (ADR-0007) and nothing
-unregisters, so a verified capability always resolves; the skip exists only to guard
-future registration changes.
+no capability-level fallback — only a defensive skip for an unknown tool id: links
+reference registered tools only (ADR-0007) and nothing unregisters, so a verified
+capability always resolves, and the skip guards future registration changes.
 
 **The menu follows the node's capabilities.** `getToolsForNode` resolves the node's
 capabilities to tool instances in list order, deduplicated by id — the operation

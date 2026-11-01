@@ -28,7 +28,8 @@ invitation to reach in.
 
 ## The layered core
 
-The core (`src/core/`) is five layers plus a composition root in `src/app/`. Each
+The core (`src/core/`) is five layers, the `shell/` DI glue, plus a composition root in
+`src/app/`. Each
 layer has one dependency direction, and the import rules are enforced by lint rules
 recorded in `AGENTS.md`.
 
@@ -41,7 +42,7 @@ recorded in `AGENTS.md`.
   async-state primitives. Their stores receive only the technical slice of the
   registry, without domain knowledge.
 - `ui/` — the generic React kit: components, composites, hooks, icons, theme,
-  utils, fonts. It imports `lib` only — the kit knows no stores and no domains;
+  utils. It imports `lib` only — the kit knows no stores and no domains;
   consumers inject state through structural props (the WidgetGrid precedent).
 - `contracts/` — ports and the shared kernel: the types that two or more consumers
   need, and the interfaces external systems sit behind (deck.gl, MapLibre, STAC).
@@ -90,9 +91,10 @@ are ADR-0004; the registration mechanics are ADR-0005. Registration is explicit:
 kind has one registration function, and the composition root runs them in a fixed
 sequence — protocols before modules, so a module's protocols add on top of the base
 set (or replace one explicitly via `{ override: true }`) — and only then initializes
-the root store. The default source type is assembly policy: the assembly names it
-as a bootstrap option (the demo reads it from `src/app/appConfig.ts`), and a missing
-or unregistered type fails initialization visibly.
+the root store. The default source type is assembly policy — a facade option
+(`MapdeckOptions.defaultSourceType`) with a built-in fallback to the STAC adapter;
+the demo names an empty value, keeping the must-be-configured contract, and an
+unregistered type fails initialization visibly.
 
 Modules register through a declared-points context (`ModuleContext`, ADR-0004): the
 registration surfaces for every extension kind — source adapters, protocols, feature
@@ -175,7 +177,7 @@ updated in place. The whole machinery is invisible outside the protocol (ADR-001
 | `src/core/shell` | `StoreProvider`, `useRootStore` |
 | `src/core/domain` | `layer-tree`, `map`, `protocols` (per-protocol folders plus the cross-protocol `logic/`, `shared/`, `stores/`) |
 | `src/core/store-registry.ts`, `src/core/domain/domain-registry.ts` | `StoreRegistry` composition and its domain half |
-| `src/app` | `RootStore`, bootstrap, MobX config, global error handlers, `App` |
+| `src/app` | `RootStore`, bootstrap, the embed facade, `MapdeckRoot` (global error handlers are demo-only) |
 | `src/widgets`, `src/layer-tools`, `src/map-tools` | built-in extensions |
 | `src/modules` | domain modules (`stac`) |
 | `docs/adr`, `docs/glossary.md` | decisions and terms |
@@ -187,7 +189,7 @@ Who logs, who rethrows, who swallows — the matrix the reviews kept asking for:
 
 | Channel | Behavior |
 |---|---|
-| Global (`window.onerror`, `unhandledrejection`) | logged by the app's handlers — nothing escapes to the bare console |
+| Global (`window.onerror`, `unhandledrejection`) | logged by the demo assembly's handlers — the library installs none; nothing escapes to the bare console |
 | Root workspace (`app/ErrorBoundary`) | contained, logged with componentStack, recovery is a page reload |
 | One widget (`ui` `ErrorBoundary` in WidgetGrid) | contained to the window, logged with componentStack, recovery remounts the widget |
 | Render units (`LayerManager`) | every channel (add/show/hide/update/remove) reports through `reportRenderError`; success clears with `null` — the tree never silently diverges from the map |

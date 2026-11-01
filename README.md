@@ -127,6 +127,7 @@ rendering, copc.js and laz-perf for point-cloud streaming, Turf for geo math.
 - [docs/architecture.md](docs/architecture.md) — system overview
 - [docs/glossary.md](docs/glossary.md) — domain terms
 - [docs/adr/](docs/adr/) — architecture decisions and their rationale
+- [docs/extending.md](docs/extending.md) — building modules, tools and protocols
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guidelines
 
 ## License

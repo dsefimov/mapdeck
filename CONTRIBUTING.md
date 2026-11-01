@@ -8,7 +8,7 @@
 
 ## Local development
 
-Setup and first run: see [Quick Start](README.md) in the README.
+Setup and first run: see [Demo & development](README.md#demo--development) in the README.
 
 | Script | Purpose |
 |---|---|
@@ -16,6 +16,9 @@ Setup and first run: see [Quick Start](README.md) in the README.
 | `npm run lint` | `tsc --noEmit` + ESLint (`--max-warnings=0`) |
 | `npm run test` | Vitest, single run |
 | `npm run build` | TypeScript check + production build |
+| `npm run build:lib` | library build: the prebuilt ESM package into `dist/` |
+| `npm run test:e2e` | Playwright E2E smoke against live demo sources |
+| `npm run license-check` | production dependency license allowlist |
 
 ## Commit Messages
 
@@ -56,6 +59,7 @@ Documentation lives alongside the code:
 | `docs/architecture.md` | System overview: layers, data flows, stores |
 | `docs/glossary.md` | Domain terms |
 | `docs/adr/` | Architectural decisions with rationale |
+| `docs/extending.md` | Building modules, tools and protocols |
 
 Docs are not a separate source of truth — code, types, and tests are. Docs explain "why"
 and context only. All documentation is in English.

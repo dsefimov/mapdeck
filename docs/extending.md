@@ -42,7 +42,10 @@ const distanceTool: InteractiveMapTool = {
     id: "my-distance",
     icon: "ruler",            // registry name, or a custom --icon-<name>
     component: DistancePanel, // receives { context, map, overlayManager, deactivate }
-    localeTranslations: { ru: { "tool.name": "Замер" } },
+    localeTranslations: {
+        en: { "tool.name": "Distance" }, // en is required (ADR-0015); other languages optional
+        ru: { "tool.name": "Замер" },
+    },
 };
 
 export const myModule: Module = {

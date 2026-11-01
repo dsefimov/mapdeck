@@ -18,7 +18,7 @@ shared fields and a required `kind`:
 
 - `kind: "interactive"` — carries `component` (the panel), optional lifecycle hooks, and
   optional `contextMenu` behavior. Clicking its button toggles activation.
-- `kind: "action"` — carries `execute(rootStore)`. Clicking its button executes it
+- `kind: "action"` — carries `execute({context, map})`. Clicking its button executes it
   immediately; it has no active state and no panel.
 
 Shared fields: `id` (also the locale namespace), `icon` (a plain string — ADR-0004),
