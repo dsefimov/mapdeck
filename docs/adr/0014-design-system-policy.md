@@ -36,14 +36,12 @@ defaults, or vendored code.
 **UI dependencies require their own ADR.** Any runtime dependency touching UI
 rendering or interaction is introduced only after a dedicated decision record.
 
-**Amended 2026-10-13: the icon set is open.** The registry curates the
-built-in names only; any other name renders the `--icon-<name>` token
-directly (an inline mask-image in `Icon`, identifier-sanitized — names
-that cannot be token suffixes render no glyph). Extension contracts keep
-`icon: string`, and a module ships artwork by defining a token on its
-container — the same gesture as any host token override, no registry
-change. This completes the "artwork is a token" decision this ADR
-already made; the registry remains for autocomplete and the
+**The icon set is open.** The registry curates the built-in names only; any
+other name renders the `--icon-<name>` token directly (an inline mask-image in
+`Icon`, identifier-sanitized — names that cannot be token suffixes render no
+glyph). Extension contracts keep `icon: string`, and a module ships artwork by
+defining a token on its container — the same gesture as any host token
+override, no registry change; the registry remains for autocomplete and the
 registry↔artwork sync test.
 
 ## Consequences
