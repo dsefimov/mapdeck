@@ -24,11 +24,10 @@ registration stores and lifecycles.
 home store (widget → `widgetStore`, layer tool → `layerToolStore`, map tool → `mapToolStore`),
 but a registration routine may touch other stores — e.g. a map tool registers its panel
 widget via `widgetStore` and its translations via `localeStore` alongside itself. The home
-store is an identity boundary, not an exclusivity boundary. Modules use the exact same
-stores through the `StoreRegistry` context.
+store is an identity boundary, not an exclusivity boundary.
 
 **Contract hygiene.** The kernel holds only multi-consumer types and never imports from
-`@core/ui`: the dead `WidgetContext` interface was removed (zero consumers), and the
+`@core/ui`: no `WidgetContext` interface exists (zero consumers), and the
 map-tool contract carries `icon` as a plain string — consumers validate it with the ui
 kit's `isIconName` guard instead of the contract importing `IconName`. Widgets already
 carried plain-string icons; `ui` and `contracts` must not import each other. The kernel
@@ -45,16 +44,13 @@ widget grid.
 **Module as primary container.** Domain-specific functionality — widgets, layer tools,
 map tools, source adapters, protocols, any combination — is delivered as a module.
 `register(context)` receives a `ModuleContext` — the map of declared extension points:
-`sourceAdapterFactory`, `protocols`, `featureProviders`, basemap registration, widget /
-layer-tool / map-tool registration (including tool-to-protocol links), locale and
-settings; the runtime service `stateStore` is shared by both slices. Every member is
-typed by a port declared in `contracts/` — the registration ports
-`SourceAdapterFactory`, `ProtocolRegistrationPort`, `FeatureProviderRegistrationPort`,
-`BasemapRegistrationPort`, `LocaleRegistrationPort`, `SettingsRegistrationPort`, each
-extending or accompanying the read-only port the runtime slice exposes
-(`ProtocolRegistry`, `FeatureProviderRegistry`, `BasemapPort`, `LocaleApi`; a settings
-read port appears when a real reader does). `StateStore` is already a `lib` type — so
-the context family imports neither `common/` nor a domain. The family has one
+the registration slice `protocols`, `featureProviders`, `locale`, `settings`, `basemap`,
+`sourceAdapterFactory`, `widgets`, `layerTools`, `mapTools`, `assetMapping`; the runtime
+service `stateStore` is shared by both slices. Every member is typed by a port declared
+in `contracts/` — the registration ports extend or accompany the read-only ports the
+runtime slice exposes (`ProtocolRegistry`, `FeatureProviderRegistry`, `BasemapPort`,
+`LocaleApi`, `LayerCatalogPort`, `MapToolStatePort`). `StateStore` is already a `lib`
+type — so the context family imports neither `common/` nor a domain. The family has one
 shape: a runtime slice shared by every consumer (services and read ports) plus a
 registration slice (`register*` functions) that only modules receive; tool panels get
 the runtime slice (ADR-0006). A module never receives the domain stores (`treeStore`,
@@ -63,7 +59,7 @@ never by reaching into store internals. The built-in set stays limited to
 generic, non-domain-specific tools. Core never imports from `src/modules/` — the
 boundary is one-directional through registration interfaces.
 
-Why not the full `StoreRegistry` (the previous decision): reach-in access makes every
+Why not the full `StoreRegistry`: reach-in access makes every
 internal kernel refactoring a breaking change for modules, while a declared point is a
 stable contract. "A module must be able to change any point of the application" is
 satisfied by the completeness of the point map — a behavior no point covers is a missing
