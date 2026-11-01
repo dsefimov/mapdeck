@@ -40,7 +40,7 @@ from the map: the flow is map → protocol adapter, never the reverse.
 **The overlay is a port, not a dependency.** `OverlayManager`
 (`contracts/domain/map-context.ts`) is the thin port for the second backend:
 attach/detach, layer lifecycle (`addLayer`, `removeLayer`, `updateLayer`,
-`setLayerVisibility`), and queries (`getMap`, `getOverlay`, `pickObject`, `pickObjects`).
+`setLayerVisibility`), and queries (`getMap`, `pickObject`, `pickObjects`).
 Two kinds of consumers use it: the render pipeline (the point-cloud adapter draws
 through it) and map tools (measurement and marker layers attach through it directly,
 outside the layer manager). `DeckOverlayManager` implements the port over a
