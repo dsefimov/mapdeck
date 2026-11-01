@@ -34,7 +34,8 @@ recorded in `AGENTS.md`.
 
 - `lib/` — technical primitives with no domain words and no React: pure async
   utilities, registries, the keyed state container, logging, text, color, pure geo
-  math. It imports nothing — no framework, no state library, no upper layer.
+  math. It imports no framework, no state library, no upper layer; external
+  packages are an ADR-gated exception (ADR-0020).
 - `common/` — technical subsystems reusable outside the geo domain: locale (i18n),
   settings, the widget system (catalog and grid layout state), and the MobX-flavored
   async-state primitives. Their stores receive only the technical slice of the
