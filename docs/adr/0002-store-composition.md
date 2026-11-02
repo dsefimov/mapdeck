@@ -1,4 +1,6 @@
-# ADR-0002: Store composition — RootStore as service locator
+# ADR-0002: Store composition — RootStore as the single access point
+
+Status: Accepted · Date: 2026-09-22
 
 ## Context
 
@@ -29,7 +31,7 @@ the registry itself stays concrete — it serves the app UI and same-domain acce
 declared edges today: map → layer-tree (`LayerSnapshotSource` and `RenderErrorSink`,
 the layer manager's constructor deps) and layer-tree → protocols (`ProtocolRegistry`
 and `SourceAdapterFactory`, constructor-wired port references in the tree store). The
-rule bounds the locator trade-off recorded below: reachability inside the graph may
+rule bounds the reachability trade-off recorded below: reachability inside the graph may
 be total, but cross-domain coupling is visible in `contracts/` and survives internal
 refactorings. A new cross-domain read starts a new port at its consumer — never a
 wider registry member. Extension contexts (ADR-0004) are assembled from ports the
@@ -42,11 +44,12 @@ Why not:
 - **DI container (Inversify, TSyringe)** — an extra dependency and configuration overhead;
   manual instantiation is explicit, debuggable, zero-cost.
 
-State placement is a single rule with four cases (no pattern taxonomy):
+State placement has four cases:
 
 1. Shared by ≥2 consumers → global store in `RootStore`.
 2. Scoped to one widget/tool instance and must survive close/open or deactivate/activate
-   → `stateStore.get(instanceId, () => new Store(rootStore))`.
+   → `stateStore.get(instanceId, factory)`; the factory constructs a controller —
+   kernel code receives `rootStore`, an extension constructs from its declared context.
 3. Fully derived from global stores → no local store; the component reads globals through
    `observer()` (precedent: `src/widgets/map-toolbar`).
 4. Transient UI trivia (hover, focus, animation, popups) → local React state.
@@ -55,7 +58,7 @@ Interaction orchestration — event wiring, keyboard-driven state machines, asyn
 pipelines — is case-2 state: a controller class obtained through `stateStore`, with the
 component as a thin `observer()` over it and `useEffect` reserved for attach/detach
 wiring on mount/unmount. The precedent is `LayerTreeViewModel` (ADR-0008); the rule
-closes the gap where orchestration previously leaked into component effects.
+keeps orchestration out of component effects.
 
 Instance state lives in `StateStore` (`src/core/lib/state/StateStore.ts`): a plain keyed
 container with `get(key, factory)` (get-or-create), `remove(key)`, `has(key)`. It returns
@@ -71,7 +74,7 @@ deliberate non-goal.
 ## Consequences
 
 - Any store can reach any other store — spaghetti risk if unchecked. The no-direct-imports
-  rule does not reduce reachability (rootStore-mediated access *is* the locator); it makes
+  rule does not reduce reachability (rootStore-mediated access reaches everything); it makes
   the dependency graph explicit in one place — the `RootStore` constructor. This is the
   deliberately accepted trade-off of the pattern, bounded by the cross-domain port rule
   above. Revisit signal: an undeclared cross-domain edge — a domain reading another

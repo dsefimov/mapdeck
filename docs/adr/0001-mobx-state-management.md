@@ -1,5 +1,7 @@
 # ADR-0001: MobX as state management
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 A TypeScript SPA (deck.gl + MapLibre map portal) needs state management for fine-grained
@@ -34,7 +36,10 @@ Why not the alternatives:
 - **Zustand** — no action discipline (no `enforceActions` equivalent — direct mutations are
   possible), no lifecycle/dispose contract, and subscriptions go through selectors; none of
   that fits the strict action and lifecycle rules this app relies on.
-- **Jotai** — atoms target component-level state, not a global service layer.
+- **Jotai** — atoms compose bottom-up for component-level state; this app's global
+  service stores (~10, with cross-store dependencies, lifecycle and disposal) have no
+  natural atom shape, and derived atoms re-render consumers instead of notifying
+  store-level subscribers.
 
 Async convention: async methods are `@action`; mutations after `await` are wrapped in
 `runInAction()` because the `await` leaves the action context. MobX `flow` is an accepted

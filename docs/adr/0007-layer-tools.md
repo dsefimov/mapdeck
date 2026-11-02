@@ -1,5 +1,7 @@
 # ADR-0007: Layer tools — protocol-bound actions in the layer tree
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 Layer tools are the layer-tree extension point: per-node actions (opacity slider, point
@@ -13,7 +15,7 @@ is authored; the capability model belongs to ADR-0009.
 
 ## Decision
 
-**A layer tool is a class instance (ADR-0004) carrying only identity, presentation, and
+**A layer tool is an object (ADR-0004) carrying only identity, presentation, and
 translations.** `id` (also the locale namespace), a `component` factory, optional
 `localeTranslations`. No lifecycle, no placement declaration: a layer tool is a passive
 record that says nothing about where it appears. The `component` factory receives
@@ -47,9 +49,9 @@ binding an unregistered tool id throws at bind time, and a binding whose protoco
 not registered throws at the end of bootstrap — after all registrations, including
 modules — so a typo in either id surfaces at startup. Adding the same binding twice is
 idempotent — the one legitimate silent skip in the registry lib. The protocol check runs
-last because protocol registrations arrive after tool bindings: core protocols register
+last because protocol registrations arrive after tool bindings: built-in protocols register
 later in bootstrap, and module protocols later still. Linking by id string is the accepted trade-off: it keeps the dependency direction
-extension → core and is verified at startup, at the cost of type safety on the link.
+extension → kernel and is verified at startup, at the cost of type safety on the link.
 
 **Translations travel with the tool.** The tool object carries `localeTranslations`; the
 store registers them with the locale store under the tool id at registration — the same
@@ -66,7 +68,7 @@ tool count is small, and ADR-0004 records the same consequence for extensions ge
   assigned capabilities.
 - Adding a tool for a protocol means one registration function: define, register, bind,
   translate — in one file, discoverable next to the tool.
-- Modules extend the tool set by protocol link without importing core tools.
+- Modules extend the tool set by protocol link without importing built-in tools.
 - A tool is missing on a node either because the source did not assign its capability or
   because the assignment check found no link — the latter logs a warning at assignment;
   a typo in a tool id or a protocol id in a link fails loudly at startup.

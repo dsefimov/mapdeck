@@ -8,7 +8,7 @@ surfaces live in `docs/adr/`; this page is the how-to.
 
 | Entry | What it is for |
 |---|---|
-| `mapdeck` | `createMapdeck(options)`, `MapdeckRoot`, module/extension types, `createToolPanelWidget`, `StoreProvider`/`useRootStore` |
+| `mapdeck` | `createMapdeck(options)`, `MapdeckRoot`, module/extension types, `createToolPanelWidget`, `StoreProvider`/`useRootStore` (host chrome; outside semver — see ADR-0004) |
 | `mapdeck/contracts` | The full contract barrel for deep integrations: ports (`OverlayManager`, `MapContext`), registration surfaces, asset-mapping types, point-cloud picking |
 | `mapdeck/ui` | The design-system surface for panels: primitives, inputs, `ToolPanel`/`SegmentsList`/`DataTable`/`ColorPicker`, interaction hooks, theme helpers |
 | `mapdeck/utils` | Pure helpers: geo formatters |
@@ -33,11 +33,11 @@ Three explicit steps (locale, tool, panel widget) — the same steps the
 built-in `registerMapTools` takes:
 
 ```ts
-import type { Module, InteractiveMapTool } from "mapdeck";
+import type { Module, MapTool } from "mapdeck";
 import { createToolPanelWidget } from "mapdeck";
 import { ToolPanel, useEscapeKey } from "mapdeck/ui";
 
-const distanceTool: InteractiveMapTool = {
+const distanceTool: MapTool = {
     kind: "interactive",
     id: "my-distance",
     icon: "ruler",            // registry name, or a custom --icon-<name>
@@ -63,7 +63,9 @@ A panel is a plain React component; `map` is the raw MapLibre instance
 (platform technology), `context` is the runtime slice
 (`ToolRuntimeContext`), `deactivate` closes the panel. Build the UI from
 `mapdeck/ui` — token overrides in the host restyle it together with the
-built-ins.
+built-ins. mapdeck does not re-export maplibre or deck.gl: a module that
+needs their classes (`Marker`, geometry helpers) imports its own copy and
+owns version alignment with the host page.
 
 Action tools (`kind: "action"`) carry `execute({ context, map })`
 instead of a component and need no widget registration.
@@ -73,7 +75,9 @@ instead of a component and need no widget registration.
 ```ts
 context.layerTools.registerTool({
     id: "my-opacity",
-    component: OpacitySlider, // props carry the binding it edits
+    // component: (nodeId: string) => ReactNode — the factory receives the
+    // node id; the panel reads the node from the tree by that id
+    component: OpacitySlider,
 });
 context.layerTools.bindToolToProtocol("my-protocol", "renderer", "my-opacity");
 ```
@@ -89,10 +93,14 @@ matching rules (which assets it claims) arrive with the protocol in one
 call:
 
 ```ts
-import type { Module, Protocol, SourceAsset } from "mapdeck/contracts";
+import type { Module } from "mapdeck";
+import type { Protocol, SourceAsset } from "mapdeck/contracts";
 
-const terrainProtocol: Protocol = { /* id, label, defaultStyle,
-    createRenderDescriptor, getLayerAdapter */ };
+// Protocol shape: { id, label, defaultStyle, createRenderDescriptor,
+// getLayerAdapter }. Complete, type-checked implementations: the built-in
+// protocols in src/core/domain/protocols/ (`createSimpleProtocol` is the
+// flat-descriptor precedent).
+const terrainProtocol: Protocol = { /* ... */ };
 
 export const terrainModule: Module = {
     id: "my-terrain",

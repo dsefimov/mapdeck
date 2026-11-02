@@ -1,11 +1,13 @@
-# ADR-0009: Node capabilities and protocols — the source/protocol/core boundary
+# ADR-0009: Node capabilities and protocols — the source/protocol/kernel boundary
+
+Status: Accepted · Date: 2026-09-22
 
 ## Context
 
 The app renders external data sources as a layer tree on a map. Sources come in
 different formats — STAC catalogs first, then WMS rasters, COPC point clouds, vector
 tiles, feature services — and each format renders differently and offers different data
-access. The core must treat every source uniformly: the tree, visibility, tools and the
+access. The kernel must treat every source uniformly: the tree, visibility, tools and the
 map bridge work on nodes, not on formats. Two questions follow: how a node declares what
 it can do, and who decides what that is.
 
@@ -14,7 +16,7 @@ or none of these. What a dataset offers is a fact about the source, not about th
 protocol: a WMS layer may or may not carry attribute data behind a second API, and only
 the source knows which. The protocol, in turn, only answers how data is requested. This
 ADR records the boundary: the source assigns what a node can do (capabilities), the
-protocol defines how each task's data is requested, and the core provides the
+protocol defines how each task's data is requested, and the kernel provides the
 vocabulary, the verification and the menu.
 
 ## Decision
@@ -37,7 +39,7 @@ goes through `data`. Capabilities are tool names assigned to the node. The slot 
 (`BindingSlot`) lives in contracts, shared by the node model, the tool links and the
 source modules.
 
-**The source assigns capabilities; the core never does.** The source adapter is a parser
+**The source assigns capabilities; the kernel never does.** The source adapter is a parser
 plus an assignment step that produces ready-to-show `TreeNode`s: it calls the kernel's
 `assetMapping.mapAssets` (ADR-0018) — priority-ordered `AssetRule`s claim each asset,
 the first claiming rule wins it, the best slot fitness picks the slot — and builds nodes
@@ -46,10 +48,10 @@ style. Slot-less assets become `relatedObjects` entries of type `"report"` — t
 mapper's own output. Why a kernel mapper and not module-owned resolvers: the kernel
 holds the mechanism (the matching rules and their priorities), the protocols hold the
 knowledge (their slot fitness, declared at registration), and the source holds the
-classification vocabulary — what its assets are. The core never decides what a format
+classification vocabulary — what its assets are. The kernel never decides what a format
 looks like or offers — it manages the tree, the visibility and the bridge to the map.
 
-**Every assigned capability is verified at assignment.** The core exposes one pure
+**Every assigned capability is verified at assignment.** The kernel exposes one pure
 operation: a capability is implemented when a tool link `(protocolId of the node's
 binding for that slot, that slot, toolId)` exists in the tool-link table (ADR-0007). A
 capability whose slot has no binding on the node is unimplemented by definition — the
@@ -77,10 +79,8 @@ rendering backend (`getLayerAdapter()`), and optional hooks: `fetchAttributes`
 (attribute queries) and `groupRenderUnits` (batching). Point queries are not a
 protocol hook — they live on the `FeatureProvider` port collected by the
 `FeatureProviderRegistry` (WMS's provider implements it; its GetFeatureInfo call
-is an internal of that implementation). The interface
-carries no role-resolution state: the descriptor never carries a role field — the
-protocol that created it is the sole authority on how its config is interpreted — and
-priority fields do not exist. Why per-protocol adapters: raster, vector and point cloud
+is an internal of that implementation). The descriptor carries no role field: the protocol that created it is the sole authority
+on how its config is interpreted. Why per-protocol adapters: raster, vector and point cloud
 need fundamentally different backends — native MapLibre layers versus the deck.gl
 overlay — and a single adapter would branch internally by data type. Protocols of the
 same data type reuse the shared adapters (`RasterAdapter`, `VectorAdapter`,
@@ -111,7 +111,9 @@ puts it in the kernel. Protocol implementations, their adapters and their config
 in `domain/protocols/<id>/`.
 
 **Legend is metadata, not a model.** A node's `legend` is descriptive metadata; it
-deliberately has no item model.
+deliberately has no item model: legend shapes are protocol-specific (a color ramp for a
+raster, a point-size scale for a cloud) with no shared interaction — the UI renders them
+as given, and an item model would force a lowest common denominator onto them.
 
 **Registration.** Built-in protocols register in `registerProtocols` during bootstrap,
 before modules — which add their own through `context.protocols`. Duplicate ids
@@ -120,13 +122,13 @@ produces no map layer — the snapshot excludes it — and the capability check 
 assignment logs a warning for its capabilities; the tree marks such nodes as
 unsupported (ADR-0008).
 
-**Sources deliver layers invisible.** Sources deliver new layers invisible; the map
+**New layers are invisible.** Sources deliver new layers with `isVisible: false`; the map
 stays empty until the user opts in.
 
 ## Consequences
 
 - A new source format arrives as a source adapter plus — rarely — a new protocol; the
-  core changes never.
+  kernel changes never.
 - What a node can do is data on the node, assigned by the source; the menu is derived by
   resolving ids, never by recomputing availability.
 - Priority and resolution live in one place — the kernel's asset mapper; protocols

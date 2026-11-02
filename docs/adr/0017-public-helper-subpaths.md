@@ -1,14 +1,14 @@
 # ADR-0017: Public helper subpaths — `mapdeck/ui` and `mapdeck/utils`
 
+Status: Accepted · Date: 2026-10-13
+
 ## Context
 
-Extension modules build panels and compute output strings. Before this
-decision the library exposed only the embed facade and the contracts barrel:
-the UI kit (`@core/ui`) and the pure helpers (`@core/lib/geo/formatters`)
-were internal, so a consumer module either duplicated the design system or
-fell back to raw HTML. The `MapTool.icon` contract typed icons as plain
-strings and pointed at the kit's `isIconName` for validation — the export
-was implied but never shaped.
+Extension modules build panels and compute output strings. The embed facade and the
+contracts barrel alone would force a consumer module to duplicate the design system or
+fall back to raw HTML, so the UI kit (`@core/ui`) and the pure helpers
+(`@core/lib/geo/formatters`) need a public, shaped surface. `MapTool.icon` is a plain
+string validated by the kit's `isIconName`, which therefore has to be exported too.
 
 ## Decision
 
@@ -34,11 +34,6 @@ store-driven, the kit's only MobX coupling) and boot screens
 (`ErrorScreen`, `LoadingScreen`, `ErrorBoundary`) — stays internal; those
 render inside the library's own root component and are not a consumer's
 surface.
-
-Why a new ADR rather than amending ADR-0014: that record governs how the
-kit is *built* (CSS Modules, tokens, in-house interactions); this one
-governs what the package *exposes* and promises to keep stable — a
-different question with a different review check (the barrel test).
 
 ## Consequences
 

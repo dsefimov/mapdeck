@@ -1,10 +1,12 @@
 # ADR-0010: Map rendering — the overlay port and the snapshot-to-map sync loop
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 The map domain turns the layer tree's snapshot into rendered layers. Rendering happens
 on two backends: native MapLibre layers (raster and vector formats) and a deck.gl overlay
-(point clouds). The core must treat both uniformly — the tree, the tools and the sync
+(point clouds). The kernel must treat both uniformly — the tree, the tools and the sync
 loop work on nodes, not on backends — so the render pipeline may know neither protocols nor
 deck.gl: its input is the structural snapshot (ADR-0008), resolved to descriptors by the
 tree, and its output passes through two narrow ports. The sync problem is the hard part:
@@ -80,7 +82,8 @@ is `{id, nodeIds, protocolId, adapter, descriptor}` — the batch of nodes drawn
 through one adapter. The pipeline builds one unit per visible node, then offers the
 result to every protocol's optional `groupRenderUnits` hook, which mutates the unit map:
 WMS deletes its single units and inserts grouped units for consecutive nodes sharing a
-WMS group key — base URL, version and opacity — at most ten per group, with a combined
+WMS group key — base URL, version and opacity — capped per group (the `maxPerGroup`
+option), with a combined
 tile URL; layer and style names are concatenated in reverse node order, so the group's
 internal stacking follows the native z-order of the same nodes. Opacity is part of the
 key because a group renders as a single raster layer, which carries one opacity.
@@ -106,9 +109,9 @@ it falls back to remove+add; on success the manager replaces the registry entry
 with the desired unit. Application order is fixed: removed,
 added, shown, updated, hidden, then failed-unit refresh and native z-order.
 
-**The sync loop is a reaction, not a debounce.** The manager observes the snapshot with
+**The sync loop is a reaction.** The manager observes the snapshot with
 `fireImmediately: true` and runs one full sync per change; MobX transaction batching
-coalesces bursts. No time-based debounce exists.
+coalesces bursts.
 
 **The sync waits for the map to load.** The manager initializes once; the sync no-ops
 until the map fires `load` (or reports itself already loaded), then runs one full sync.
@@ -135,18 +138,15 @@ half-constructed context.
 **Native layers follow tree order.** Adapters declare `nativeLayerOrdering`; after each
 sync the manager walks the snapshot's tree order and calls `map.moveLayer` for those
 adapters' units. deck.gl units are unaffected — the overlay owns its own order. Why:
-MapLibre's native order is the z-order, and the tree order is the only order the core
+MapLibre's native order is the z-order, and the tree order is the only order the kernel
 owns.
 
 ## Consequences
 
 - A new rendering backend arrives as a protocol plus an adapter behind the same two
   ports; `map/` never changes for a new format.
-- Hidden units retain loaded data and keep streaming: hiding a point cloud only hides
-  the deck layer — its streaming engine keeps fetching, so a re-shown cloud is already
-  current, and the adapter re-creates the deck layer from retained data at once on show,
-  without waiting for a viewport change. The cost is memory and background network work
-  for invisible layers, accepted for the interaction quality.
+- Hidden units retain loaded data; the streaming consequences — background fetching
+  and memory cost for invisible layers — are recorded in ADR-0011.
 - The manager is a full-diff reconciler: every sync pass walks the whole snapshot.
   Accepted at current layer counts; transaction batching is the only coalescing.
 - Render failures are visible in the tree per node, not only in the console.

@@ -1,17 +1,14 @@
 # Architecture
 
-Mapdeck is a browser-based geospatial constructor: a small generic core that renders
+Mapdeck is a browser-based geospatial constructor: a small generic kernel that renders
 external data sources on a map, with domain-specific functionality — protocols,
 widgets, tools — delivered as extensions. The built-in extensions live in this
 repository; external developers deliver domain extensions the same way, as modules.
 
-This document is an overview, not a source of truth. Code, types, tests and configs
-are the source of truth; the documents explain the "why" and the context that code
-cannot express. Tests are colocated with what they test (`*.test.ts` next to the
-module); behavior rules live in the ADRs and in the pure logic modules. Reading
-order: `AGENTS.md` (rules and workflow) → this overview →
-`docs/glossary.md` (domain terms) → `docs/adr/` (decisions and their rationale).
-This document describes the structure and points to them.
+This document is an overview: it explains the "why" and the context that code cannot
+express. Tests are colocated with what they test (`*.test.ts` next to the
+module); behavior rules live in the ADRs and in the pure logic modules. The reading
+order is in the README. This document describes the structure and points to them.
 
 ## Product context
 
@@ -26,9 +23,9 @@ through declared extension points (ADR-0004) — never by reaching into kernel
 internals — and a capability with no extension point is a missing point, not an
 invitation to reach in.
 
-## The layered core
+## The layered kernel
 
-The core (`src/core/`) is five layers, the `shell/` DI glue, plus a composition root in
+The kernel (`src/core/`) is five layers, the `shell/` DI glue, plus a composition root in
 `src/app/`. Each
 layer has one dependency direction, and the import rules are enforced by lint rules
 recorded in `AGENTS.md`.
@@ -42,7 +39,8 @@ recorded in `AGENTS.md`.
   async-state primitives. Their stores receive only the technical slice of the
   registry, without domain knowledge.
 - `ui/` — the generic React kit: components, composites, hooks, icons, theme,
-  utils. It imports `lib` only — the kit knows no stores and no domains;
+  utils. It imports `lib` (plus `mobx-react-lite` for the WidgetGrid precedent
+  alone) — the kit knows no stores and no domains;
   consumers inject state through structural props (the WidgetGrid precedent).
 - `contracts/` — ports and the shared kernel: the types that two or more consumers
   need, and the interfaces external systems sit behind (deck.gl, MapLibre, STAC).
@@ -56,9 +54,9 @@ recorded in `AGENTS.md`.
   grown domain carries `types.ts`, pure `logic/`, MobX `stores/`, and an `index.ts` as
   its only public surface; `adapters/` appears when the domain implements a port.
 
-Dependencies point one way: `app → domain → {ui, contracts} → lib`, with `shell` on
-the contracts edge, so the deepest layers stay free of React, MobX and the outside
-world.
+Dependencies point one way; the full edge list and the diagram live in
+[AGENTS.md](../AGENTS.md) (Dependency Graph), enforced by the lint zones recorded
+there.
 
 ## One store graph
 
@@ -85,7 +83,8 @@ state is ADR-0008.
 ## Extensions
 
 Domain-specific functionality arrives as extensions of four kinds: widgets, layer
-tools, map tools, and modules. All four share one shape — a class instance — and each
+tools, map tools, and modules. All four share one shape — an object implementing
+its contract interface, a class when it needs observable state or lifecycle — and each
 kind has its own home store for identity and activation. The model and its rationale
 are ADR-0004; the registration mechanics are ADR-0005. Registration is explicit: each
 kind has one registration function, and the composition root runs them in a fixed
@@ -132,7 +131,7 @@ re-initialized when the source URL changes (ADR-0008). Assets reach their protoc
 bindings through the kernel's asset mapping (ADR-0018): priority-ordered rules claim
 each asset, a protocol's slot fitness picks the serving slot, and the adapter builds
 nodes from the assignments, attaching capabilities (which layer tools apply). A
-protocol only defines how data is requested; the core provides the vocabulary,
+protocol only defines how data is requested; the kernel provides the vocabulary,
 verifies every assignment, and derives the menu. That boundary is ADR-0009.
 
 **The tree.** `LayerTreeStore` holds nodes in observable maps behind a `TreeState`
@@ -156,10 +155,9 @@ their `LayerAdapter`s; the `OverlayManager` port — a thin interface whose only
 implementation wraps deck.gl — serves the other layer types: the COPC point clouds,
 the GeoJSON layers and the map tools' measurement and marker layers all draw through
 it. The map domain imports no protocol code; its deck.gl surface is the overlay
-adapter of ADR-0010 (the manager, the tech-layer renderer behind the domain's
-barrel), and adapters receive a
-`MapContext` at each call. The port, the handoff and the failure channels are
-ADR-0010.
+adapter behind the domain's barrel (the manager and the tech-layer renderer), and
+adapters receive a `MapContext` at each call. The port, the handoff and the
+failure channels are ADR-0010.
 
 **The streaming engine.** COPC point clouds are the only streamed format. The engine
 inside `domain/protocols/copc/engine/` runs a cycle — select, plan, evict, load,
@@ -170,8 +168,8 @@ updated in place. The whole machinery is invisible outside the protocol (ADR-001
 
 | Path | Contents |
 |---|---|
-| `src/core/lib` | technical primitives (`async`, `color`, `equality`, `geo`, `logger`, `registry`, `state`, `text`) |
-| `src/core/common` | locale, settings, widget system, shared async-state (`state`) |
+| `src/core/lib` | technical primitives (`async`, `color`, `equality`, `geo`, `logger`, `registry`, `state` — the keyed per-instance state container, `text`) |
+| `src/core/common` | locale, settings, widget system, `state` — MobX-flavored async state (`AsyncState`, `KeyedAsyncState`) |
 | `src/core/ui` | generic React kit |
 | `src/core/contracts` | ports and shared types |
 | `src/core/shell` | `StoreProvider`, `useRootStore` |
@@ -185,44 +183,15 @@ updated in place. The whole machinery is invisible outside the protocol (ADR-001
 
 ## Error channels
 
-Who logs, who rethrows, who swallows — the matrix the reviews kept asking for:
-
-| Channel | Behavior |
-|---|---|
-| Global (`window.onerror`, `unhandledrejection`) | logged by the demo assembly's handlers — the library installs none; nothing escapes to the bare console |
-| Root workspace (`app/ErrorBoundary`) | contained, logged with componentStack, recovery is a page reload |
-| One widget (`ui` `ErrorBoundary` in WidgetGrid) | contained to the window, logged with componentStack, recovery remounts the widget |
-| Render units (`LayerManager`) | every channel (add/show/hide/update/remove) reports through `reportRenderError`; success clears with `null` — the tree never silently diverges from the map |
-| COPC node loads | errored node, eviction-protected, exponential backoff retry; cancellation aborts the request |
-| Protocol HTTP (`fetchChecked`, `boundedFetch`, `boundedGetter`) | throws with a named, actionable message; timeouts distinguishable from aborts |
-| STAC catalog fetches | throw upward (init/refresh surfaces them); a CORS refusal says so; pagination truncation and enrichment caps warn |
-| Basemap apply | health-probed, rolled back on partial failure; probes log through the store |
-| Best-effort paths (report download, recolor, picking fallback) | degrade quietly — a comment at each site states why |
-| Zoom to extent | user-facing: refusals (no map, invalid bbox) log a warning, fit failures log an error |
+The principle: every failure surfaces on the thing it belongs to. Render-unit
+failures report per node through `reportRenderError`, so the tree never silently
+diverges from the map; React failures are contained by an `ErrorBoundary` at each
+level (workspace, widget window), recovery remounts the smallest scope; protocol
+HTTP throws with named, actionable messages; best-effort paths (report download,
+recolor, picking fallback) degrade quietly, with a comment at each site stating
+why. The kernel installs no global handlers — the host owns
+`window.onerror`/`unhandledrejection`.
 
 ## Decisions
 
-Every non-obvious decision and its rationale is an ADR in `docs/adr/`:
-
-| ADR | Title |
-|---|---|
-| 0001 | MobX as state management |
-| 0002 | Store composition — RootStore as service locator |
-| 0003 | Store lifecycle — initialization, async state, disposal |
-| 0004 | Extension model — one class shape, module as primary container |
-| 0005 | Extension registration and initialization |
-| 0006 | Map tools — toolbar, one contract, two invocation modes |
-| 0007 | Layer tools — protocol-bound actions in the layer tree |
-| 0008 | Layer tree — pure operations over a domain model, presentation state apart |
-| 0009 | Node capabilities and protocols — the source/protocol/core boundary |
-| 0010 | Map rendering — the overlay port and the snapshot-to-map sync loop |
-| 0011 | Point-cloud streaming — the COPC engine |
-| 0012 | Point-cloud data port at the protocol boundary |
-| 0013 | FeatureRow — typed reserved row keys |
-| 0014 | Design system policy — CSS Modules + semantic tokens, self-owned interactions |
-| 0015 | Locale — en-complete dictionaries, typed key views |
-| 0016 | Embed settings overrides — host-declared setting values |
-| 0017 | Public helper subpaths — `mapdeck/ui` and `mapdeck/utils` |
-| 0018 | Asset→protocol mapping is a kernel domain — the `assetMapping` port |
-| 0019 | The embeddable library — prebuilt ESM over host-singleton peers |
-| 0020 | Kernel external dependencies — one policy, the `lib` import rule |
+Non-obvious decisions and their rationale are in [docs/adr/](adr/).

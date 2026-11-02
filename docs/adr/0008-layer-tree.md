@@ -1,5 +1,7 @@
 # ADR-0008: Layer tree — pure operations over a domain model, presentation state apart
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 The layer tree is the central structure of the app. Source data arrives as a hierarchy
@@ -81,7 +83,7 @@ empty source URL — is excluded from the snapshot (ADR-0010) and marked in the 
 row renders muted with the reason, and the visibility toggle and menu actions are
 disabled. The mark is derived from the same predicate the snapshot applies, so the tree
 cannot present a node as usable when the map cannot render it. The node is not an error
-and not hidden: it is source-provided data the core cannot render, and the tree stays a
+and not hidden: it is source-provided data the kernel cannot render, and the tree stays a
 mirror of the source.
 
 **Presentation state lives in the view model.** `LayerTreeViewModel` — widget instance
@@ -92,13 +94,12 @@ expanded groups), or search mode (matched nodes plus their ancestor paths, regar
 of expansion) when a query is active and no run is pending. While a run is pending —
 the debounce waiting or a search in flight — the expansion view stays, so the tree
 does not flash empty on every keystroke. The search lifecycle is owned by the
-view model: the query is trimmed, debounced (300 ms), a newer query aborts the in-flight
+view model: the query is trimmed, debounced (`SEARCH_DEBOUNCE_MS`), a newer query aborts the in-flight
 run, and a failed run clears the matches. Expanding a group triggers the lazy load;
 a failed or aborted load rolls the group back to collapsed. Expansion is independent of
 visibility: turning a group visible loads and shows its layers on the map but never
-expands the tree. View state survives reloads
-by stable node ids — stale ids produce no rows — and there is deliberately no reset
-method. Why a view model and not node fields: nodes are recreated on every reload, so
+expands the tree. View state survives reloads by stable node ids; stale ids produce no
+rows. Why a view model and not node fields: nodes are recreated on every reload, so
 node-held presentation state would be lost exactly when it matters; keying by id makes
 the state survive while keeping presentation concerns out of the domain model.
 

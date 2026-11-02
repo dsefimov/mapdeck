@@ -1,5 +1,7 @@
 # ADR-0005: Extension registration and initialization
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 The app assembles itself at startup: built-in widgets, tools and protocols are registered
@@ -42,8 +44,7 @@ comes with: its panel widget and its translations. Those belong to the tool, so 
 registered in the same step rather than in the widget or locale steps.
 
 Then the built-in basemap configurations (`registerBasemaps`). Basemaps are map
-infrastructure, not tools — previously this work was buried inside the map-tools step,
-which made the step do several unrelated jobs. The step is conditional: whether the box
+infrastructure, not tools, so they have their own step. The step is conditional: whether the box
 ships with built-in basemaps at all is assembly policy (the `builtinBasemaps` option,
 the same authority as the default source type). A module registers its own basemaps —
 and may replace a built-in by id with the explicit override — through the module
@@ -53,8 +54,7 @@ shared by both channels. Hiding a single built-in without replacing it is delibe
 unsupported — no consumer has needed it, and it would be removal, which the model does
 not have.
 
-Per-stand basemap tile retuning without a rebuild, previously a runtime-config
-parameter rewriting the baked tiles, is now module content: the consumer's module
+Per-deployment basemap tile retuning is module content: the consumer's module
 registers (or overrides) configs pointing at its own tile cache. Module unregister was
 rejected — the context reference outlives bootstrap, so an assembly-only unregister
 would in fact be a runtime API, and without an ownership ledger any module could
@@ -63,13 +63,13 @@ constructor option was rejected for duplicating the module channel; shipping no
 built-in set at all was rejected for losing the batteries-included default.
 
 Then the data protocols and feature providers (`registerProtocols`). Providers belong to
-the protocols domain; previously they were also registered inside the map-tools step,
-which is why that step mixed three domains at once.
+the protocols domain.
 
 Then the external modules (`registerModules`), executed in the order of the module array.
 Modules are last because they may register extensions of any kind and link existing tools
-to their protocols — they need all built-in registries populated first. The final step is
-the layer-tree fetch and `initialized`: the fetch goes last because it depends on source
+to their protocols — they need all built-in registries populated first. The final step
+applies the embed's `settingsOverrides` (ADR-0016), then runs the layer-tree fetch and
+`initialized`: the fetch goes last because it depends on source
 adapters registered by modules.
 
 A failure in any step surfaces through `initError` (see ADR-0003) and the whole sequence
@@ -100,8 +100,8 @@ basemap drops its stale health status and re-applies when the replaced id was th
 active one. Translations merge within a namespace — a re-declared
 dictionary updates its languages, so registration is repeatable. Settings ride their
 owner's registration: `registerSettings` follows the same explicit-override policy, and
-an overridden widget or tool replaces its settings batch atomically, dropping ids the
-new declaration no longer carries — auto-registered settings never block their owner's
+an overridden widget or tool replaces its settings batch atomically, dropping ids
+absent from the new declaration — auto-registered settings never block their owner's
 legitimate override.
 
 **Retry-safe registration.** Every bootstrap attempt registers into empty registries — a
@@ -109,7 +109,7 @@ failed attempt leaves no partial registrations behind, so retry is safe by const
 
 **Single access point for registries.** Extension registries live on `RootStore`
 (`protocolRegistry`, `sourceAdapterFactory`, feature providers), consistent with the
-service-locator contract of ADR-0002. No module-level singleton registries.
+single-access-point contract of ADR-0002. No module-level singleton registries.
 
 ## Consequences
 

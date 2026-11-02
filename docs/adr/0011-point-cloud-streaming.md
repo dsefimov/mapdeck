@@ -1,5 +1,7 @@
 # ADR-0011: Point-cloud streaming — the COPC engine
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 Point clouds are the only format the app streams. A COPC file can hold billions of
@@ -25,7 +27,7 @@ non-metric or GeoTIFF-keys file in real target data reopens this.
 
 **The engine is a cycle: select, plan, evict, load, render.** A camera change triggers
 one cycle. `ViewportManager` listens to the map: `moveend`/`zoomend`/`pitchend`
-debounced 150 ms start a traversal, raw `move` events only store the camera snapshot.
+debounced (`VIEWPORT_DEBOUNCE_MS`) start a traversal, raw `move` events only store the camera snapshot.
 The camera position, the active viewport and the frustum planes are read through
 the map context (ADR-0010) and the viewport type flows from the context's
 return types; the vertical FOV and the screen height are read directly from the map
@@ -37,43 +39,39 @@ stale loads, plan the budget, evict, enqueue the load batch, await the drain, re
 the render, notify through `onPointsLoaded`.
 
 **Traversal is pure and top-down, in a fixed order.** RBush spatial prefilter →
-anti-overzoom depth cap (disabled when the node is within 2 km of the camera, two
-extra levels beyond the strict formula) → frustum culling (four side planes,
+anti-overzoom depth cap (relaxed near the camera) → frustum culling (four side planes,
 negative-vertex test, run in absolute deck.gl common space against the signed plane
 constants, because both are fixed by the `viewProjectionMatrix` the planes come from
 and a test in any other space silently keeps or drops everything) → the SSE test
 with early termination: a node whose screen error is within the threshold stops its
 subtree; a leaf is accepted regardless of SSE; a coarse node yields to its loaded
-children. Missing children are recorded as pending hierarchy expansions, capped at 32
-per cycle; the orchestrator loads the pages and re-runs the traversal only when
-something new actually arrived. The visit loop is an explicit stack in pre-order with
-shared mutable contexts, and `shouldCullNode` is a pure predicate over them.
+children. Missing children are recorded as pending hierarchy expansions, capped per
+cycle (`MAX_HIERARCHY_EXPANSIONS`); the orchestrator loads the pages and re-runs the
+traversal only when something new actually arrived. The visit loop is an explicit
+stack in pre-order with shared mutable contexts, and `shouldCullNode` is a pure
+predicate over them.
 
-**Geometry is one formula set.** Geometric error per depth is `rootSpacing / 2^depth`;
-`rootSpacing` falls back in three tiers — declared spacing → `cbrt(volume /
-pointCount)` → diagonal/2 — and converts degrees to meters at the center latitude
-(`111320 · cos(lat)`) for WGS84 clouds. Screen-space error is
-`geometricError · screenHeight / (2 · distance · tan(fov/2))`, divided by
-`pixelRatio`. The projection is a local aeqd rebuilt once per traversal; node bounds
+**Geometry lives in `engine/geometry/`.** The formulas — ground resolution, camera
+projection, screen-space error, the meters-per-degree conversion — are defined there
+and pinned by colocated tests. The decisions the code cannot state: distances are
+meters throughout (degree-valued spacing converts at the extent's center latitude);
+the FOV is the map's vertical field of view; screen-space error is divided by the
+device pixel ratio. The projection is a local aeqd rebuilt once per traversal; node bounds
 project to meters with Z passed through; distance is Euclidean to the closest point of
 the box.
 
-**Priority is a multi-criteria encoding compared as one number.** Three criteria per
-candidate — reverse screen error, foveated factor, fractional depth — are normalized
-into [0, 1) (a degenerate range yields 0) and packed base-10 into a single priority,
-most significant digit group first: foveated dominates reverse screen error, and
-depth is the tiebreaker in the fractional part. The upper end is held strictly below
-1, including for a value outside the collected bounds, so that no criterion can carry
-into its neighbour's digit group. Normalization is single-pass: the bounds accumulate
-over visited, non-culled nodes during the same traversal, so early nodes normalize
-against a partial range. The encoding ranks the most urgent tile lowest, and both
+**Priority is one comparable number.** Three criteria per candidate — reverse screen
+error, foveated factor, fractional depth — are normalized and packed into a single
+priority with a fixed criterion order: foveated dominates reverse screen error, and
+depth breaks ties. The packing is order-only — each criterion stays strictly inside
+its own range, so no criterion can carry into its neighbour's. The encoding ranks the
+most urgent tile lowest, and both
 consumers read it in that direction — the budget planner fills in ascending order,
-and the load queue is a min-heap keyed by the rank itself. Skip-LOD (progressive
-resolution) is deliberately not implemented — no options are kept for it.
+and the load queue is a min-heap keyed by the rank itself.
 
 **Budget is counted in points, and eviction is LRU with protections.** `pointBudget`
-caps the total points across loaded and loading nodes; the adapter sets the effective
-baseline (40 million by default) once at initialization, and that baseline is the
+caps the total points across loaded and loading nodes; the adapter sets the baseline
+(`DEFAULT_POINT_BUDGET`) once at initialization, and that baseline is the
 single config path. Planning is one pass over the cache: the occupied budget
 accumulates in a running total, sibling blocks reserve atomically through the
 traversal's fallbacks map (child key → parent key), and a block that will not fit
@@ -86,10 +84,10 @@ skipped by every later step, so a loaded candidate costs the plan nothing. The p
 ends with a deficit against the budget — the occupied overrun alone, since planned
 points are part of the total the planner already charged. Eviction then
 frees points, and the load list is truncated to the remaining budget: the deficit
-minus the freed points. Eviction targets `pointBudget × evictionThresholdRatio`
-(0.8) and stops at the frame boundary; LRU order is `lastSeenAt`, protected by: the
-visible set, loading and error nodes, nodes in the load plan, parents of loading
-children, and a two-frame hysteresis.
+minus the freed points. Eviction targets a fraction of the budget (the
+`evictionThresholdRatio` option) and stops at the frame boundary; LRU order is
+`lastSeenAt`. The protected sets (visible, loading, errored, planned, parents of
+loading children, recent-frame hysteresis) are defined in `engine/eviction/`.
 
 **The render path packs visible nodes into one deck.gl layer.** After each cycle's
 drain the executor computes the visible set — a pure two-stage filter: the frustum
@@ -101,20 +99,22 @@ Per-node typed arrays pack into one contiguous buffer (`RenderBufferPool`: grow-
 `subarray` views, positions as offsets from the coordinate origin). The adapter hands
 the packed `PointCloudData` to a single `PointCloudLayer`, updated in place with
 versioned update triggers; there are no per-node deck layers. Refresh is cycle-driven:
-a scheme switch re-renders without a cycle, raw camera moves do not — the 150 ms
+a scheme switch re-renders without a cycle, raw camera moves do not — the viewport
 debounce bounds the lag, and the visible-set comparison is element-wise over the
 deterministically sorted key list.
 
 **Sources resolve at open time, workers are engine-internal.** A URL source stays a
 URL — but each node load wraps it in a bounded getter that rebuilds copc.js's range
-wire format on `boundedFetch`, giving the request a 30 s ceiling and a real AbortError
+wire format on `boundedFetch`, giving the request a ceiling
+(`DEFAULT_RANGE_REQUEST_TIMEOUT_MS`) and a real AbortError
 on cancellation; copc.js's own fetch path is never used for point data. File and
 ArrayBuffer sources become buffer getters (they read memory, cannot hang, and pass
 through untouched), and a File is read into a buffer once. The point worker
 always allocates intensity and classification arrays — zeros when the source has no
 channel — so packing stays uniform. `WorkerPool` is created inside
 `loader.initialize()` with its own sizing heuristic, and every worker request carries
-a 20 s ceiling that rejects, terminates and respawns a wedged worker; dispose rejects
+a ceiling (`DEFAULT_WORKER_REQUEST_TIMEOUT_MS`) that rejects, terminates and
+respawns a wedged worker; dispose rejects
 everything still pending. LazPerf arrives as a
 constructor-injected promise created by the adapter.
 
@@ -149,4 +149,3 @@ for non-point layers.
 - Hidden clouds keep streaming — the engine keeps fetching while the layer is hidden,
   so a re-shown cloud is already current, and the adapter re-creates the deck layer
   from retained data at once on show (ADR-0010).
-- Skip-LOD is absent by decision: no half-wired options remain to rot.

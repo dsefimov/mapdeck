@@ -1,5 +1,7 @@
 # ADR-0016: Embed settings overrides — host-declared setting values
 
+Status: Accepted · Date: 2026-10-13
+
 ## Context
 
 The embedding facade (`createMapdeck`) serves prebuilt-library consumers that
@@ -31,13 +33,6 @@ Generic dictionary, not a narrow `dataSourceUrl` option: the kernel carries no
 constants naming a concrete extension (ADR-0004 contract hygiene), so the
 facade must not hardcode knowledge of the layer-tree setting; the same
 mechanism serves any future deployment value (e.g. a stand's default basemap).
-
-Why a new ADR rather than amending an existing one: ADR-0004 governs the
-extension shape and its context (no new extension point appears here),
-ADR-0005 governs registration order and the duplicate policy (no registration
-semantics change — the override reuses the ordinary setter). This decision is
-about the embed facade's option surface and its application window — a
-concept no existing ADR hosts.
 
 ## Consequences
 

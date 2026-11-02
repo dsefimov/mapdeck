@@ -1,15 +1,13 @@
 # ADR-0013: FeatureRow — typed reserved row keys
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
-Attribute-serving protocols (WFS, OGC Features) flatten features into rows
-consumed by the attribute table. Two service-reserved keys traveled through
-that boundary as magic strings: `_bbox` (geometry-derived zoom target, read
-by `AttributeTableStore`) and `_id` (written by both clients, read by
-nobody). The contract typed rows as `Record<string, unknown>[]`, so the
-reserved-key rule lived only in duplicated comments and an eslint
-allowlist — nothing stopped a writer from dropping the keys or a consumer
-from inventing new ones.
+Attribute-serving protocols (WFS, OGC Features) flatten features into rows consumed by
+the attribute table. Rows carry data columns plus service-reserved keys (`_bbox`: the
+geometry-derived zoom target read by `AttributeTableStore`). Typing rows as plain string
+maps would leave the reserved-key rule to comments and an eslint allowlist.
 
 ## Decision
 
@@ -19,9 +17,8 @@ and `AttributeFetchResult.features` becomes `FeatureRow[]`. The JSDoc on the
 interface is the single statement of the convention — writers spread data
 properties first, so collisions can never clobber reserved values; the
 generic data table keeps receiving `unknown` cells and validates the bbox at
-render time. `_id` is deleted rather than wired up: no reader exists
-(row identity comes from data columns via `getFeatureId`), and re-adding a
-reserved key when a real consumer appears is one line.
+render time. Row identity comes from data columns via `getFeatureId`, so no
+`_id` key is reserved.
 
 ## Consequences
 

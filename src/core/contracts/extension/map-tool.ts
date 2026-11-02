@@ -2,7 +2,7 @@
  * One map-tool contract, discriminated by `kind`.
  * Pure contracts — no business logic.
  *
- * Every map tool is a class instance implementing one of the two
+ * Every map tool is an object implementing one of the two
  * variants; the discriminant keeps the compile-time guarantee that every
  * registered tool has exactly one capability. The store and the toolbar
  * branch on `kind`.

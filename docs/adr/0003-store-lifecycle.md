@@ -1,5 +1,7 @@
 # ADR-0003: Store lifecycle — initialization, async state, disposal
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 Stores run async operations (tree fetch, basemap health checks) and acquire resources
@@ -16,10 +18,13 @@ the message and leaves `isInitialized` false. Components observe exactly one of 
 states — initializing (`isInitialized` false, `initError` null), error (`initError` set),
 or initialized (`isInitialized` true) — never an intermediate value. The root component
 (`MapdeckRoot`) maps them to LoadingScreen / ErrorScreen (with retry) / MapWorkspace. Why: one gate prevents
-rendering against a partially assembled store graph.
+rendering against a partially assembled store graph. Why observable fields and not a
+ready promise: the three states are read synchronously by the render path, and a
+promise hides the error state from it.
 
 **Async operation state.** Async operation state uses `AsyncState` / `KeyedAsyncState`
-from `src/core/lib/async/`: statuses idle/loading/error, per-key isolation, an aggregate
+from `src/core/common/state/` (the MobX-flavored primitives; the plain async
+utilities live in `lib/async/`): statuses idle/loading/error, per-key isolation, an aggregate
 loading query, cancellation via `AbortSignal` (settles at `idle`, no error), and a
 generation counter so superseded runs cannot clobber newer state. New code does not
 hand-roll `isLoading`/`error` fields — the primitives' semantics are the contract.

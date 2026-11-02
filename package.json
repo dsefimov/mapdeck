@@ -38,6 +38,7 @@
     },
     "scripts": {
         "dev": "vite",
+        "docs:lint": "node scripts/docs-lint.mjs",
         "build": "tsc && vite build",
         "build:lib": "vite build --config vite.lib.config.ts",
         "preview": "vite preview",

@@ -1,10 +1,16 @@
 # Glossary
 
-Domain terms used across the docs and the code. The code, its types and tests are the
-source of truth; this file fixes the meaning of terms so the docs stay unambiguous.
+Domain terms used across the docs and the code. This file fixes the meaning of terms
+so the docs stay unambiguous.
 
 A layer tool acts on a single tree node; a map tool acts on the map as a whole. The two
 entities are distinct: different stores, different availability rules, different ADRs.
+
+## Kernel
+
+`src/core` — the layered base under the composition root (`src/app`) and the extensions
+(`src/widgets`, `src/layer-tools`, `src/map-tools`, `src/modules`). One word for it:
+docs say "kernel", never "core", when they mean this thing.
 
 ## Layer tool
 
@@ -39,7 +45,7 @@ source of truth. A node carries two: `renderer` (required) and `data` (optional)
 
 A layer tool assigned to a node by the source, together with the node slot that serves
 it: `{toolId, slot}`. The node's menu is its capability list; the source decides which
-capabilities a node gets, and the core verifies each against the tool-link table at
+capabilities a node gets, and the kernel verifies each against the tool-link table at
 assignment. See `docs/adr/0009-node-capabilities.md`.
 
 ## Render descriptor
@@ -106,3 +112,48 @@ The port an external data source implements to feed the layer tree: `fetchRoot`,
 adapter produces ready nodes — bindings, capabilities, styles — routes its assets
 through the kernel asset mapping (ADR-0018) and owns the source-specific
 classification. See `docs/adr/0009-node-capabilities.md`.
+
+## Module
+
+A unit of delivery for domain functionality: `{id, name, dependencies?, register(context)}`.
+Registers widgets, tools, protocols, source adapters, basemaps, settings and translations
+through the declared points of `ModuleContext`. See `docs/adr/0004-extension-model.md`.
+
+## Declared point
+
+A registration or read port in `ModuleContext` / `ToolRuntimeContext`. A module changes
+kernel behavior only through declared points; a capability with no point is a missing
+point, not an invitation to reach into internals.
+
+## Widget
+
+A windowed panel in the workspace grid. Layout and z-order survive close; the grid is
+the kit's only MobX coupling.
+
+## Asset / AssetRule
+
+`SourceAsset`: a tagged resource at a URL, as the source describes it (an open index
+signature carries source-specific fields). `AssetRule`: a priority-ordered predicate
+that claims an asset and resolves it to a protocol assignment. See
+`docs/adr/0018-kernel-asset-mapping.md`.
+
+## Binding slot
+
+`renderer` (map visualization) or `data` (attribute access): the task a protocol
+binding serves on a node. Slot fitness is the weight a protocol declares for a slot at
+registration; the best fitness wins the slot.
+
+## Snapshot
+
+`layerSnapshot`: the layer tree's resolved, structurally compared output; the map's
+only input signal. See `docs/adr/0008-layer-tree.md`.
+
+## FeatureProvider
+
+The port for point queries (feature info), separate from `Protocol`; collected by the
+`FeatureProviderRegistry`.
+
+## Basemap
+
+A background map style registered as a config and switchable at runtime; built-ins and
+module basemaps ride one registration channel.

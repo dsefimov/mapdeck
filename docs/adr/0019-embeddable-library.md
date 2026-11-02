@@ -1,11 +1,13 @@
 # ADR-0019: The embeddable library — prebuilt ESM over host-singleton peers
 
+Status: Accepted · Date: 2026-11-01
+
 ## Context
 
 One codebase serves two roles: this repository's demo app and an embeddable
 component inside arbitrary hosts (`createMapdeck` / `MapdeckRoot`, the barrel
-at `src/app/index.ts`). The demo is a dogfood consumer of the public entries,
-not a separate surface — it exercises the same package a host receives.
+at `src/app/index.ts`). The demo uses only the public entries — it exercises
+the same package a host receives.
 
 Two constraints shape the package. React and MobX must be singletons of the
 host page: a second React copy means two renderers and broken hooks, a second
@@ -62,11 +64,6 @@ library's `laz-perf` dependency — its version is locked by the manifest,
 never chosen by the host. It is served over HTTP at a runtime URL, never
 bundler-imported; icons and the worker inline, so the package emits no asset
 files besides the wasm.
-
-Why a new ADR rather than amending 0016/0017: those records are features
-riding an already-working library — host settings overrides and helper
-subpaths; the foundation they ride — what the package is for a host — is
-recorded nowhere else.
 
 ## Consequences
 

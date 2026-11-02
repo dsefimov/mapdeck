@@ -2,13 +2,16 @@
 
 ## Git Workflow
 
-- **`main`** — stable releases, tagged with semver (`v0.5.0`, etc.)
+- **`main`** — stable releases, tagged with semver (`v1.0.0`, etc.)
 - **`devel`** — active development branch, all changes land here
 - Feature branches: branch off `devel`, merge back via PR or direct push. Name them `feat/<slug>`, `fix/<slug>`, `refactor/<slug>`.
 
 ## Local development
 
-Setup and first run: see [Demo & development](README.md#demo--development) in the README.
+1. Clone the repository.
+2. `npm install` — also installs the git hooks (below).
+3. `npm run dev` — the demo application runs on the public entries; sample data
+   (a STAC catalog, basemap configs, the laz-perf decoder) ships in `public/`.
 
 | Script | Purpose |
 |---|---|
@@ -18,7 +21,32 @@ Setup and first run: see [Demo & development](README.md#demo--development) in th
 | `npm run build` | TypeScript check + production build |
 | `npm run build:lib` | library build: the prebuilt ESM package into `dist/` |
 | `npm run test:e2e` | Playwright E2E smoke against live demo sources |
+| `npm run docs:lint` | documentation checks (history wording, paths, ADR status) |
 | `npm run license-check` | production dependency license allowlist |
+
+### Testing
+
+Unit and store logic run with Vitest (`npm run test`, colocated `*.test.ts`).
+The E2E smoke suite lives in `tests/` and drives the real app in Chromium:
+
+```sh
+npx playwright install chromium   # once, after cloning
+npm run test:e2e
+```
+
+The suite boots the dev server itself, walks the demo catalog — layer
+toggles, point-cloud streaming over range requests, measurements on the
+cloud, feature info, basemap switching, widget grid and menu keyboard
+navigation — and fails on any console error outside the known-harmless
+list (`tests/helpers/console.ts`). It runs against live demo sources, so it
+needs network access and takes a few minutes; it is deliberately not
+part of the git hooks.
+
+### Git hooks
+
+`pre-commit` runs lint + test, `pre-push` runs the build; `npm install`
+installs them (`scripts/install-git-hooks.mjs`). `--no-verify` is the WIP
+escape hatch.
 
 ## Commit Messages
 
@@ -40,14 +68,18 @@ Types:
 
 Keep the subject line under 72 characters. Use present tense, imperative mood (`add`, not `added` or `adds`). One logical change per commit — a completed stage/phase is a natural boundary; no WIP commits.
 
+## Pull requests
+
+One logical change per PR. For a change that adds an ADR, the PR description states
+why no existing ADR can host the decision; a maintainer reviews ADR-bearing changes
+before merge. There is no formal code of conduct — be respectful, critique code
+rather than people.
+
 ## Workflow
 
-Every task follows a lightweight process — the source of truth is the code, not documents:
-
-1. **Plan.** Write a task plan: scope, approach, affected files, verification steps. Plans live in `plans/` (gitignored) or any local working file outside git; they are never committed. They are working artifacts, not documentation.
-2. **Implement.** Code + tests. Edge cases and business rules are documented by tests, never by prose.
-3. **ADR check.** Record architecturally significant decisions as ADRs in `docs/adr/NNNN-*.md` (Context / Decision / Consequences). The complete trigger list lives in `AGENTS.md`.
-4. **Gate.** `npm run lint` + `npm run test` + `npm run build` green; commit per completed stage.
+The full workflow (plan → implement → ADR check → gate) is defined in
+[AGENTS.md](AGENTS.md). Typo fixes and one-line changes need no written plan;
+everything else does.
 
 ## Documentation
 
@@ -61,5 +93,5 @@ Documentation lives alongside the code:
 | `docs/adr/` | Architectural decisions with rationale |
 | `docs/extending.md` | Building modules, tools and protocols |
 
-Docs are not a separate source of truth — code, types, and tests are. Docs explain "why"
-and context only. All documentation is in English.
+Docs explain "why" and context only; the writing rules live in
+[AGENTS.md](AGENTS.md). All documentation is in English.

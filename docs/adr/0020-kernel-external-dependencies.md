@@ -1,5 +1,7 @@
 # ADR-0020: Kernel external dependencies — one policy, the `lib` import rule
 
+Status: Accepted · Date: 2026-11-01
+
 ## Context
 
 The kernel runs on a dozen external packages: two rendering engines, a
@@ -49,11 +51,6 @@ one is an ADR-triggered decision — the absolute wording is the high bar
 that keeps utility creep out of the bottom layer. Placement still follows
 the move test: a `lib/` file compiles in a fresh project that installs its
 own dependencies — geo math passes, so geo math lives in `lib/geo`.
-
-Why a new ADR rather than amending 0011/0014/0019: 0011 is COPC streaming,
-0014's dependency policy is scoped to UI rendering and interaction, 0019
-governs packaging against hosts — which external code may enter the kernel
-is hosted nowhere else.
 
 ## Consequences
 

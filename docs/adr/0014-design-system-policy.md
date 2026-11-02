@@ -1,5 +1,7 @@
 # ADR-0014: Design system policy — CSS Modules + semantic tokens, self-owned interactions
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 The UI layer serves two consumers at once: DOM components and the map
@@ -38,6 +40,8 @@ defaults, or vendored code.
 
 **UI dependencies require their own ADR.** Any runtime dependency touching UI
 rendering or interaction is introduced only after a dedicated decision record.
+The one dependency on record, `react-grid-layout` (the widget grid layout
+engine), is covered by the kernel dependency policy (ADR-0020).
 
 **The icon set is open.** The registry curates the built-in names only; any
 other name renders the `--icon-<name>` token directly (an inline mask-image in
@@ -58,8 +62,8 @@ reading material rather than copied implementations. If product demands shift
 toward heavy interaction widgets (dialogs, command palette) at scale, this
 policy is revisited by a new ADR rather than eroded piecemeal.
 
-Two consolidations the design review proposed are deliberate non-goals:
-native `title=` attributes remain instead of a custom Tooltip component
+Two consolidations are deliberate non-goals: native
+`title=` attributes remain instead of a custom Tooltip component
 (themeable tooltips are built when a real need appears — touch or
 keyboard-focused users suffering), and the overlay sites share the
 `--toolbar-width` token instead of a shared MapOverlay layer (a third

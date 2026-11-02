@@ -1,15 +1,17 @@
 # ADR-0015: Locale — en-complete dictionaries, typed key views
 
+Status: Accepted · Date: 2026-10-13
+
 ## Context
 
 `noUncheckedIndexedAccess` types every `Record<string, string>` lookup as
 `string | undefined`, and the locale dictionaries are exactly that:
 `TranslationDict` is an untyped string map, namespaces register at runtime
-(widgets and tools auto-register `localeTranslations`, the core namespace
-registers in the composition root). The 2026-09 review sweep counted ~42
-`dict["key"]!` assertions papering over the gap between "the compiler cannot
-know the key exists" and "the dictionary ships with the component and always
-carries it".
+(widgets and tools auto-register `localeTranslations`, the kernel's own namespace
+registers in the composition root). Without typing, every lookup needs a
+`dict["key"]!` assertion to bridge the gap between "the compiler cannot
+know the key exists" and "the dictionary ships with the component and
+always carries it".
 
 Two facts make those assertions unnecessary. First, the en dictionary is
 registration-complete: every extension's en literal is authored next to its
@@ -50,24 +52,17 @@ carries those keys.
 
 **Future languages lean on the store, not the types.** A module may register
 additional languages for its namespaces; the store's whole-dict en fallback
-keeps every typed view correct without per-key fallback code.
-
-Why a new number: no existing ADR hosts locale policy — 0004/0005/0006/0007
-each touch translations only as registration mechanics of their own subject,
-and ADR-0007 says so explicitly: "The translation dictionary format and the
-fallback chain belong to the locale area." This ADR is that home. The
-en-completeness invariant itself rests on the registration mechanics of
-ADR-0004/0005, and the decision applies equally to the core namespace, which
-is not an extension. Dynamic template-literal keys (`validation.${reason}`)
-are typed through the reason unions and pinned by tests where the key set is
-data (`layer-tree/locale.test.ts`).
+keeps every typed view correct without per-key fallback code. Dynamic
+template-literal keys (`validation.${reason}`) are typed through the reason
+unions and pinned by tests where the key set is data
+(`layer-tree/locale.test.ts`).
 
 ## Consequences
 
 - A missing or renamed dictionary key stops compiling at the lookup site —
   the assertion class disappears instead of being policed.
-- The trust boundary is one documented function; reviews grep for
-  `as Record<` in locale context instead of auditing dozens of `!`.
+- The trust boundary is one documented function; locale typing is audited
+  there instead of across dozens of scattered `!` assertions.
 - Extensions that keep dictionaries untyped (module-registered, dynamic
   namespaces) keep the id-fallback idiom — this ADR does not force key
   unions on runtime-data namespaces.

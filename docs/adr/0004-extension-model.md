@@ -1,22 +1,23 @@
-# ADR-0004: Extension model — one class shape, module as primary container
+# ADR-0004: Extension model — one contract shape, module as primary container
+
+Status: Accepted · Date: 2026-09-22
 
 ## Context
 
-The app is a geospatial constructor: a small generic core plus domain-specific functionality
+The app is a geospatial constructor: a small generic kernel plus domain-specific functionality
 delivered as extensions. The built-in set (generic widgets, layer tools, map tools) lives
 in this repository under `src/widgets/`, `src/layer-tools/`, `src/map-tools/`; external
-developers deliver domain extensions the same way — as modules. Core must never depend on
+developers deliver domain extensions the same way — as modules. The kernel must never depend on
 domain-specific code.
 
 ## Decision
 
 **Four extension kinds, one shape.** Widgets, layer tools, map tools, and modules are
-distinct kinds with their own identity/activation stores, but every extension is a class
-instance. One shape removes the runtime discrimination between object-shaped and
-class-shaped extensions (`isMapTool` checks, union types) and makes the shape stable when
-requirements change: an extension that later needs observable state or lifecycle is
-already a class. Stateless extensions are classes without observable fields; stateful ones
-add MobX-observable fields and lifecycle methods. A single unified `Extension` interface
+distinct kinds with their own identity/activation stores. Every extension is an object
+implementing its contract interface; a class is the form for extensions with observable
+state or lifecycle, a plain object literal is enough for stateless ones. The registries
+treat both identically: they read the contract's fields and never test for `instanceof`.
+A single unified `Extension` interface
 with a type discriminator was rejected for the same reason: the kinds have different
 registration stores and lifecycles.
 
@@ -27,7 +28,7 @@ widget via `widgetStore` and its translations via `localeStore` alongside itself
 store is an identity boundary, not an exclusivity boundary.
 
 **Contract hygiene.** The kernel holds only multi-consumer types and never imports from
-`@core/ui`: no `WidgetContext` interface exists (zero consumers), and the
+`@core/ui`: the
 map-tool contract carries `icon` as a plain string — consumers validate it with the ui
 kit's `isIconName` guard instead of the contract importing `IconName`. Widgets already
 carried plain-string icons; `ui` and `contracts` must not import each other. The kernel
@@ -37,9 +38,9 @@ cross-extension coordination goes through state keyed by that identity.
 
 **Widget windows are session workspace.** A widget window's layout and z-order survive
 close: closing keeps them, reopening restores position and size and raises the window;
-when the maximum z-index reaches 10 000 the open windows are renumbered from 1, so
-z-order cannot grow unboundedly. The map and the sidebar are static chrome outside the
-widget grid.
+when the running z-index reaches the `Z_INDEX_RESET_THRESHOLD` cap the open windows are
+renumbered from 1, so z-order cannot grow unboundedly. The map and the sidebar are static
+chrome outside the widget grid.
 
 **Module as primary container.** Domain-specific functionality — widgets, layer tools,
 map tools, source adapters, protocols, any combination — is delivered as a module.
@@ -56,12 +57,14 @@ registration slice (`register*` functions) that only modules receive; tool panel
 the runtime slice (ADR-0006). A module never receives the domain stores (`treeStore`,
 `mapStore`, `basemapStore`): it changes kernel behavior through the declared points,
 never by reaching into store internals. The built-in set stays limited to
-generic, non-domain-specific tools. Core never imports from `src/modules/` — the
+generic, non-domain-specific tools. The kernel never imports from `src/modules/` — the
 boundary is one-directional through registration interfaces.
 
 Why not the full `StoreRegistry`: reach-in access makes every
 internal kernel refactoring a breaking change for modules, while a declared point is a
-stable contract. "A module must be able to change any point of the application" is
+stable contract. `useRootStore` is exported for host chrome and first-party panels (not
+for modules) and is explicitly outside semver: its return type may change in any release.
+"A module must be able to change any point of the application" is
 satisfied by the completeness of the point map — a behavior no point covers is a missing
 point (a legitimate extension request, added as a new point), not an invitation to reach
 into internals. Replacing a base entry is the explicit override of ADR-0005, not a
@@ -79,6 +82,6 @@ module execution order is simply the order of the module array. Cross-imports be
 - Module registrations are fire-and-forget: the system does not track what a module
   registered, so there is no unload path. Module unloading is not a use case.
 - No lazy loading: all extensions register at init. Acceptable at the current count.
-- Core's registration interfaces are the only contract external developers need to learn;
+- The kernel's registration interfaces are the only contract external developers need to learn;
   built-in and module-delivered extensions look identical to consumers.
 

@@ -1,5 +1,7 @@
 # ADR-0018: Asset→protocol mapping is a kernel domain — the `assetMapping` port
 
+Status: Accepted · Date: 2026-10-13
+
 ## Context
 
 Which protocol serves a tree node is a mapping with two candidate
@@ -61,14 +63,6 @@ options (overriding a protocol overrides its declaration);
 lower-level path for rules and slots that register separately. The mapper
 itself starts empty: the kernel holds the mechanism, the protocols hold
 the knowledge.
-
-Why a new ADR rather than amending 0004/0005/0009: ADR-0004 describes the
-context family's shape (this adds one member of the already-decided
-kind — not a new shape); ADR-0005 governs registration order and the
-duplicate policy (both reused as-is); ADR-0009 records the node
-capability boundary the mapper serves, not the mapping itself. The
-decision here — the mapping is a kernel domain with its own declared
-point — is a concept none of them hosts.
 
 ## Consequences
 

@@ -1,5 +1,7 @@
 # ADR-0006: Map tools — toolbar, one contract, two invocation modes
 
+Status: Accepted · Date: 2026-09-22
+
 ## Context
 
 Map tools are the map-level extension point. A toolbar widget collects all registered map
@@ -12,9 +14,8 @@ This ADR records how map tools are structured.
 
 ## Decision
 
-**One `MapTool` contract, discriminated by `kind`.** Every map tool is a class instance
-(ADR-0004) implementing the single contract name `MapTool` — a discriminated union with
-shared fields and a required `kind`:
+**One `MapTool` contract, discriminated by `kind`.** Every map tool implements `MapTool`
+(ADR-0004) — a discriminated union with shared fields and a required `kind`:
 
 - `kind: "interactive"` — carries `component` (the panel), optional lifecycle hooks, and
   optional `contextMenu` behavior. Clicking its button toggles activation.
@@ -25,8 +26,9 @@ Shared fields: `id` (also the locale namespace), `icon` (a plain string — ADR-
 optional `settings`, `localeTranslations`. The discriminant values are exported as
 the constant `MAP_TOOL_KIND` — the single source for every `kind` comparison; the
 store and the toolbar branch on it, never on bare strings. The contract exposes one
-name — `MapTool` — and the store and the toolbar
-branch on `kind`. Why one name: module authors learn one
+name — `MapTool`; its members `InteractiveMapTool` and `ActionMapTool` are importable
+from `mapdeck/contracts`, while the root entry carries the union name only. Why one name:
+module authors learn one
 contract, consistent with ADR-0004's one-shape direction. Why `kind` and not optional
 fields: optional fields cannot express "exactly one capability" in the type system, so
 that rule would have to live in a runtime test — the discriminant keeps it in the types,
