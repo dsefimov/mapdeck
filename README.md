@@ -130,6 +130,16 @@ rendering, copc.js and laz-perf for point-cloud streaming, Turf for geo math.
 - [docs/extending.md](docs/extending.md) — building modules, tools and protocols
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guidelines
 
+## Versioning
+
+Mapdeck follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The public surface is what the package exports map exposes: the root entry,
+`mapdeck/contracts`, `mapdeck/ui`, `mapdeck/utils`, `mapdeck/styles.css` and
+`mapdeck/laz-perf.wasm`. Changes to these entries — types, behavior or
+removal — follow semver: a breaking change bumps the major version, an
+additive change bumps the minor. Everything the exports map does not expose
+(`src/core/**` internals, the demo application) may change in any release.
+
 ## License
 
 [MIT](LICENSE) © 2025–2026 The Mapdeck Authors.
