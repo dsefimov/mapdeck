@@ -1,13 +1,15 @@
 # Architecture
 
-Mapdeck is a browser-based geospatial constructor: a small generic kernel that renders
-external data sources on a map, with domain-specific functionality — protocols,
-widgets, tools — delivered as extensions. The built-in extensions live in this
+Mapdeck is a browser-based geospatial constructor: a kernel — the map, the layer
+tree, and the built-in protocols, streamed point clouds included — that renders
+external data sources on a map, with additional functionality delivered as
+extensions. The built-in extensions live in this
 repository; external developers deliver domain extensions the same way, as modules.
 
 This document is an overview: it explains the "why" and the context that code cannot
 express. Tests are colocated with what they test (`*.test.ts` next to the
-module); behavior rules live in the ADRs and in the pure logic modules. The reading
+module); behavior rules live in the pure logic modules and their tests — the ADRs
+record why the rules exist. The reading
 order is in the README. This document describes the structure and points to them.
 
 ## Product context
@@ -19,14 +21,13 @@ protocols, widgets, tools. The product reads geodata and never writes back, so t
 flow is one-way: external sources → layer tree → rendering → inspection; measurements
 are client-side computations, not records. The architectural promise the rest of these
 documents keep: a module can extend or replace behavior at any point of the application
-through declared extension points (ADR-0004) — never by reaching into kernel
-internals — and a capability with no extension point is a missing point, not an
-invitation to reach in.
+through declared extension points (ADR-0004) and never by reading kernel internals;
+a capability without a point means a missing point, and the fix is to add the point.
 
 ## The layered kernel
 
-The kernel (`src/core/`) is five layers, the `shell/` DI glue, plus a composition root in
-`src/app/`. Each
+The kernel (`src/core/`) is five layers plus the `shell/` DI glue; the composition
+root in `src/app/` assembles it and sits outside the kernel. Each
 layer has one dependency direction, and the import rules are enforced by lint rules
 recorded in `AGENTS.md`.
 
@@ -101,14 +102,15 @@ providers, basemaps, widgets, both tool kinds, tool-to-protocol links, settings,
 translations and the kernel's asset mapping — plus the runtime services and read
 ports (state, locale, protocol and
 feature-provider reads, the tree catalog, basemap read-and-switch). A module never
-receives the domain stores; it changes kernel behavior through the points, and a
-capability no point covers is a missing point, not an invitation to reach into
-internals. Map-tool
+receives the domain stores; it changes kernel behavior through the points alone
+(ADR-0004). Map-tool
 panels receive the runtime slice of the same family (`ToolRuntimeContext`,
 ADR-0006) together with the map engine — platform technology for tools, not a port.
 
-Widgets are the windowed panels of the workspace (the built-in set: attribute table,
-layer tree, map toolbar, map viewer, settings, sidebar); their window model — what
+Widgets are panels registered in the widget catalog (the built-in set: attribute
+table, layer tree, map toolbar, map viewer, settings, sidebar). The map viewer and
+the sidebar render as static workspace chrome outside the window grid; the window
+model — what
 survives closing, how the z-order is bounded — is recorded in ADR-0004. Layer tools
 are the per-node actions in the tree's "More" menu (attribute table, opacity, point
 size and color controls); how a tool becomes available on a node is ADR-0007. Map
@@ -168,7 +170,7 @@ updated in place. The whole machinery is invisible outside the protocol (ADR-001
 
 | Path | Contents |
 |---|---|
-| `src/core/lib` | technical primitives (`async`, `color`, `equality`, `geo`, `logger`, `registry`, `state` — the keyed per-instance state container, `text`) |
+| `src/core/lib` | technical primitives (the folder list lives in AGENTS.md, Core Structure) |
 | `src/core/common` | locale, settings, widget system, `state` — MobX-flavored async state (`AsyncState`, `KeyedAsyncState`) |
 | `src/core/ui` | generic React kit |
 | `src/core/contracts` | ports and shared types |

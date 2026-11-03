@@ -56,14 +56,17 @@ shape: a runtime slice shared by every consumer (services and read ports) plus a
 registration slice (`register*` functions) that only modules receive; tool panels get
 the runtime slice (ADR-0006). A module never receives the domain stores (`treeStore`,
 `mapStore`, `basemapStore`): it changes kernel behavior through the declared points,
-never by reaching into store internals. The built-in set stays limited to
-generic, non-domain-specific tools. The kernel never imports from `src/modules/` — the
+never by reaching into store internals. The built-in set covers the shipped protocols'
+own controls — including COPC-specific tools such as point size and color; anything
+beyond them arrives as a module. The kernel never imports from `src/modules/` — the
 boundary is one-directional through registration interfaces.
 
 Why not the full `StoreRegistry`: reach-in access makes every
 internal kernel refactoring a breaking change for modules, while a declared point is a
-stable contract. `useRootStore` is exported for host chrome and first-party panels (not
-for modules) and is explicitly outside semver: its return type may change in any release.
+stable contract. The raw registry stays internal: first-party panels reach the store
+graph through the shell package, and the facade handle's `store` field (kept for
+`MapdeckRoot`) is the only place the registry meets the public surface. A host with a
+real need gets a designed, versioned point instead.
 "A module must be able to change any point of the application" is
 satisfied by the completeness of the point map — a behavior no point covers is a missing
 point (a legitimate extension request, added as a new point), not an invitation to reach

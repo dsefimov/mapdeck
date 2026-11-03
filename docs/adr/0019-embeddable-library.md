@@ -18,8 +18,10 @@ toolchain nor require one.
 
 ## Decision
 
-**Host-singleton runtimes are peer dependencies.** `react` / `react-dom`
-`^18 || ^19`, `mobx ^6.15`, `mobx-react-lite ^4.1`. Every runtime the embed
+**Host-singleton runtimes are peer dependencies.** `react`, `react-dom`, `mobx`,
+`mobx-react-lite`; README carries the exact ranges. The React peer names only the
+major the test suite runs — widening it later is a minor, narrowing it is a major.
+Every runtime the embed
 needs on its own — the engines, pmtiles, proj4, the geo math, the grid
 layout, the point-cloud stack — is a regular dependency, and the build
 externals exactly the manifest's dependency and peer lists
@@ -79,8 +81,9 @@ files besides the wasm.
 - ESM-only: a CJS consumer (Jest without ESM setup, SSR through `require`)
   cannot import the package without tooling changes — accepted; bundling
   hosts are the target.
-- Declarations are generated against the newest `@types/react` of the peer
-  range; the React 18 leg has no dedicated type-check run — a known gap,
-  accepted while the surface's React-generic usage stays small.
+- `createMapdeck` configures MobX globally (the options are in ADR-0001); host
+  stores on the same page run under the same strictness.
+- The React peer names the tested major; adding another major is a minor bump
+  once a test run covers it.
 - The demo app builds on the same entries, so the package surface is
   exercised by the repository itself on every demo build.

@@ -32,8 +32,8 @@ capability is deferred until a second point-cloud protocol exists.
 
 One public contracts type pair more; the generic `ProtocolRegistry` stays
 untouched — no per-protocol accessors leak into it. The runtime check replaces
-compile-time fiction: a future adapter that drops either method fails loudly
-(null) instead of silently breaking tool reads. A second cloud protocol later
+compile-time fiction: a future adapter that drops either method fails visibly — the
+narrowing returns null — instead of silently breaking tool reads. A second cloud protocol later
 gets the port by implementing two methods, with zero changes to consumers.
 The pattern (capability port + checked narrowing + id constant owned by its
 domain) is the precedent for any future tool-facing protocol capability.

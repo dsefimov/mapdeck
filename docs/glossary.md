@@ -122,8 +122,8 @@ through the declared points of `ModuleContext`. See `docs/adr/0004-extension-mod
 ## Declared point
 
 A registration or read port in `ModuleContext` / `ToolRuntimeContext`. A module changes
-kernel behavior only through declared points; a capability with no point is a missing
-point, not an invitation to reach into internals.
+kernel behavior only through declared points; when a capability has no point, the fix
+is a new point (ADR-0004), never an exposure of internals.
 
 ## Widget
 

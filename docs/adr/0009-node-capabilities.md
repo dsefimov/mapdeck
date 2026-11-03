@@ -87,9 +87,9 @@ same data type reuse the shared adapters (`RasterAdapter`, `VectorAdapter`,
 `GeoJsonAdapter`) — the precedent a new protocol follows.
 
 **Style is a shared vocabulary, interpreted by the protocol.** `node.style` uses the
-Mapbox GL style-layer vocabulary (`type`, `paint`, `layout`, `minzoom`, `maxzoom`,
-`filter`, `metadata`) — no own generalized style standard is introduced, Mapbox is the
-de-facto standard. The vocabulary is protocol-agnostic by rule: each protocol
+style-layer vocabulary of the MapLibre Style Specification (`type`, `paint`, `layout`,
+`minzoom`, `maxzoom`, `filter`, `metadata`); no separate style model is invented. The
+vocabulary is protocol-agnostic by rule: each protocol
 interprets only the properties relevant to its rendering (`raster-opacity` becomes WMS
 opacity, `circle-radius`/`circle-color` become point size and color scheme) and
 silently ignores the rest; unknown keys are never validated because they are never

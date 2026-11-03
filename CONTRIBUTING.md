@@ -21,7 +21,6 @@
 | `npm run build` | TypeScript check + production build |
 | `npm run build:lib` | library build: the prebuilt ESM package into `dist/` |
 | `npm run test:e2e` | Playwright E2E smoke against live demo sources |
-| `npm run docs:lint` | documentation checks (history wording, paths, ADR status) |
 | `npm run license-check` | production dependency license allowlist |
 
 ### Testing
@@ -72,14 +71,24 @@ Keep the subject line under 72 characters. Use present tense, imperative mood (`
 
 One logical change per PR. For a change that adds an ADR, the PR description states
 why no existing ADR can host the decision; a maintainer reviews ADR-bearing changes
-before merge. There is no formal code of conduct — be respectful, critique code
-rather than people.
+before merge. There is no formal code of conduct beyond
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — be respectful, critique code rather
+than people.
+
+## Releasing
+
+1. In `CHANGELOG.md`, rename the `[Unreleased]` section to `## [X.Y.Z] - YYYY-MM-DD`
+   and add the compare link at the bottom.
+2. Bump `version` in `package.json` and refresh the lockfile
+   (`npm install --package-lock-only`).
+3. Commit, tag `vX.Y.Z`, push the commit and the tag.
+4. `npm publish` — `prepack` runs lint, the test suite and the library build;
+   publish from a clean checkout of the tag.
 
 ## Workflow
 
 The full workflow (plan → implement → ADR check → gate) is defined in
-[AGENTS.md](AGENTS.md). Typo fixes and one-line changes need no written plan;
-everything else does.
+[AGENTS.md](AGENTS.md), including the exemption for trivial changes.
 
 ## Documentation
 

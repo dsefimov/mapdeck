@@ -15,9 +15,10 @@ a value: before boot the setting does not exist yet (`setSetting` returns
 only window is inside `bootstrap()`, between the last registration wave and
 `initialize()`.
 
-Settings are register-once without an override path (ADR-0005), so a consumer
-module cannot re-register a built-in setting either — value injection is the
-only channel for per-deployment setting values.
+Settings follow the common registration policy (ADR-0005): a colliding id throws
+unless the owner re-declares its batch with `{ override: true }`. An owner's
+override replaces the owner's own settings — per-deployment *values* are not
+overrides but data, and `settingsOverrides` is their only channel.
 
 ## Decision
 

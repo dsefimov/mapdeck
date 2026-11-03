@@ -4,12 +4,9 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-Versions before 1.0.0 were unpublished development iterations and have no
-entries here.
+## [Unreleased]
 
-## 1.0.0 — 2026-11-02
-
-First published release.
+First public release.
 
 - Embeddable ESM library: `createMapdeck`, `MapdeckRoot`, entries `mapdeck`,
   `mapdeck/contracts`, `mapdeck/ui`, `mapdeck/utils`, `mapdeck/styles.css`,
@@ -23,3 +20,5 @@ First published release.
 - Extension model: modules register widgets, layer tools, map tools, protocols,
   source adapters, basemaps, settings and translations. See `docs/extending.md`.
 - `settingsOverrides` embed option for per-deployment setting values.
+
+[Unreleased]: https://github.com/dsefimov/mapdeck/commits/main

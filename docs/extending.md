@@ -8,7 +8,7 @@ surfaces live in `docs/adr/`; this page is the how-to.
 
 | Entry | What it is for |
 |---|---|
-| `mapdeck` | `createMapdeck(options)`, `MapdeckRoot`, module/extension types, `createToolPanelWidget`, `StoreProvider`/`useRootStore` (host chrome; outside semver — see ADR-0004) |
+| `mapdeck` | `createMapdeck(options)`, `MapdeckRoot`, module/extension types, `createToolPanelWidget` |
 | `mapdeck/contracts` | The full contract barrel for deep integrations: ports (`OverlayManager`, `MapContext`), registration surfaces, asset-mapping types, point-cloud picking |
 | `mapdeck/ui` | The design-system surface for panels: primitives, inputs, `ToolPanel`/`SegmentsList`/`DataTable`/`ColorPicker`, interaction hooks, theme helpers |
 | `mapdeck/utils` | Pure helpers: geo formatters |
@@ -23,9 +23,8 @@ override a built-in registration with `{ override: true }`.
 
 `context` (`ModuleContext`) is the declared-points surface — the runtime
 slice (state store, locale, registries) plus every registration port.
-Anything the context does not expose is kernel-private by design; a
-missing capability is an extension request, not an invitation to reach
-into internals.
+Anything the context does not expose is kernel-private by design: ask for a
+new declared point (ADR-0004) instead of reading internals.
 
 ## A map tool with a panel
 
@@ -64,8 +63,9 @@ A panel is a plain React component; `map` is the raw MapLibre instance
 (`ToolRuntimeContext`), `deactivate` closes the panel. Build the UI from
 `mapdeck/ui` — token overrides in the host restyle it together with the
 built-ins. mapdeck does not re-export maplibre or deck.gl: a module that
-needs their classes (`Marker`, geometry helpers) imports its own copy and
-owns version alignment with the host page.
+needs their classes (`Marker`, geometry helpers) imports its own copy —
+`maplibre-gl@^5`, the range mapdeck itself carries, keeps a module's types
+compatible with the ones in `mapdeck/contracts`.
 
 Action tools (`kind: "action"`) carry `execute({ context, map })`
 instead of a component and need no widget registration.
@@ -134,8 +134,9 @@ rules or slots register separately from the protocol.
 
 ## Settings, locale, basemaps
 
-- `context.settings.registerSettings(ownerId, ownerName, metadata[])` —
-  register-once; per-deployment *values* travel through the
+- `context.settings.registerSettings(ownerId, ownerName, metadata[], opts?)` —
+  values initialize to their defaults; a re-declaration follows the owner's
+  explicit-override policy (ADR-0005). Per-deployment *values* travel through the
   `settingsOverrides` embed option instead.
 - `context.locale.registerTranslations(namespace, { ru: {...} })` — a
   namespace falls back whole-dict to `en` when the current language has

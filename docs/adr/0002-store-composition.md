@@ -15,8 +15,8 @@ A single `RootStore` (`src/app/rootStore.ts`) implements `StoreRegistry`
 global stores in its constructor in dependency order. Every store receives `rootStore`
 through constructor injection and accesses siblings only through it — store classes never
 import each other. This follows the root-store pattern recommended by the MobX docs
-(https://mobx.js.org/defining-data-stores.html): "create a RootStore that instantiates all
-stores, and share references."
+(https://mobx.js.org/defining-data-stores.html): a root store instantiates every store
+and hands each the references it needs.
 
 `StoreRegistry` is assembled from two halves: `CommonRegistry`, declared next to the
 technical stores in `common/`, and `DomainRegistry`, declared next to the domain stores in

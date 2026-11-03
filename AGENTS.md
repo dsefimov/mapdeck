@@ -11,9 +11,9 @@ Before implementing any task:
 1. **Plan.** Write a task plan: scope, approach, affected files, verification steps. The plan lives in the session / `plans/` and is never committed. A plan is a working artifact, not documentation; it dies with the task. Durable outcomes of a task are code, tests, and — if triggered — an ADR.
 2. **Implement.** Code + tests. Edge cases and business rules are documented by tests (`it.each`), never by prose.
 3. **ADR check.** If the task hits an ADR trigger (below), draft `docs/adr/NNNN-*.md` (Context / Decision / Consequences) and get sign-off.
-4. **Gate.** `npm run lint` + `npm run test` + `npm run build` green; stage complete. Git hooks enforce it where the work happens: `pre-commit` runs lint + test on every commit, `pre-push` runs the build (installed automatically on `npm install`; `--no-verify` is the WIP escape hatch). A change is not done until all three are green. The E2E smoke (`npm run test:e2e`, `tests/`) runs on demand — minutes against live demo sources, deliberately outside the hooks; run it before merging UI-facing work.
+4. **Gate.** `npm run lint` + `npm run test` + `npm run build` green; stage complete. Before every commit, a context-free subagent reviews the staged diff: a fresh agent that has seen none of the session's reasoning and judges the change as a new contributor would — its findings block the commit until addressed or explicitly overruled with a reason. Git hooks enforce it where the work happens: `pre-commit` runs lint + test on every commit, `pre-push` runs the build (installed automatically on `npm install`; `--no-verify` is the WIP escape hatch). A change is not done until all three are green. The E2E smoke (`npm run test:e2e`, `tests/`) runs on demand — minutes against live demo sources, deliberately outside the hooks; run it before merging UI-facing work.
 
-Never write code without a task plan.
+Never write code without a task plan; typo fixes and one-line changes need none.
 
 A change that invalidates a name or rule in this file (rename, move, removal) updates
 this file and `docs/` in the same change — never as a follow-up.
@@ -70,11 +70,12 @@ earlier version.
   truth" appear once; elsewhere link. Do not copy tables between files.
 - **One name per concept.** A term used in ≥2 documents is defined in `docs/glossary.md`
   before first use. Do not mix synonyms (kernel/core, service locator/single access point).
-- **Claims are verifiable.** Every backticked path, symbol and option exists in the code
-  (`npm run docs:lint`). Absolute wording ("never", "no exceptions") only when the
+- **Claims are verifiable.** Every backticked path, symbol and option exists in the code.
+  Absolute wording ("never", "no exceptions") only when the
   exceptions list is empty; otherwise list the exceptions.
 - **Examples compile.** Code in docs comes from `examples/` or a test that runs `tsc`;
   it is not hand-written in markdown.
+- Use plain technical English.
 - **Audience.** README = package user; CONTRIBUTING = human contributor; AGENTS = rules
   for agents. Do not mix them.
 - **Changelog** lists user-visible changes only: no internal refactors, test
@@ -89,10 +90,10 @@ description, not the file.
 
 ### Documentation gate (extends step 4 of the workflow)
 
-A change touching `docs/**`, `README.md` or `AGENTS.md` also passes `npm run docs:lint`
-and a read of the diff as someone who has never seen the repository: any sentence that
-only makes sense with knowledge of the previous state is rewritten. When asked to write
-or edit docs, an agent first runs `npm run docs:lint` and quotes its output.
+A change touching `docs/**`, `README.md` or `AGENTS.md` also passes a read of the diff
+as someone who has never seen the repository: every backticked path, symbol and option
+must exist in the code, and any sentence that only makes sense with knowledge of the
+previous state is rewritten.
 
 ### Anti-patterns (reject on review)
 
@@ -162,9 +163,9 @@ app ──→ domain ──→ ui ──→ lib
  (CommonRegistry + DomainRegistry + declared-points contexts)
 ```
 
-(The diagram shows the main edges; `common`, `domain` and `shell` also import `lib`, and `shell` imports `contracts` — the edge list below is canonical.)
+(The diagram is orientation only; the enforced rule is the edge list below.)
 
-- `lib` imports nothing from the project's layers and no framework — external packages enter `lib` only through an ADR (ADR-0020); `ui → lib` (plus `mobx-react-lite` for the WidgetGrid precedent alone — the grid renders store-driven layouts; every other kit component stays plain React); `common → contracts + lib`; `contracts → lib`; `shell → contracts`; `domain → lib + contracts + ui + common`. Every edge in this list is enforced by an eslint `no-restricted-imports` zone in `eslint.config.js` (lib, ui, contracts, shell, common, domain), as is the intra-domain rule: imports inside `src/core/domain/**` are relative — `@core/domain/*` there fails lint.
+- `lib` imports nothing from the project's layers and no framework — external packages enter `lib` only through an ADR (ADR-0020); `ui → lib` (plus `mobx-react-lite` for the WidgetGrid precedent alone — the grid renders store-driven layouts; every other kit component stays plain React); `common → contracts + lib`; `contracts → lib`; `shell → contracts + store-registry (the composition type)`; `domain → lib + contracts + ui + common`. Every edge in this list is enforced by an eslint `no-restricted-imports` zone in `eslint.config.js` (lib, ui, contracts, shell, common, domain), as is the intra-domain rule: imports inside `src/core/domain/**` are relative — `@core/domain/*` there fails lint.
 - `contracts/` names no registry, no domain, no `common/` store: extension contexts (`ToolRuntimeContext`, `ModuleContext` in `contracts/extension/context.ts`) are typed by contracts-declared ports.
 - **RootStore is the single access point**: `StoreRegistry` composes two slices in `src/core/store-registry.ts` — `CommonRegistry` (technical stores) and `DomainRegistry` (domain stores) — plus the `toolContext` / `moduleContext` the composition root assembles over them. Common stores receive `CommonRegistry`; domain stores receive the full `StoreRegistry`. Inter-store links go through it; cross-domain edges are consumer-owned ports in `contracts` (`LayerSnapshotSource`/`RenderErrorSink` for map → tree; `ProtocolRegistry`/`SourceAdapterFactory` for tree → protocols). A port and its domain implementation deliberately share the name; the implementation file imports the port aliased as `…Port` (`ProtocolRegistry`, `SourceAdapterFactory` precedents). Narrow store constructors are NOT used.
 - Extensions (`widgets/`, `layer-tools/`, `map-tools/`, `modules/`) import shared types from `@core/contracts`; importing `app` is forbidden (enforced by eslint `no-restricted-imports`). Modules and map-tool panels receive declared-points contexts (`ModuleContext` / `ToolRuntimeContext`), never the full registry.
@@ -271,6 +272,8 @@ Each rule names how it is checked: a lint zone, `tsc`, a test, or "review" (a hu
 
 ### Never
 
+- Edit files through shell substitution (`sed -i`, `perl -pi`) — every edit goes through
+  the file-editing tool, so file state stays tracked and each change is reviewable.
 - Commit a task plan or other working artifacts.
 - Leave screenshots or scratch files in the working tree — they live outside the repo.
 - Duplicate logic without explicit justification.

@@ -19,7 +19,8 @@ Use MobX as the single state-management library, with strict runtime configurati
   methods or `runInAction()`. The most common MobX bug — mutating an observable in an async
   callback — is flagged at runtime with a `[MobX]` console warning.
 - `computedRequiresReaction: true` — reading a computed outside a reactive context warns
-  at runtime instead of silently returning a stale value.
+  at runtime. The warning matters because the read loses the computed's cache: an
+  uncached computed is recomputed on every read.
 - `safeDescriptors: true` — guards against accidental redefinition of observable properties.
 
 Components are wrapped in `observer()` and read observables; MobX tracks dependencies and
@@ -60,4 +61,6 @@ is discarded.
   read in `autorun()` or go through `@action` contexts. This is the most likely place for
   future friction; it is the price of the guard.
 - The strict config applies in production too; violations surface as loud `[MobX]`
-  console warnings, not silent staleness.
+  console warnings rather than failing silently.
+- The configuration is global: `mobx` is a host-singleton peer (ADR-0019), so an
+  embed applies these options to every MobX store on the page, not only to its own.
