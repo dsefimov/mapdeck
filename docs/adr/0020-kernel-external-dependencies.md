@@ -1,10 +1,10 @@
-# ADR-0020: Kernel external dependencies — one policy, the `lib` import rule
+# ADR-0020: Core external dependencies — one policy, the `lib` import rule
 
 Status: Accepted · Date: 2026-11-01
 
 ## Context
 
-The kernel runs on a dozen external packages: two rendering engines, a
+The core runs on a dozen external packages: two rendering engines, a
 point-cloud stack, geo math, a grid layout, a tile protocol, projections, a
 LAZ decompressor. Three groups carry architectural records of their own —
 the engines (ADR-0010), the point-cloud stack (ADR-0011/0012), the host
@@ -15,9 +15,9 @@ and the path for a new package is undefined. The dependency graph's
 
 ## Decision
 
-**One policy for every external package the kernel carries.**
+**One policy for every external package the core carries.**
 
-- **Engines behind ports** — `maplibre-gl`, `@deck.gl/*`: the kernel knows
+- **Engines behind ports** — `maplibre-gl`, `@deck.gl/*`: the core knows
   them through the contracts of ADR-0010; their packaging (dependencies,
   not peers) is ADR-0019.
 - **The point-cloud stack** — `copc`, `rbush`, `laz-perf`, the engine-side
@@ -56,7 +56,7 @@ own dependencies — geo math passes, so geo math lives in `lib/geo`.
 
 - No dependency "just exists": every package sits under its architectural
   record or under this policy.
-- A new external package anywhere in the kernel requires an ADR.
+- A new external package anywhere in the core requires an ADR.
 - The dependency-graph line in `AGENTS.md` and the `lib` entry in
   `docs/architecture.md` carry the precise reading — layers and frameworks,
   not the world.

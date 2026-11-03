@@ -10,7 +10,7 @@ octree nodes at their screen-space resolution. Fetching everything is impossible
 the engine keeps a bounded cache, loads nodes on demand, evicts them by use, and draws
 one deck.gl layer that is updated in place — never one layer per node. The engine lives
 entirely inside the COPC protocol (`domain/protocols/copc/engine/`). The rest of the
-kernel sees none of it: the map sees a render unit that survives visibility toggles and
+core sees none of it: the map sees a render unit that survives visibility toggles and
 keeps streaming while hidden (ADR-0010), the tree sees a node, tools see features. This
 ADR records how the engine is structured — the cycle that drives it, the traversal that
 selects nodes, the budget that bounds memory, the render path that packs the result —
@@ -115,8 +115,8 @@ channel — so packing stays uniform. `WorkerPool` is created inside
 `loader.initialize()` with its own sizing heuristic, and every worker request carries
 a ceiling (`DEFAULT_WORKER_REQUEST_TIMEOUT_MS`) that rejects, terminates and
 respawns a wedged worker; dispose rejects
-everything still pending. LazPerf arrives as a
-constructor-injected promise created by the adapter.
+everything still pending. The adapter creates the LazPerf promise and injects it
+into the loader's constructor.
 
 **Failures: report once, then the channels take over.** An initialization failure
 reports through `reportLayerError` — the engine's only report site. An `addToMap`
@@ -139,8 +139,8 @@ for non-point layers.
 
 ## Consequences
 
-- The engine is invisible to the rest of the kernel: the map sees an adapter and a
-  unit, the tree sees a node, tools see features. The whole streaming machinery can
+- The engine is invisible to the rest of the core: the map sees an adapter and a
+  unit, the tree sees a node, tools see features. The whole streaming implementation can
   change without touching `map/`.
 - One cycle per camera change bounds work: bursts of viewport events collapse into a
   single traversal, and intermediate requests never queue up.

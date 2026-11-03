@@ -1,14 +1,14 @@
 # Mapdeck
 
-Mapdeck is a geospatial constructor for the browser: a kernel — the map, the layer
-tree, and the built-in protocols, streamed point clouds included — that renders
-external data sources on a map, with additional functionality delivered as extension
-modules. A STAC catalog, a WMS service or a COPC
-point cloud becomes an interactive layer tree with attribute tables, styling controls
-and measurement tools, and new sources arrive as modules without touching the kernel.
+Mapdeck is a browser-based geospatial application framework for building
+configurable geoportals. It provides map rendering, layer management, data access
+and an extension system for adding data sources, tools and widgets. A STAC catalog,
+a WMS service or a COPC point cloud becomes an interactive layer tree with
+attribute tables, styling controls and measurement tools; new data sources can be
+added through modules without modifying the core.
 
-The same code ships as an embeddable library (`mapdeck` on npm) and as this
-repository's demo application, which uses only the public entries.
+Mapdeck is distributed as an embeddable npm package. This repository also contains
+a demo application built on the same public API.
 
 ## Install
 
@@ -17,9 +17,9 @@ npm install mapdeck
 ```
 
 React (`^19.0.0`), `mobx` (`^6.15.0`) and `mobx-react-lite` (`^4.1.1`) are peer
-dependencies: the host page owns them as singletons.
+dependencies: the host application must provide them.
 npm 7+ installs them automatically; with other managers, install them alongside.
-Everything else the embed needs arrives transitively.
+All other runtime dependencies are installed automatically.
 
 ## Requirements
 
@@ -65,7 +65,7 @@ in [docs/extending.md](docs/extending.md).
 | `defaultSourceType` | `"stac"` | which source adapter serves nodes that name none; must be registered |
 | `builtinBasemaps` | `true` | whether the built-in basemap set registers |
 | `lazPerfWasmUrl` | — | URL of the LazPerf wasm binary; point clouds (COPC) only |
-| `language` | `"en"` | initial UI language; other languages arrive as registered dictionaries |
+| `language` | `"en"` | initial UI language; other languages are provided by registered dictionaries |
 | `logLevel` | `"warn"` | log threshold |
 | `settingsOverrides` | — | per-deployment setting values, see below |
 | `modules` | `[]` | consumer modules, registered after the built-ins (may override) |

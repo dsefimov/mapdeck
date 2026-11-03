@@ -40,12 +40,12 @@ systems sit behind ports": a map tool operates on the map the way a component op
 on the DOM — the engine is its environment, not a detail behind an interface. Wrapping
 the full MapLibre API in a port was rejected: the facade would grow into a mirror of
 MapLibre (events, projection, camera, canvas) while adding no second implementation.
-The boundary stays meaningful where it is load-bearing: the kernel (the map domain,
+The boundary stays meaningful where it is load-bearing: the core (the map domain,
 protocol adapters) accesses the map through `MapContext` (ADR-0010), and a module that
 delivers no map tool never receives the map instance.
 
 **Panels and actions receive a tool context, not the registry.** A tool panel's props
-carry `ToolRuntimeContext` — the same declared-points surface modules get (ADR-0004): the
+carry `ToolRuntimeContext` — the same context surface modules get (ADR-0004): the
 runtime slice of the context family (state store, locale, the protocol and
 feature-provider read ports, layer-tree catalog, map-tool state, basemap) plus the
 tool's own controller, `map` (platform technology,
@@ -59,7 +59,7 @@ into the store graph.
 **Toolbar and panels.** The toolbar widget renders one button per registered tool, in
 registration order. An action click executes and is done; an interactive click toggles
 activation. The active tool's panel is registered through the widget catalog
-(`createToolPanelWidget`) so it reuses widget machinery instead of duplicating it, but it
+(`createToolPanelWidget`) so it reuses the widget system instead of duplicating it, but it
 renders outside the shared grid: `MapWorkspace` renders it over the map next to the
 toolbar, without chrome, and the panel component returns null while its tool is inactive.
 Visibility is therefore owned solely by the tool's active state; the widget open/close

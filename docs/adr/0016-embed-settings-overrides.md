@@ -30,7 +30,7 @@ registrations and before the first fetch; every rejected id (unknown, wrong
 type, out of range, outside select options) is collected into one error that
 surfaces through `initError`, failing initialization visibly.
 
-Generic dictionary, not a narrow `dataSourceUrl` option: the kernel carries no
+Generic dictionary, not a narrow `dataSourceUrl` option: the core carries no
 constants naming a concrete extension (ADR-0004 contract hygiene), so the
 facade must not hardcode knowledge of the layer-tree setting; the same
 mechanism serves any future deployment value (e.g. a stand's default basemap).

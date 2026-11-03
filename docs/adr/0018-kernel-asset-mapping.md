@@ -1,11 +1,11 @@
-# ADR-0018: Asset→protocol mapping is a kernel domain — the `assetMapping` port
+# ADR-0018: Asset→protocol mapping is a core domain — the `assetMapping` port
 
 Status: Accepted · Date: 2026-10-13
 
 ## Context
 
 Which protocol serves a tree node is a mapping with two candidate
-owners: the source module that parses the catalog, or the kernel. The
+owners: the source module that parses the catalog, or the core. The
 mapping's input — an asset: a tagged resource at a URL — is
 source-neutral, and "which protocol serves which slot" is knowledge
 about protocols, not about a source. A fitness table inside a source
@@ -19,7 +19,7 @@ domain, where protocol modules already register.
 
 ## Decision
 
-**A kernel mapper, one declared point.** `AssetProtocolMapper`
+**A core mapper, one port.** `AssetProtocolMapper`
 (`src/core/domain/protocols/asset-mapping/`) unifies the matching
 rules, the slot fitness, and the selection logic (pure, in `logic/`).
 `ModuleContext.assetMapping` (`AssetMappingPort`, contracts) exposes:
@@ -38,7 +38,7 @@ module's own source adapter (STAC), so a read/write split would have a
 single-consumer read side.
 
 **Neutral contracts.** `SourceAsset` (open index signature carries
-source-specific fields; the kernel never reads them), `AssetContext`
+source-specific fields; the core never reads them), `AssetContext`
 (the owning entity's per-asset context), `AssetRule`,
 `ProtocolAssignment`, `AssetMappingResult` — all in
 `contracts/domain/asset-mapping.ts`, exported through
@@ -61,8 +61,7 @@ call, the knowledge sitting with its author.
 options (overriding a protocol overrides its declaration);
 `assetMapping.registerRule`/`registerSlots` remain the explicit
 lower-level path for rules and slots that register separately. The mapper
-itself starts empty: the kernel holds the mechanism, the protocols hold
-the knowledge.
+itself starts empty; the protocols register their rules and slots.
 
 ## Consequences
 

@@ -6,7 +6,7 @@ Status: Accepted · Date: 2026-09-22
 
 The map domain turns the layer tree's snapshot into rendered layers. Rendering happens
 on two backends: native MapLibre layers (raster and vector formats) and a deck.gl overlay
-(point clouds). The kernel must treat both uniformly — the tree, the tools and the sync
+(point clouds). The core must treat both uniformly — the tree, the tools and the sync
 loop work on nodes, not on backends — so the render pipeline may know neither protocols nor
 deck.gl: its input is the structural snapshot (ADR-0008), resolved to descriptors by the
 tree, and its output passes through two narrow ports. The sync problem is the hard part:
@@ -20,7 +20,7 @@ the port, the contracts and the sync loop.
 **The map knows protocols only through contracts.** The map domain imports no protocol
 code. Its input is the snapshot, resolved to typed descriptors by the tree; its output
 goes through `LayerAdapter` per render unit and the `OverlayManager` port. deck.gl
-enters the kernel through the port's contract signature (`Layer`, `Viewport`,
+enters the core through the port's contract signature (`Layer`, `Viewport`,
 `PickingInfo` types in `contracts/domain/map-context.ts`; the tech-layer type
 `TechLayerSpec` in `domain/map/types.ts`); the port's only implementation —
 `DeckOverlayManager` — lives behind `map/adapters/overlay/`, and the render pipeline
@@ -138,12 +138,12 @@ half-constructed context.
 **Native layers follow tree order.** Adapters declare `nativeLayerOrdering`; after each
 sync the manager walks the snapshot's tree order and calls `map.moveLayer` for those
 adapters' units. deck.gl units are unaffected — the overlay owns its own order. Why:
-MapLibre's native order is the z-order, and the tree order is the only order the kernel
+MapLibre's native order is the z-order, and the tree order is the only order the core
 owns.
 
 ## Consequences
 
-- A new rendering backend arrives as a protocol plus an adapter behind the same two
+- A new rendering backend is a protocol plus an adapter behind the same two
   ports; `map/` never changes for a new format.
 - Hidden units retain loaded data; the streaming consequences — background fetching
   and memory cost for invisible layers — are recorded in ADR-0011.

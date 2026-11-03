@@ -34,7 +34,7 @@ importing the engine alongside the library. Peering maplibre and deck.gl
 would make every host install and version-align two heavyweight packages it
 never imports; depending on them keeps `npm install mapdeck`
 self-sufficient. The cost is named in Consequences: the engine is not public
-surface. `react-grid-layout` rides the same policy — its React peer resolves
+surface. `react-grid-layout` follows the same policy — its React peer resolves
 against the host's copy under normal dedupe, and a host pinning a React
 outside its range hears about it from the package manager at install time,
 not from a broken-hooks mystery at runtime.
@@ -74,7 +74,7 @@ files besides the wasm.
 - `import "mapdeck/styles.css"` is mandatory: without it the component
   renders unstyled.
 - The host serves `laz-perf.wasm` over HTTP at a URL the runtime names; the
-  file rides the package, so its version never drifts from the reader.
+  file ships with the package, so its version never drifts from the reader.
 - The engines are not public surface: a host that needs direct maplibre or
   deck.gl access imports its own copy and owns version alignment, the
   duplicate-engine cost included.

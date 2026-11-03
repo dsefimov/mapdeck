@@ -21,10 +21,10 @@ A module is a plain object implementing `Module`: `id`, `name`, and
 they run after the built-in set, in array order, so a later module may
 override a built-in registration with `{ override: true }`.
 
-`context` (`ModuleContext`) is the declared-points surface — the runtime
-slice (state store, locale, registries) plus every registration port.
-Anything the context does not expose is kernel-private by design: ask for a
-new declared point (ADR-0004) instead of reading internals.
+`context` (`ModuleContext`) exposes the runtime slice (state store, locale,
+read-only registries) and every registration interface. Anything the context does
+not expose is internal: request a new interface (ADR-0004) instead of reading
+internals.
 
 ## A map tool with a panel
 
@@ -126,7 +126,7 @@ export const terrainModule: Module = {
 ```
 
 Assets come from the source adapter (the built-in STAC tree maps item
-assets through the same kernel mapper), so a protocol declared this way
+assets through the same asset mapper), so a protocol registered this way
 receives nodes with no source-specific import. The lower-level path —
 `context.assetMapping.registerRule(...)` and
 `context.assetMapping.registerSlots(id, slots)` — remains valid when the

@@ -69,9 +69,8 @@ Keep the subject line under 72 characters. Use present tense, imperative mood (`
 
 ## Pull requests
 
-One logical change per PR. For a change that adds an ADR, the PR description states
-why no existing ADR can host the decision; a maintainer reviews ADR-bearing changes
-before merge. There is no formal code of conduct beyond
+Keep pull requests focused on a single logical change. Significant architectural
+changes should include an ADR. There is no formal code of conduct beyond
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — be respectful, critique code rather
 than people.
 
@@ -85,22 +84,27 @@ than people.
 4. `npm publish` — `prepack` runs lint, the test suite and the library build;
    publish from a clean checkout of the tag.
 
-## Workflow
-
-The full workflow (plan → implement → ADR check → gate) is defined in
-[AGENTS.md](AGENTS.md), including the exemption for trivial changes.
-
 ## Documentation
 
 Documentation lives alongside the code:
 
 | Doc | Purpose |
 |---|---|
-| `AGENTS.md` | Rules and workflow for contributors and AI agents |
+| `AGENTS.md` | Project context and rules for AI agents |
 | `docs/architecture.md` | System overview: layers, data flows, stores |
 | `docs/glossary.md` | Domain terms |
 | `docs/adr/` | Architectural decisions with rationale |
 | `docs/extending.md` | Building modules, tools and protocols |
 
-Docs explain "why" and context only; the writing rules live in
-[AGENTS.md](AGENTS.md). All documentation is in English.
+All documentation is in English. Style principles:
+
+- Describe responsibilities, dependencies and constraints as they are; do not
+  proclaim principles or invent terminology.
+- Use standard technical terms and concrete verbs: implements, registers,
+  resolves, creates, manages, validates, exposes.
+- Use emphatic words ("never", "always", "only", "by design") only when they state
+  a real constraint.
+- Keep numbers, thresholds and algorithms in the code and its tests; documentation
+  names the module and the reason.
+- An ADR records the problem, the decision and its consequences — not the
+  implementation.

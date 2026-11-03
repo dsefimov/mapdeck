@@ -22,7 +22,7 @@ not cover — and grows deliberately, one extension at a time.
 `[data-theme]` attribute overrides. No CSS frameworks (Tailwind), no
 css-in-js, no headless component dependencies (Radix).**
 
-**Tokens are the shared kernel of DOM and map rendering.** Token values are
+**Tokens are shared between DOM and map rendering.** Token values are
 flat hex/px precisely so that `getComputedStyle` resolution stays trivial and
 dependency-free; semantic names (`--color-accent`, tool tokens) keep themes
 swappable without touching components.
@@ -41,7 +41,7 @@ defaults, or vendored code.
 **UI dependencies require their own ADR.** Any runtime dependency touching UI
 rendering or interaction is introduced only after a dedicated decision record.
 The one dependency on record, `react-grid-layout` (the widget grid layout
-engine), is covered by the kernel dependency policy (ADR-0020).
+engine), is covered by the core dependency policy (ADR-0020).
 
 **The icon set is open.** The registry curates the built-in names only; any
 other name renders the `--icon-<name>` token directly (an inline mask-image in

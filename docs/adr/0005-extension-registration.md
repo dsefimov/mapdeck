@@ -107,9 +107,10 @@ legitimate override.
 **Retry-safe registration.** Every bootstrap attempt registers into empty registries — a
 failed attempt leaves no partial registrations behind, so retry is safe by construction.
 
-**Single access point for registries.** Extension registries live on `RootStore`
-(`protocolRegistry`, `sourceAdapterFactory`, feature providers), consistent with the
-single-access-point contract of ADR-0002. No module-level singleton registries.
+**Registries live on `RootStore`.** Extension registries (`protocolRegistry`,
+`sourceAdapterFactory`, feature providers) are fields of the root store, consistent
+with the store-registry composition of ADR-0002. No module-level singleton
+registries.
 
 ## Consequences
 

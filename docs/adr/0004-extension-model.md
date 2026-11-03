@@ -4,10 +4,10 @@ Status: Accepted · Date: 2026-09-22
 
 ## Context
 
-The app is a geospatial constructor: a small generic kernel plus domain-specific functionality
+The app is a geospatial application framework: a small generic core plus domain-specific functionality
 delivered as extensions. The built-in set (generic widgets, layer tools, map tools) lives
 in this repository under `src/widgets/`, `src/layer-tools/`, `src/map-tools/`; external
-developers deliver domain extensions the same way — as modules. The kernel must never depend on
+developers deliver domain extensions the same way — as modules. The core must never depend on
 domain-specific code.
 
 ## Decision
@@ -27,11 +27,11 @@ but a registration routine may touch other stores — e.g. a map tool registers 
 widget via `widgetStore` and its translations via `localeStore` alongside itself. The home
 store is an identity boundary, not an exclusivity boundary.
 
-**Contract hygiene.** The kernel holds only multi-consumer types and never imports from
+**Contract hygiene.** The core holds only multi-consumer types and never imports from
 `@core/ui`: the
 map-tool contract carries `icon` as a plain string — consumers validate it with the ui
 kit's `isIconName` guard instead of the contract importing `IconName`. Widgets already
-carried plain-string icons; `ui` and `contracts` must not import each other. The kernel
+carried plain-string icons; `ui` and `contracts` must not import each other. The core
 is also extension-neutral: it carries no constants or handles naming a concrete
 extension (a widget id, an opener handle) — those live with their extension, and
 cross-extension coordination goes through state keyed by that identity.
@@ -44,7 +44,7 @@ chrome outside the widget grid.
 
 **Module as primary container.** Domain-specific functionality — widgets, layer tools,
 map tools, source adapters, protocols, any combination — is delivered as a module.
-`register(context)` receives a `ModuleContext` — the map of declared extension points:
+`register(context)` receives a `ModuleContext` — the extension interfaces:
 the registration slice `protocols`, `featureProviders`, `locale`, `settings`, `basemap`,
 `sourceAdapterFactory`, `widgets`, `layerTools`, `mapTools`, `assetMapping`; the runtime
 service `stateStore` is shared by both slices. Every member is typed by a port declared
@@ -55,23 +55,22 @@ type — so the context family imports neither `common/` nor a domain. The famil
 shape: a runtime slice shared by every consumer (services and read ports) plus a
 registration slice (`register*` functions) that only modules receive; tool panels get
 the runtime slice (ADR-0006). A module never receives the domain stores (`treeStore`,
-`mapStore`, `basemapStore`): it changes kernel behavior through the declared points,
-never by reaching into store internals. The built-in set covers the shipped protocols'
+`mapStore`, `basemapStore`): it changes core behavior through the context's interfaces,
+never by reading store internals. The built-in set covers the shipped protocols'
 own controls — including COPC-specific tools such as point size and color; anything
-beyond them arrives as a module. The kernel never imports from `src/modules/` — the
+beyond them is provided by a module. The core never imports from `src/modules/` — the
 boundary is one-directional through registration interfaces.
 
 Why not the full `StoreRegistry`: reach-in access makes every
-internal kernel refactoring a breaking change for modules, while a declared point is a
+internal refactoring a breaking change for modules, while an interface is a
 stable contract. The raw registry stays internal: first-party panels reach the store
 graph through the shell package, and the facade handle's `store` field (kept for
 `MapdeckRoot`) is the only place the registry meets the public surface. A host with a
-real need gets a designed, versioned point instead.
+real need gets a designed, versioned interface instead.
 "A module must be able to change any point of the application" is
-satisfied by the completeness of the point map — a behavior no point covers is a missing
-point (a legitimate extension request, added as a new point), not an invitation to reach
-into internals. Replacing a base entry is the explicit override of ADR-0005, not a
-side effect of registration order.
+satisfied by the completeness of the interfaces: a behavior no interface covers is a
+request to add one, not a reason to read internals. Replacing a base entry is the
+explicit override of ADR-0005, not a side effect of registration order.
 
 **Module-to-module dependencies.** `dependencies: string[]` is informational — it
 documents module-to-module coupling for readers. Nothing is enforced at runtime
@@ -85,6 +84,6 @@ module execution order is simply the order of the module array. Cross-imports be
 - Module registrations are fire-and-forget: the system does not track what a module
   registered, so there is no unload path. Module unloading is not a use case.
 - No lazy loading: all extensions register at init. Acceptable at the current count.
-- The kernel's registration interfaces are the only contract external developers need to learn;
+- The core's registration interfaces are the only contract external developers need to learn;
   built-in and module-delivered extensions look identical to consumers.
 

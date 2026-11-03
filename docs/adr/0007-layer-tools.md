@@ -51,7 +51,7 @@ modules — so a typo in either id surfaces at startup. Adding the same binding 
 idempotent — the one legitimate silent skip in the registry lib. The protocol check runs
 last because protocol registrations arrive after tool bindings: built-in protocols register
 later in bootstrap, and module protocols later still. Linking by id string is the accepted trade-off: it keeps the dependency direction
-extension → kernel and is verified at startup, at the cost of type safety on the link.
+extension → core and is verified at startup, at the cost of type safety on the link.
 
 **Translations travel with the tool.** The tool object carries `localeTranslations`; the
 store registers them with the locale store under the tool id at registration — the same

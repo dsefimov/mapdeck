@@ -4,7 +4,7 @@ Status: Accepted · Date: 2026-09-22
 
 ## Context
 
-The layer tree is the central structure of the app. Source data arrives as a hierarchy
+The layer tree is the central structure of the app. Source data is a hierarchy
 of group and layer nodes; the map renders from a snapshot of it; the Layers widget
 presents it with expansion, menus and search; layer tools (ADR-0007) act on single
 nodes. The tree has two consumers with different needs — the map wants a stable
@@ -83,7 +83,7 @@ empty source URL — is excluded from the snapshot (ADR-0010) and marked in the 
 row renders muted with the reason, and the visibility toggle and menu actions are
 disabled. The mark is derived from the same predicate the snapshot applies, so the tree
 cannot present a node as usable when the map cannot render it. The node is not an error
-and not hidden: it is source-provided data the kernel cannot render, and the tree stays a
+and not hidden: it is source-provided data the core cannot render, and the tree stays a
 mirror of the source.
 
 **Presentation state lives in the view model.** `LayerTreeViewModel` — widget instance

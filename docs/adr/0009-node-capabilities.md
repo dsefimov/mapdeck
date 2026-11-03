@@ -1,4 +1,4 @@
-# ADR-0009: Node capabilities and protocols — the source/protocol/kernel boundary
+# ADR-0009: Node capabilities and protocols — the source/protocol/core boundary
 
 Status: Accepted · Date: 2026-09-22
 
@@ -7,7 +7,7 @@ Status: Accepted · Date: 2026-09-22
 The app renders external data sources as a layer tree on a map. Sources come in
 different formats — STAC catalogs first, then WMS rasters, COPC point clouds, vector
 tiles, feature services — and each format renders differently and offers different data
-access. The kernel must treat every source uniformly: the tree, visibility, tools and the
+access. The core must treat every source uniformly: the tree, visibility, tools and the
 map bridge work on nodes, not on formats. Two questions follow: how a node declares what
 it can do, and who decides what that is.
 
@@ -16,7 +16,7 @@ or none of these. What a dataset offers is a fact about the source, not about th
 protocol: a WMS layer may or may not carry attribute data behind a second API, and only
 the source knows which. The protocol, in turn, only answers how data is requested. This
 ADR records the boundary: the source assigns what a node can do (capabilities), the
-protocol defines how each task's data is requested, and the kernel provides the
+protocol defines how each task's data is requested, and the core provides the
 vocabulary, the verification and the menu.
 
 ## Decision
@@ -39,19 +39,18 @@ goes through `data`. Capabilities are tool names assigned to the node. The slot 
 (`BindingSlot`) lives in contracts, shared by the node model, the tool links and the
 source modules.
 
-**The source assigns capabilities; the kernel never does.** The source adapter is a parser
-plus an assignment step that produces ready-to-show `TreeNode`s: it calls the kernel's
+**The source assigns capabilities; the core never does.** The source adapter is a parser
+plus an assignment step that produces ready-to-show `TreeNode`s: it calls the core's
 `assetMapping.mapAssets` (ADR-0018) — priority-ordered `AssetRule`s claim each asset,
 the first claiming rule wins it, the best slot fitness picks the slot — and builds nodes
 from the resulting `ProtocolAssignment`s, attaching the capability list and possibly a
 style. Slot-less assets become `relatedObjects` entries of type `"report"` — the
-mapper's own output. Why a kernel mapper and not module-owned resolvers: the kernel
-holds the mechanism (the matching rules and their priorities), the protocols hold the
-knowledge (their slot fitness, declared at registration), and the source holds the
-classification vocabulary — what its assets are. The kernel never decides what a format
+mapper's own output. The source adapter classifies its assets using the rules
+registered by protocols; the asset mapper selects the protocol and the binding slot
+based on rule priority and slot fitness. The core never decides what a format
 looks like or offers — it manages the tree, the visibility and the bridge to the map.
 
-**Every assigned capability is verified at assignment.** The kernel exposes one pure
+**Every assigned capability is verified at assignment.** The core exposes one pure
 operation: a capability is implemented when a tool link `(protocolId of the node's
 binding for that slot, that slot, toolId)` exists in the tool-link table (ADR-0007). A
 capability whose slot has no binding on the node is unimplemented by definition — the
@@ -105,9 +104,9 @@ moves "protocol implements a style" from a runtime check to a type check.
 
 **The protocol contract lives in `contracts/`; implementations live in their domain.**
 `Protocol` and the read-only `ProtocolRegistry` port sit in
-`contracts/domain/protocol.ts`: the contract has two kernel consumers — layer-tree
+`contracts/domain/protocol.ts`: the contract has two core consumers — layer-tree
 resolves descriptors through it, map builds render units — so the ≥2-consumers rule
-puts it in the kernel. Protocol implementations, their adapters and their configs stay
+puts it in the core. Protocol implementations, their adapters and their configs stay
 in `domain/protocols/<id>/`.
 
 **Legend is metadata, not a model.** A node's `legend` is descriptive metadata; it
@@ -127,13 +126,13 @@ stays empty until the user opts in.
 
 ## Consequences
 
-- A new source format arrives as a source adapter plus — rarely — a new protocol; the
-  kernel changes never.
+- A new source format needs a source adapter plus — rarely — a new protocol; the
+  core changes never.
 - What a node can do is data on the node, assigned by the source; the menu is derived by
   resolving ids, never by recomputing availability.
-- Priority and resolution live in one place — the kernel's asset mapper; protocols
+- Priority and resolution live in one place — the core's asset mapper; protocols
   contribute slot fitness at registration, so no module carries private resolution
-  machinery to drift.
+  logic that could drift.
 - A node's capability list is honest by construction: unimplementable capabilities never
   reach the menu.
 - Trade-off: bindings and capabilities name protocols and tools by string id. A typo in

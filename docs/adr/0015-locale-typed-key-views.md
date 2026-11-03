@@ -7,7 +7,7 @@ Status: Accepted · Date: 2026-10-13
 `noUncheckedIndexedAccess` types every `Record<string, string>` lookup as
 `string | undefined`, and the locale dictionaries are exactly that:
 `TranslationDict` is an untyped string map, namespaces register at runtime
-(widgets and tools auto-register `localeTranslations`, the kernel's own namespace
+(widgets and tools auto-register `localeTranslations`, the core's own namespace
 registers in the composition root). Without typing, every lookup needs a
 `dict["key"]!` assertion to bridge the gap between "the compiler cannot
 know the key exists" and "the dictionary ships with the component and

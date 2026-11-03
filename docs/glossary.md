@@ -1,16 +1,11 @@
 # Glossary
 
-Domain terms used across the docs and the code. This file fixes the meaning of terms
-so the docs stay unambiguous.
+Domain terms used across the docs and the code. This file fixes the meaning of
+terms that are specific to Mapdeck or easy to confuse; the types themselves are
+the reference.
 
 A layer tool acts on a single tree node; a map tool acts on the map as a whole. The two
 entities are distinct: different stores, different availability rules, different ADRs.
-
-## Kernel
-
-`src/core` — the layered base under the composition root (`src/app`) and the extensions
-(`src/widgets`, `src/layer-tools`, `src/map-tools`, `src/modules`). One word for it:
-docs say "kernel", never "core", when they mean this thing.
 
 ## Layer tool
 
@@ -30,7 +25,7 @@ one tool active at a time — or an action, executing once on click. See
 The contract that defines how data for one format is requested and rendered: an `id`,
 a `label`, a required default style, a render-descriptor factory, a layer adapter, and
 optional hooks (`fetchAttributes`, `groupRenderUnits`). It carries no
-resolution knowledge — priorities live in the kernel's asset-mapping rules
+resolution knowledge — priorities live in the core's asset-mapping rules
 (ADR-0018). Point queries (feature info) are not a protocol hook: they live on the
 `FeatureProvider` port. See `docs/adr/0009-node-capabilities.md`.
 
@@ -45,7 +40,7 @@ source of truth. A node carries two: `renderer` (required) and `data` (optional)
 
 A layer tool assigned to a node by the source, together with the node slot that serves
 it: `{toolId, slot}`. The node's menu is its capability list; the source decides which
-capabilities a node gets, and the kernel verifies each against the tool-link table at
+capabilities a node gets, and the core verifies each against the tool-link table at
 assignment. See `docs/adr/0009-node-capabilities.md`.
 
 ## Render descriptor
@@ -99,49 +94,26 @@ and are rendered at the overlay seam by the tech-layer renderer with theme
 colors injected from the caller. A tech layer is not a tree node and not a
 render unit; protocols never see it.
 
-## StateStore
-
-Instance-scoped storage for interaction controllers: `stateStore.get(instanceId,
-factory)` hands each tool/widget instance its view model (the ADR-0002 case-2
-pattern) and the root store's disposal clears them (ADR-0003).
-
 ## Source adapter
 
 The port an external data source implements to feed the layer tree: `fetchRoot`,
 `fetchChildren`, `initialize`, `dispose`; one adapter per configured source type. The
 adapter produces ready nodes — bindings, capabilities, styles — routes its assets
-through the kernel asset mapping (ADR-0018) and owns the source-specific
-classification. See `docs/adr/0009-node-capabilities.md`.
-
-## Module
-
-A unit of delivery for domain functionality: `{id, name, dependencies?, register(context)}`.
-Registers widgets, tools, protocols, source adapters, basemaps, settings and translations
-through the declared points of `ModuleContext`. See `docs/adr/0004-extension-model.md`.
-
-## Declared point
-
-A registration or read port in `ModuleContext` / `ToolRuntimeContext`. A module changes
-kernel behavior only through declared points; when a capability has no point, the fix
-is a new point (ADR-0004), never an exposure of internals.
-
-## Widget
-
-A windowed panel in the workspace grid. Layout and z-order survive close; the grid is
-the kit's only MobX coupling.
+through the asset mapping (ADR-0018) and owns the source-specific classification.
+See `docs/adr/0009-node-capabilities.md`.
 
 ## Asset / AssetRule
 
 `SourceAsset`: a tagged resource at a URL, as the source describes it (an open index
 signature carries source-specific fields). `AssetRule`: a priority-ordered predicate
 that claims an asset and resolves it to a protocol assignment. See
-`docs/adr/0018-kernel-asset-mapping.md`.
+`docs/adr/`.
 
 ## Binding slot
 
 `renderer` (map visualization) or `data` (attribute access): the task a protocol
-binding serves on a node. Slot fitness is the weight a protocol declares for a slot at
-registration; the best fitness wins the slot.
+binding serves on a node. Slot fitness is the weight a protocol declares for a slot
+at registration; the highest fitness wins the slot.
 
 ## Snapshot
 
@@ -152,8 +124,3 @@ only input signal. See `docs/adr/0008-layer-tree.md`.
 
 The port for point queries (feature info), separate from `Protocol`; collected by the
 `FeatureProviderRegistry`.
-
-## Basemap
-
-A background map style registered as a config and switchable at runtime; built-ins and
-module basemaps ride one registration channel.

@@ -26,21 +26,13 @@ Use MobX as the single state-management library, with strict runtime configurati
 Components are wrapped in `observer()` and read observables; MobX tracks dependencies and
 re-renders only the affected components. No selector memoization, no dispatch boilerplate.
 
-Why not the alternatives:
-
-- **Plain React state** — business state in components couples state lifetime to component
-  lifecycle (state is lost on unmount), forces prop-drilling or Context (which re-renders
-  every consumer on any change), and has no fine-grained dependency tracking. This is the
-  core reason the app does not "just use React".
-- **Redux Toolkit** — action/reducer/dispatch boilerplate for the many fine-grained
-  observable updates this app has.
-- **Zustand** — no action discipline (no `enforceActions` equivalent — direct mutations are
-  possible), no lifecycle/dispose contract, and subscriptions go through selectors; none of
-  that fits the strict action and lifecycle rules this app relies on.
-- **Jotai** — atoms compose bottom-up for component-level state; this app's global
-  service stores (~10, with cross-store dependencies, lifecycle and disposal) have no
-  natural atom shape, and derived atoms re-render consumers instead of notifying
-  store-level subscribers.
+Why not the alternatives: plain React state couples business state to the component
+lifecycle — state is lost on unmount — and has no fine-grained dependency tracking
+across widgets. Redux Toolkit adds action/reducer/dispatch boilerplate for the many
+fine-grained updates this app makes. Zustand and Jotai target component-level state;
+this app's global stores (~10, with cross-store dependencies) rely on action
+enforcement and a disposal contract, and those the application implements itself —
+MobX's observable model fits the store architecture directly.
 
 Async convention: async methods are `@action`; mutations after `await` are wrapped in
 `runInAction()` because the `await` leaves the action context. MobX `flow` is an accepted

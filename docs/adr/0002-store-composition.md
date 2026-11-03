@@ -1,4 +1,4 @@
-# ADR-0002: Store composition — RootStore as the single access point
+# ADR-0002: Store composition — the RootStore registry
 
 Status: Accepted · Date: 2026-09-22
 
@@ -22,8 +22,8 @@ and hands each the references it needs.
 technical stores in `common/`, and `DomainRegistry`, declared next to the domain stores in
 `domain/`. Each layer owns its registry surface, so adding a store touches only its own
 layer's registry, and the halves meet only in `StoreRegistry` (and its `RootStore`
-implementation). The split keeps the single access point from growing into one centrally
-maintained interface.
+implementation). The split keeps the registry interface from growing into one centrally
+maintained whole.
 
 **Cross-domain edges are consumer-owned ports.** A domain consuming another domain
 declares the minimal port it needs (in `contracts/`) and receives it at wiring time;
@@ -49,7 +49,7 @@ State placement has four cases:
 1. Shared by ≥2 consumers → global store in `RootStore`.
 2. Scoped to one widget/tool instance and must survive close/open or deactivate/activate
    → `stateStore.get(instanceId, factory)`; the factory constructs a controller —
-   kernel code receives `rootStore`, an extension constructs from its declared context.
+   core code receives `rootStore`, an extension constructs from its declared context.
 3. Fully derived from global stores → no local store; the component reads globals through
    `observer()` (precedent: `src/widgets/map-toolbar`).
 4. Transient UI trivia (hover, focus, animation, popups) → local React state.
@@ -80,7 +80,7 @@ deliberate non-goal.
   above. Revisit signal: an undeclared cross-domain edge — a domain reading another
   domain's store without a port in `contracts/` — or a store's dependency list that
   stops being explicit at a glance; then split registries per bounded context, keeping
-  the single-access-point contract.
+  the registry composition contract.
 - Each store excludes the injected `rootStore` field from observability
   (`makeAutoObservable(this, { rootStore: false })`) — the reference itself is plain; the
   instances it points to are already observable. `RootStore`'s own fields (`isInitialized`,
