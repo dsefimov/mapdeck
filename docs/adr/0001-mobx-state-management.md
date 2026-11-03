@@ -28,21 +28,15 @@ re-renders only the affected components. No selector memoization, no dispatch bo
 
 Why not the alternatives: plain React state couples business state to the component
 lifecycle — state is lost on unmount — and has no fine-grained dependency tracking
-across widgets. Redux Toolkit adds action/reducer/dispatch boilerplate for the many
-fine-grained updates this app makes. Zustand and Jotai target component-level state;
-this app's global stores (~10, with cross-store dependencies) rely on action
-enforcement and a disposal contract, and those the application implements itself —
-MobX's observable model fits the store architecture directly.
+across widgets. Redux Toolkit, Zustand and Jotai were set aside: the application's
+~10 global stores with cross-store dependencies and a disposal contract map directly
+onto MobX's observable model and action enforcement — MobX fits the store
+architecture (ADR-0002) without adapter layers.
 
-Async convention: async methods are `@action`; mutations after `await` are wrapped in
-`runInAction()` because the `await` leaves the action context. MobX `flow` is an accepted
-alternative (used by `RootStore.initialize`); `@action` + `runInAction` is recommended for
-new code.
-
-Reaction hygiene: every `reaction()`/`autorun()` in a store stores its disposer, passes a
-`name` for devtools debugging, and releases it in the store's `dispose()`. Unnamed reactions
-are invisible in devtools; undisposed ones keep firing on stale observables after the store
-is discarded.
+Conventions: async store methods are `@action`, with post-`await` mutations wrapped
+in `runInAction()` (MobX `flow` is an accepted alternative); every
+`reaction()`/`autorun()` in a store carries a `name` for devtools and has its
+disposer released in the store's `dispose()`.
 
 ## Consequences
 

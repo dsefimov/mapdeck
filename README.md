@@ -159,13 +159,14 @@ removal — follow semver: a breaking change bumps the major version, an
 additive change bumps the minor. Everything the exports map does not expose
 (`src/core/**` internals, the demo application) may change in any release.
 
-Two members of the public surface follow special rules. The type of
-`MapdeckInstance.store` is the internal store registry (kept because
-`MapdeckRoot` renders from it) and may change in any release. And
-`mapdeck/contracts` carries the rendering engines' types — `maplibregl.Map` in
-the tool contexts, deck.gl types in the overlay port: those follow the engine
-versions the manifest carries, so a maplibre or deck.gl major can require a
-mapdeck major.
+Two members of the public surface follow special rules.
+`MapdeckInstance.store` is unstable: it exists because `MapdeckRoot` renders
+from the registry, its type is the internal store registry, and it may change
+in any release — treat it as internal and do not read it from embedder code.
+And `mapdeck/contracts` carries the rendering engines' types — `maplibregl.Map`
+in the tool contexts, deck.gl types in the overlay port: those follow the
+engine versions the manifest carries, so a maplibre or deck.gl major can
+require a mapdeck major.
 
 ## License
 

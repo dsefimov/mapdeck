@@ -21,23 +21,13 @@ the port, the contracts and the sync loop.
 code. Its input is the snapshot, resolved to typed descriptors by the tree; its output
 goes through `LayerAdapter` per render unit and the `OverlayManager` port. deck.gl
 enters the core through the port's contract signature (`Layer`, `Viewport`,
-`PickingInfo` types in `contracts/domain/map-context.ts`; the tech-layer type
-`TechLayerSpec` in `domain/map/types.ts`); the port's only implementation —
-`DeckOverlayManager` — lives behind `map/adapters/overlay/`, and the render pipeline
-itself — the layer manager and the sync loop — never imports deck. Every other deck
-touchpoint draws through the port: protocol adapters construct their layers behind it
-(COPC's `PointCloudLayerFactory`, the shared `GeoJsonAdapter`; WMS uses deck projection
-math in `featureInfo`), map tools draw their tech layers through a pure
-renderer at the overlay seam (`renderTechLayers(spec, colors)`, exposed
-through the map domain's `index.ts`) over a `TechLayerStore` that is a
-pure geometry-state container — no deck.gl, no theme subscription — and attach
-them through the port. The COPC engine receives its viewport type from the
-`getActiveViewport` return type: the viewport itself is constructed by
-`DeckOverlayManager` and surfaced through `MapContext`, so the engine's
-deck-typed viewport keeps a single owner — no engine module names a deck
-import. Protocol implementations — COPC's
-point-cloud adapter, the shared raster/vector/geojson adapters — receive `MapContext`
-from the map: the flow is map → protocol adapter, never the reverse.
+`PickingInfo` types in `contracts/domain/map-context.ts`); the port's only
+implementation — `DeckOverlayManager` — lives behind `map/adapters/overlay/`, and the
+render pipeline itself — the layer manager and the sync loop — never imports deck.
+Every other deck touchpoint — protocol layer factories, the tech-layer renderer, the
+COPC engine's viewport — draws or reads through the port. Protocol implementations
+receive `MapContext` from the map: the flow is map → protocol adapter, never the
+reverse.
 
 **The overlay is a port, not a dependency.** `OverlayManager`
 (`contracts/domain/map-context.ts`) is the thin port for the second backend:
@@ -80,34 +70,25 @@ node. The snapshot stays the single signal: the layer manager reacts to
 **Render units: one node becomes one unit; grouping is protocol-owned.** A render unit
 is `{id, nodeIds, protocolId, adapter, descriptor}` — the batch of nodes drawn together
 through one adapter. The pipeline builds one unit per visible node, then offers the
-result to every protocol's optional `groupRenderUnits` hook, which mutates the unit map:
-WMS deletes its single units and inserts grouped units for consecutive nodes sharing a
-WMS group key — base URL, version and opacity — capped per group (the `maxPerGroup`
-option), with a combined
-tile URL; layer and style names are concatenated in reverse node order, so the group's
-internal stacking follows the native z-order of the same nodes. Opacity is part of the
-key because a group renders as a single raster layer, which carries one opacity.
-Grouping semantics live entirely in the protocol; the manager applies whatever the map
-contains after the hooks.
+result to every protocol's optional `groupRenderUnits` hook, which mutates the unit
+map: WMS groups consecutive nodes sharing a group key (base URL, version, opacity)
+into one capped raster unit with a combined tile URL. Grouping semantics live
+entirely in the protocol; the manager applies whatever the map contains after the
+hooks.
 
 **The sync loop: classify, then apply in a fixed order.** `classifyRenderUnitChanges`
 diffs the current units against the desired units and the snapshot's visibility into
-five sets — added, removed, shown, hidden, updated. The central semantic: a
-visibility-only change never tears a unit down. A node turning invisible yields
-"hidden" (the unit is retained, `updateVisibility(false)`); turning visible again yields
-"shown" (`updateVisibility(true)`, no re-add) — loaded resources survive toggles. The
-no-teardown guarantee is per unit: a change that alters group membership — a visibility
-toggle inside a grouped unit — recreates the group. Accepted: grouped units are raster
-layers without loaded resources; the guarantee exists for backends that hold loaded
-data (point clouds), which are never grouped. "Removed" is reserved for nodes leaving
-the tree or units regrouping. A descriptor
-change on a live unit yields "updated": descriptors are immutable by construction —
-computed fresh on every pass, never mutated and never stored on a node — and
-`updateConfig` mutates backend state, not the descriptor. The adapter may update visual
-properties in place (a color-scheme change re-styles a streamed point cloud), otherwise
-it falls back to remove+add; on success the manager replaces the registry entry
-with the desired unit. Application order is fixed: removed,
-added, shown, updated, hidden, then failed-unit refresh and native z-order.
+five sets — added, removed, shown, hidden, updated — applied in a fixed order
+(removed, added, shown, updated, hidden, then failed-unit refresh and native
+z-order). The central semantic: a visibility-only change never tears a unit down —
+"hidden" retains the unit, "shown" re-shows it without a re-add — loaded resources
+survive toggles. The no-teardown guarantee is per unit: a change that alters group
+membership recreates the group. Accepted: grouped units are raster layers without
+loaded resources; the guarantee exists for backends that hold loaded data (point
+clouds), which are never grouped. A descriptor change on a live unit yields
+"updated": descriptors are immutable by construction, and `updateConfig` mutates
+backend state, not the descriptor — the adapter may update visual properties in
+place, otherwise it falls back to remove+add.
 
 **The sync loop is a reaction.** The manager observes the snapshot with
 `fireImmediately: true` and runs one full sync per change; MobX transaction batching
@@ -124,10 +105,9 @@ the tree (`treeStore.reportRenderError` — the render channel of ADR-0008); a s
 add or remove clears the node's error. An update failure is lighter: the manager logs
 it and keeps the unit registered with its previous descriptor; when the descriptors
 still differ on the next sync, the unit is classified as updated again — that is the
-retry. A failed unit re-adds only when something changed that could fix it: its nodes
-were hidden at the last refresh — a hidden unit is absent from the desired set, so
-showing it again is the retry signal — or its descriptor differs. That gate, not a
-blind loop. Records for nodes that left the tree are dropped, clearing their errors.
+retry. A failed unit re-adds only when something changed that could fix it — its
+nodes were hidden at the last refresh, or its descriptor differs — never in a blind
+loop.
 
 **MapStore owns the map lifecycle.** `setMap` disposes the previous layer manager,
 attaches the overlay, and constructs the manager with

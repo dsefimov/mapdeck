@@ -16,9 +16,8 @@ Mapdeck is a framework for geoportals, not a single application: each deployment
 assembled from modules over a stable base. The product reads geodata and never
 writes back, so data flows one way: external sources → layer tree → rendering →
 inspection; measurements are client-side computations. Modules extend the
-application through the interfaces of `ModuleContext` (ADR-0004) and do not access
-internal stores; a capability without an interface is a request for a new
-interface, not a reason to reach into internals.
+application through the interfaces of `ModuleContext` (ADR-0004) and do not
+access internal stores directly.
 
 ## Core components
 
@@ -55,8 +54,8 @@ example, the map domain reads the layer tree through `LayerSnapshotSource` and
 
 ## Store architecture
 
-All application state lives on one object. `RootStore` (`src/app/rootStore.ts`)
-implements `StoreRegistry` (`src/core/store-registry.ts`), the composition of
+`RootStore` (`src/app/rootStore.ts`) provides access to the application's global
+stores through `StoreRegistry` (`src/core/store-registry.ts`), the composition of
 `CommonRegistry` and `DomainRegistry`. Every store receives the registry through
 its constructor and reaches siblings only through it; store classes never import
 each other (ADR-0002). The MobX conventions are in ADR-0001; the initialization
@@ -96,32 +95,30 @@ layer manager updates the rendering backends.
    are pure operations in `domain/layer-tree/logic/` (ADR-0008). Children load
    lazily, because hierarchies can be arbitrarily deep.
 3. **Snapshot.** `layerSnapshot` collects the layer nodes and resolves them through
-   the protocol registry into descriptors. It is compared by structural equality,
-   so the map reacts only when render-relevant content changes.
+   the protocol registry into descriptors; the map reacts only when render-relevant
+   content changes (ADR-0010).
 4. **Sync.** The layer manager turns the snapshot into render units — one per node,
-   grouped by the protocol's own grouping hook — classifies the difference and
-   applies it in a fixed order, so a visibility toggle never rebuilds a layer whose
-   backend holds loaded data (ADR-0010).
+   grouped by the protocol's own grouping hook — and applies only the difference to
+   the backends (ADR-0010).
 5. **Backends.** Raster and vector protocols draw native MapLibre layers through
    their `LayerAdapter`s. Everything else — point clouds, GeoJSON overlays,
    measurement layers — draws through the `OverlayManager` port, whose single
-   implementation wraps deck.gl. The map domain does not depend on individual data
-   protocols; all deck.gl rendering is handled by the overlay adapter
-   (ADR-0010).
+   implementation wraps deck.gl (ADR-0010).
 
-COPC point clouds are the only streamed format. The engine inside
-`domain/protocols/copc/engine/` loads octree nodes on demand within a point budget
-and packs the result into a single deck.gl layer; the implementation is
+COPC point clouds are the only streamed format; the streaming engine is
 encapsulated within the COPC protocol module (ADR-0011).
 
 ## Error handling
 
-Every failure surfaces where it belongs: render-unit failures report per node
-through `reportRenderError`, so the tree shows them; React failures are contained
-by error boundaries at the workspace and widget level, and recovery remounts the
-smallest scope; protocol HTTP errors throw with actionable messages; best-effort
-paths (report download, recolor, picking fallback) degrade quietly, with a comment
-at each site. The library installs no global handlers — the host owns
+- Render-unit failures report per node through `reportRenderError`, so the tree
+  shows them.
+- React failures are contained by error boundaries at the workspace and widget
+  level; recovery remounts the smallest scope.
+- Protocol HTTP errors throw with actionable messages.
+- Best-effort paths (report download, recolor, picking fallback) degrade quietly,
+  with a comment at each site.
+
+The library installs no global handlers — the host owns
 `window.onerror`/`unhandledrejection`.
 
 ## Source code organization

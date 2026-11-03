@@ -39,29 +39,23 @@ goes through `data`. Capabilities are tool names assigned to the node. The slot 
 (`BindingSlot`) lives in contracts, shared by the node model, the tool links and the
 source modules.
 
-**The source assigns capabilities; the core never does.** The source adapter is a parser
-plus an assignment step that produces ready-to-show `TreeNode`s: it calls the core's
-`assetMapping.mapAssets` (ADR-0018) — priority-ordered `AssetRule`s claim each asset,
-the first claiming rule wins it, the best slot fitness picks the slot — and builds nodes
-from the resulting `ProtocolAssignment`s, attaching the capability list and possibly a
-style. Slot-less assets become `relatedObjects` entries of type `"report"` — the
-mapper's own output. The source adapter classifies its assets using the rules
-registered by protocols; the asset mapper selects the protocol and the binding slot
-based on rule priority and slot fitness. The core never decides what a format
-looks like or offers — it manages the tree, the visibility and the bridge to the map.
+**The source assigns capabilities; the core never does.** The source adapter is a
+parser plus an assignment step that produces ready-to-show `TreeNode`s: it resolves
+its assets through the core's asset mapper (`assetMapping.mapAssets`, ADR-0018 —
+priority-ordered rules claim each asset, slot fitness picks the slot) and builds
+nodes from the resulting `ProtocolAssignment`s, attaching the capability list and
+possibly a style. Slot-less assets become `relatedObjects` entries of type
+`"report"`. The core never decides what a format looks like or offers — it manages
+the tree, the visibility and the bridge to the map.
 
-**Every assigned capability is verified at assignment.** The core exposes one pure
-operation: a capability is implemented when a tool link `(protocolId of the node's
-binding for that slot, that slot, toolId)` exists in the tool-link table (ADR-0007). A
-capability whose slot has no binding on the node is unimplemented by definition — the
-link cannot exist without the binding's protocol id. The adapter runs the check for
-every capability at assignment, drops unimplemented ones and reports each via the
-logger. Because tools and protocols register at bootstrap and nodes are created only
-afterwards, the check always sees the complete link table — nothing registers
-dynamically. A node therefore carries only capabilities that can work; the menu needs
-no capability-level fallback — only a defensive skip for an unknown tool id: links
-reference registered tools only (ADR-0007) and nothing unregisters, so a verified
-capability always resolves, and the skip guards future registration changes.
+**Every assigned capability is verified at assignment.** A capability is implemented
+when a tool link `(protocolId of the node's binding for that slot, that slot, toolId)`
+exists in the tool-link table (ADR-0007); a capability whose slot has no binding on
+the node is unimplemented by definition. The adapter runs the check for every
+capability at assignment, drops unimplemented ones and reports each via the logger.
+Because tools and protocols register at bootstrap and nodes are created only
+afterwards, the check always sees the complete link table — a node carries only
+capabilities that can work.
 
 **The menu follows the node's capabilities.** `getToolsForNode` resolves the node's
 capabilities to tool instances in list order, deduplicated by id — the operation
@@ -97,9 +91,8 @@ translates it for its own render backend.
 
 **The protocol guarantees a style.** `defaultStyle: LayerStyle` is a required field of
 the protocol interface — a protocol without one does not compile — and
-`createRenderDescriptor(sourceUrl, style?, params)` merges the node's style over the
-default: `{...defaultStyle, ...style}`, provided keys win, nested objects replaced
-wholesale. A source that cannot style its data simply omits the style; the guarantee
+`createRenderDescriptor` merges the node's style over the default, provided keys
+winning. A source that cannot style its data simply omits the style; the guarantee
 moves "protocol implements a style" from a runtime check to a type check.
 
 **The protocol contract lives in `contracts/`; implementations live in their domain.**

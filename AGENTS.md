@@ -41,9 +41,9 @@ Import rules are enforced by the ESLint zones in `eslint.config.js`. The essenti
 
 ## Development Guidelines
 
-- Business logic lives in pure modules (`logic/` directories) and is covered by
-  colocated tests. MobX stores hold state, track loading/error state and call the
-  operations; they do not implement rules.
+- Keep domain rules in pure modules (`logic/` directories) where practical, and
+  cover them with colocated tests. MobX stores hold observable state, track
+  loading/error state and call the operations.
 - React components render state and call store methods. Interaction orchestration
   lives in controller classes obtained from the state store; components stay thin.
 - Extension registration is explicit and per kind (see `src/app/bootstrap.ts` and
@@ -51,8 +51,6 @@ Import rules are enforced by the ESLint zones in `eslint.config.js`. The essenti
   an explicit `{ override: true }` is passed.
 - Avoid unnecessary abstractions and dependencies. A new external dependency needs
   a reason that survives review.
-- Do not use auto-replacement commands for editing files; edit with the
-  file-editing tool.
 
 ## Verification
 

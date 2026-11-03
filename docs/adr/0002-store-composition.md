@@ -28,9 +28,8 @@ maintained whole.
 **Cross-domain edges are consumer-owned ports.** A domain consuming another domain
 declares the minimal port it needs (in `contracts/`) and receives it at wiring time;
 the registry itself stays concrete — it serves the app UI and same-domain access. The
-declared edges today: map → layer-tree (`LayerSnapshotSource` and `RenderErrorSink`,
-the layer manager's constructor deps) and layer-tree → protocols (`ProtocolRegistry`
-and `SourceAdapterFactory`, constructor-wired port references in the tree store). The
+declared edges today: map → layer-tree (`LayerSnapshotSource`, `RenderErrorSink`)
+and layer-tree → protocols (`ProtocolRegistry`, `SourceAdapterFactory`). The
 rule bounds the reachability trade-off recorded below: reachability inside the graph may
 be total, but cross-domain coupling is visible in `contracts/` and survives internal
 refactorings. A new cross-domain read starts a new port at its consumer — never a
@@ -56,20 +55,12 @@ State placement has four cases:
 
 Interaction orchestration — event wiring, keyboard-driven state machines, async tool
 pipelines — is case-2 state: a controller class obtained through `stateStore`, with the
-component as a thin `observer()` over it and `useEffect` reserved for attach/detach
-wiring on mount/unmount. The precedent is `LayerTreeViewModel` (ADR-0008); the rule
-keeps orchestration out of component effects.
+component as a thin `observer()` over it (ADR-0008).
 
 Instance state lives in `StateStore` (`src/core/lib/state/StateStore.ts`): a plain keyed
-container with `get(key, factory)` (get-or-create), `remove(key)`, `has(key)`. It returns
-the exact factory instance and imposes no observability — whether a value is observable is
-the value's own choice. Widgets (attribute-table, layer-tree view model) and map tools
-(ruler-3d, volume-measure, area-measure) obtain their state this way; it survives
-close/open and deactivate/activate cycles. The key is owned by the widget/tool that
-created it (keyed by its registered id). `remove(key)` is the explicit reset hook — it has
-no production callers today: instances are session-scoped by design, bounded by the fixed
-set of registered widgets and tools. All state lives in memory only — persistence is a
-deliberate non-goal.
+container with get-or-create `get(key, factory)`, `remove(key)` (the explicit reset hook)
+and `has(key)`. It imposes no observability — whether a value is observable is the value's
+own choice — and holds state in memory only; persistence is a deliberate non-goal.
 
 ## Consequences
 

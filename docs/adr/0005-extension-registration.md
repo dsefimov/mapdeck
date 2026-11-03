@@ -43,24 +43,13 @@ Then the map tools (`registerMapTools`). A map tool registers itself plus the th
 comes with: its panel widget and its translations. Those belong to the tool, so they are
 registered in the same step rather than in the widget or locale steps.
 
-Then the built-in basemap configurations (`registerBasemaps`). Basemaps are map
-infrastructure, not tools, so they have their own step. The step is conditional: whether the box
-ships with built-in basemaps at all is assembly policy (the `builtinBasemaps` option,
-the same authority as the default source type). A module registers its own basemaps —
+Then the built-in basemap configurations (`registerBasemaps`); whether the box ships
+with built-in basemaps at all is assembly policy (the `builtinBasemaps` option, the
+same authority as the default source type). A module registers its own basemaps —
 and may replace a built-in by id with the explicit override — through the module
-context; everything a config needs on the way in (validation, style-Url fetch, the
-duplicate policy, the select-setting repair) lives in the store's registration path,
-shared by both channels. Hiding a single built-in without replacing it is deliberately
-unsupported — no consumer has needed it, and it would be removal, which the model does
-not have.
-
-Per-deployment basemap tile retuning is module content: the consumer's module
-registers (or overrides) configs pointing at its own tile cache. Module unregister was
-rejected — the context reference outlives bootstrap, so an assembly-only unregister
-would in fact be a runtime API, and without an ownership ledger any module could
-remove any other module's or the built-in registrations. Passing a basemap list as a
-constructor option was rejected for duplicating the module channel; shipping no
-built-in set at all was rejected for losing the batteries-included default.
+context; both channels share one registration path. Hiding a built-in without
+replacing it is deliberately unsupported — the model has replacement, not removal.
+Per-deployment tile retuning is module content, not a constructor option.
 
 Then the data protocols and feature providers (`registerProtocols`). Providers belong to
 the protocols domain.
@@ -75,34 +64,22 @@ adapters registered by modules.
 A failure in any step surfaces through `initError` (see ADR-0003) and the whole sequence
 is retried.
 
-**The default source adapter is assembly policy.** Which source adapter serves when no
-type is named is decided by the application composition: the default source type is a
-facade option (`MapdeckOptions.defaultSourceType`), and the embed facade falls back to
-the built-in STAC adapter when the assembly names none. Bootstrap applies it after
-modules have registered their adapters. A named type with no registered adapter fails
-initialization, visibly through `initError` — implicit registration order must not
-decide (the same rule `SourceAdapterFactory.get()` follows): an empty tree must be a
-source's answer, never a wiring accident. A module cannot capture the global default —
-`setDefault` is not part of the registration context (ADR-0004).
+**The default source adapter is assembly policy.** The default source type is a
+facade option (`MapdeckOptions.defaultSourceType`), applied after modules have
+registered their adapters; the embed facade falls back to the built-in STAC adapter
+when the assembly names none. A named type with no registered adapter fails
+initialization visibly through `initError` — an empty tree must be a source's answer,
+never a wiring accident. A module cannot capture the global default: `setDefault` is
+not part of the registration context (ADR-0004).
 
-**Duplicate policy.** Registries throw on a duplicate id — the extension set is fixed at
-build time, so an accidental duplicate is a programming error caught at startup, not a
-silent conflict. A deliberate replacement is the extension mechanism for changing base
-behavior: registering with `{ override: true }` replaces the existing entry and logs a
-warning. The override is explicit and visible because silent replacement would make
-assembled behavior depend on registration order. Grouped registries (protocol→tool
-links) are a no-op on a duplicate within the same group — linking the same tool to the
-same protocol twice is harmless, while the same id in different groups is allowed. The
-policy covers every replacement-capable registration surface, `SourceAdapterFactory`
-and basemap configs included: a module replacing a base adapter or a built-in basemap
-does it with the same explicit override, never by out-registering it. An overridden
-basemap drops its stale health status and re-applies when the replaced id was the
-active one. Translations merge within a namespace — a re-declared
-dictionary updates its languages, so registration is repeatable. Settings ride their
-owner's registration: `registerSettings` follows the same explicit-override policy, and
-an overridden widget or tool replaces its settings batch atomically, dropping ids
-absent from the new declaration — auto-registered settings never block their owner's
-legitimate override.
+**Duplicate policy.** Registries throw on a duplicate id — the extension set is fixed
+at build time, so an accidental duplicate is a programming error caught at startup.
+A deliberate replacement is explicit: `{ override: true }` replaces the entry and
+logs a warning, because silent replacement would make assembled behavior depend on
+registration order. The same explicit-override policy covers every
+replacement-capable registration surface — `SourceAdapterFactory` and basemap configs
+included. Translations and settings ride their owner's registration under the same
+policy.
 
 **Retry-safe registration.** Every bootstrap attempt registers into empty registries — a
 failed attempt leaves no partial registrations behind, so retry is safe by construction.

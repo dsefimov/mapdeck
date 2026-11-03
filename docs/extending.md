@@ -22,9 +22,9 @@ they run after the built-in set, in array order, so a later module may
 override a built-in registration with `{ override: true }`.
 
 `context` (`ModuleContext`) exposes the runtime slice (state store, locale,
-read-only registries) and every registration interface. Anything the context does
-not expose is internal: request a new interface (ADR-0004) instead of reading
-internals.
+read-only registries) and every registration interface. Use the APIs it exposes —
+internal stores are not part of the public API. If an interface you need is
+missing, request one (ADR-0004).
 
 ## A map tool with a panel
 
@@ -94,13 +94,63 @@ call:
 
 ```ts
 import type { Module } from "mapdeck";
-import type { Protocol, SourceAsset } from "mapdeck/contracts";
+import type { LayerAdapter, Protocol, SourceAsset } from "mapdeck/contracts";
 
-// Protocol shape: { id, label, defaultStyle, createRenderDescriptor,
-// getLayerAdapter }. Complete, type-checked implementations: the built-in
-// protocols in src/core/domain/protocols/ (`createSimpleProtocol` is the
-// flat-descriptor precedent).
-const terrainProtocol: Protocol = { /* ... */ };
+/** Protocol-specific config — the C in Protocol<C>. */
+interface TerrainConfig {
+    readonly opacity: number;
+}
+
+/** The adapter draws the format on the map — here native MapLibre raster tiles. */
+const terrainAdapter: LayerAdapter<TerrainConfig> = {
+    // native MapLibre layers follow the tree's z-order
+    nativeLayerOrdering: true,
+    addToMap(layerId, { sourceUrl, config }, ctx) {
+        ctx.map.addSource(layerId, {
+            type: "raster",
+            tiles: [sourceUrl],
+            tileSize: 256,
+        });
+        ctx.map.addLayer({
+            id: layerId,
+            type: "raster",
+            source: layerId,
+            paint: { "raster-opacity": config.opacity },
+        });
+    },
+    removeFromMap(layerId, ctx) {
+        ctx.map.removeLayer(layerId);
+        ctx.map.removeSource(layerId);
+    },
+    updateVisibility(layerId, visible, ctx) {
+        ctx.map.setLayoutProperty(
+            layerId,
+            "visibility",
+            visible ? "visible" : "none",
+        );
+    },
+    updateConfig(renderUnit, ctx) {
+        // this format has no in-place update — rebuild
+        this.removeFromMap(renderUnit.id, ctx);
+        this.addToMap(renderUnit.id, renderUnit.descriptor, ctx);
+    },
+};
+
+const terrainProtocol: Protocol<TerrainConfig> = {
+    id: "my-terrain",
+    label: "Terrain",
+    defaultStyle: { paint: { "raster-opacity": 1 } },
+    createRenderDescriptor(sourceUrl, style = {}) {
+        // node style merged over the protocol default
+        const paint = { ...terrainProtocol.defaultStyle.paint, ...style.paint };
+        const opacity =
+            typeof paint["raster-opacity"] === "number"
+                ? paint["raster-opacity"]
+                : 1;
+        return { sourceUrl, config: { opacity } };
+    },
+    getLayerAdapter: () => terrainAdapter,
+};
 
 export const terrainModule: Module = {
     id: "my-terrain",
@@ -124,6 +174,11 @@ export const terrainModule: Module = {
     },
 };
 ```
+
+The example is complete — it compiles as shown. In the repository, the
+built-in protocols in `src/core/domain/protocols/` are further reference
+implementations (`createSimpleProtocol` is the flat-descriptor precedent);
+they are repository sources, not part of the npm package.
 
 Assets come from the source adapter (the built-in STAC tree maps item
 assets through the same asset mapper), so a protocol registered this way

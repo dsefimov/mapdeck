@@ -45,17 +45,11 @@ direct writes to a node's observable fields — precisely the state `mergeUserSt
 preserves on reload.
 
 **Operations are the primary abstraction.** The store calls domain operations and
-applies their results; it holds no business rules of its own. The catalog: `reconcileTree`
-(diffs incoming nodes against the tree under a parent, including descendant removal),
-`mergeUserState` (the existing node's `isVisible` and `style` overrides survive, all
-structural fields come from the incoming node), `cascadeVisibility` (an async walk with
-a `loadChildren` callback — showing loads unloaded groups first, hiding touches only
-loaded descendants; a re-toggle aborts the in-flight subtree load), `searchTree` (composes `traverseTreeAsync` with `matchesQuery`,
-lazy-loads unloaded groups, honors abort, returns matched ids only — ancestor paths and
-row shaping are the caller's concern), the traversal helpers (`collectLayerNodes`,
-`collectVisibleBboxes`, `resolveNodes`, `collectSubtreeIds`), `idsToRemove`,
-`styleMutators`, and `toSnapshotItems` (collect + descriptor resolution via the
-protocol registry).
+applies their results; it holds no business rules of its own. The catalog:
+`reconcileTree`, `mergeUserState`, `cascadeVisibility`, `searchTree`, the traversal
+helpers (`collectLayerNodes`, `collectVisibleBboxes`, `resolveNodes`,
+`collectSubtreeIds`), `idsToRemove`, `styleMutators`, and `toSnapshotItems`
+(collect + descriptor resolution via the protocol registry).
 
 **Visibility is one flag.** `node.isVisible` means participation in map rendering — the
 effective visibility. There is no requested/effective pair (QGIS-style): the visibility
@@ -64,12 +58,9 @@ cascade flattens group state into the leaves, so a divergence between "wanted" a
 
 **Lazy loading: one path.** `ensureChildrenLoaded(groupId)` fetches a group's children
 through the `SourceAdapter` port when they have not arrived yet and is a no-op
-otherwise; it accepts an abort signal. The store tracks which groups have received
-their child batch — an empty batch counts as loaded, so an empty group is not
-re-fetched on every expand; deleting the group clears the marker. Expansion, search
-traversal and the show-cascade all load
-through this single path. Why: a tree can be arbitrarily deep, and eager fetching is
-not acceptable. The tree loads exclusively through `SourceAdapter`
+otherwise; it accepts an abort signal. Expansion, search traversal and the show-cascade
+all load through this single path. Why: a tree can be arbitrarily deep, and eager
+fetching is not acceptable. The tree loads exclusively through `SourceAdapter`
 (`fetchRoot`/`fetchChildren`); the adapter is chosen from the configured source type
 and re-initialized when the source-URL setting changes.
 
@@ -88,20 +79,14 @@ mirror of the source.
 
 **Presentation state lives in the view model.** `LayerTreeViewModel` — widget instance
 state obtained through `stateStore.get`, keyed by the widget id — owns `expandedIds`,
-`openMenuId`, `searchQuery` and `matchedIds`, and computes the flat `visibleRows`
-(`{nodeId, depth}`) the widget renders: expansion mode (rows for roots and children of
-expanded groups), or search mode (matched nodes plus their ancestor paths, regardless
-of expansion) when a query is active and no run is pending. While a run is pending —
-the debounce waiting or a search in flight — the expansion view stays, so the tree
-does not flash empty on every keystroke. The search lifecycle is owned by the
-view model: the query is trimmed, debounced (`SEARCH_DEBOUNCE_MS`), a newer query aborts the in-flight
-run, and a failed run clears the matches. Expanding a group triggers the lazy load;
-a failed or aborted load rolls the group back to collapsed. Expansion is independent of
-visibility: turning a group visible loads and shows its layers on the map but never
-expands the tree. View state survives reloads by stable node ids; stale ids produce no
-rows. Why a view model and not node fields: nodes are recreated on every reload, so
-node-held presentation state would be lost exactly when it matters; keying by id makes
-the state survive while keeping presentation concerns out of the domain model.
+`openMenuId`, `searchQuery` and `matchedIds`, and computes the flat `visibleRows` the
+widget renders: expansion mode, or — when a search is active — matched nodes plus
+their ancestor paths regardless of expansion. Expanding a group triggers the lazy
+load; expansion is independent of visibility: turning a group visible loads and shows
+its layers on the map but never expands the tree. View state survives reloads by
+stable node ids; stale ids produce no rows. Why a view model and not node fields:
+nodes are recreated on every reload, so node-held presentation state would be lost
+exactly when it matters.
 
 **Errors are split by channel.** Operation failures live in a keyed async state, one key
 per operation; the last failed run drives the widget's error banner, and a state-level

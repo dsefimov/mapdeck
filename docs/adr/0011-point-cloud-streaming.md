@@ -27,7 +27,7 @@ non-metric or GeoTIFF-keys file in real target data reopens this.
 
 **The engine is a cycle: select, plan, evict, load, render.** A camera change triggers
 one cycle. `ViewportManager` listens to the map: `moveend`/`zoomend`/`pitchend`
-debounced (`VIEWPORT_DEBOUNCE_MS`) start a traversal, raw `move` events only store the camera snapshot.
+debounced start a traversal, raw `move` events only store the camera snapshot.
 The camera position, the active viewport and the frustum planes are read through
 the map context (ADR-0010) and the viewport type flows from the context's
 return types; the vertical FOV and the screen height are read directly from the map
@@ -39,17 +39,14 @@ stale loads, plan the budget, evict, enqueue the load batch, await the drain, re
 the render, notify through `onPointsLoaded`.
 
 **Traversal is pure and top-down, in a fixed order.** RBush spatial prefilter →
-anti-overzoom depth cap (relaxed near the camera) → frustum culling (four side planes,
-negative-vertex test, run in absolute deck.gl common space against the signed plane
-constants, because both are fixed by the `viewProjectionMatrix` the planes come from
-and a test in any other space silently keeps or drops everything) → the SSE test
+anti-overzoom depth cap (relaxed near the camera) → frustum culling (four side
+planes, negative-vertex test, in absolute common space — the only space where the
+test is exact) → the SSE test
 with early termination: a node whose screen error is within the threshold stops its
 subtree; a leaf is accepted regardless of SSE; a coarse node yields to its loaded
 children. Missing children are recorded as pending hierarchy expansions, capped per
-cycle (`MAX_HIERARCHY_EXPANSIONS`); the orchestrator loads the pages and re-runs the
-traversal only when something new actually arrived. The visit loop is an explicit
-stack in pre-order with shared mutable contexts, and `shouldCullNode` is a pure
-predicate over them.
+cycle; the orchestrator loads the pages and re-runs the
+traversal only when something new actually arrived.
 
 **Geometry lives in `engine/geometry/`.** The formulas — ground resolution, camera
 projection, screen-space error, the meters-per-degree conversion — are defined there
@@ -62,74 +59,50 @@ the box.
 
 **Priority is one comparable number.** Three criteria per candidate — reverse screen
 error, foveated factor, fractional depth — are normalized and packed into a single
-priority with a fixed criterion order: foveated dominates reverse screen error, and
-depth breaks ties. The packing is order-only — each criterion stays strictly inside
-its own range, so no criterion can carry into its neighbour's. The encoding ranks the
-most urgent tile lowest, and both
-consumers read it in that direction — the budget planner fills in ascending order,
-and the load queue is a min-heap keyed by the rank itself.
+priority with a fixed criterion order (foveated dominates, depth breaks ties); the
+packing is order-only, so no criterion can carry into its neighbour's range.
 
 **Budget is counted in points, and eviction is LRU with protections.** `pointBudget`
 caps the total points across loaded and loading nodes; the adapter sets the baseline
-(`DEFAULT_POINT_BUDGET`) once at initialization, and that baseline is the
-single config path. Planning is one pass over the cache: the occupied budget
-accumulates in a running total, sibling blocks reserve atomically through the
-traversal's fallbacks map (child key → parent key), and a block that will not fit
-whole falls back to accepting the parent plus whatever children the remainder
-affords. Either way the running total is charged everything the step accepted, the
-fallback parent included: every later candidate is measured against that total, so
-a step that under-reports what it took lets the plan over-commit. Members the cycle
-has already accepted — loaded or loading — are seated once by the occupancy pass and
-skipped by every later step, so a loaded candidate costs the plan nothing. The plan
-ends with a deficit against the budget — the occupied overrun alone, since planned
-points are part of the total the planner already charged. Eviction then
-frees points, and the load list is truncated to the remaining budget: the deficit
-minus the freed points. Eviction targets a fraction of the budget (the
-`evictionThresholdRatio` option) and stops at the frame boundary; LRU order is
-`lastSeenAt`. The protected sets (visible, loading, errored, planned, parents of
+once at initialization — the single config path. Planning is one pass over the
+cache: the occupied budget accumulates in a running total, sibling blocks reserve
+atomically, and a block that will not fit whole falls back to accepting the parent
+plus whatever children the remainder affords — every step is charged everything it
+accepted, so a step that under-reports lets the plan over-commit. The plan ends with
+a deficit; eviction frees points, and the load list is truncated to the remaining
+budget. Eviction targets a fraction of the budget and stops at the frame boundary,
+in LRU order; the protected sets (visible, loading, errored, planned, parents of
 loading children, recent-frame hysteresis) are defined in `engine/eviction/`.
 
 **The render path packs visible nodes into one deck.gl layer.** After each cycle's
 drain the executor computes the visible set — a pure two-stage filter: the frustum
 pass, then the SSE pass. The SSE test here is separate from the traversal's: the
 traversal's decides what to load, the render filter's decides what to draw from the
-loaded set. The filter skips the descendants of a passing node by walking
-`node.parent` (32-step cap) and renders a coarse node without loaded children as-is.
-Per-node typed arrays pack into one contiguous buffer (`RenderBufferPool`: grow-only,
-`subarray` views, positions as offsets from the coordinate origin). The adapter hands
-the packed `PointCloudData` to a single `PointCloudLayer`, updated in place with
-versioned update triggers; there are no per-node deck layers. Refresh is cycle-driven:
-a scheme switch re-renders without a cycle, raw camera moves do not — the viewport
-debounce bounds the lag, and the visible-set comparison is element-wise over the
-deterministically sorted key list.
+loaded set. Per-node typed arrays pack into one contiguous buffer (`RenderBufferPool`:
+grow-only, `subarray` views, positions as offsets from the coordinate origin). The
+adapter hands the packed `PointCloudData` to a single `PointCloudLayer`, updated in
+place with versioned update triggers; there are no per-node deck layers. Refresh is
+cycle-driven: a scheme switch re-renders without a cycle, raw camera moves do not —
+the viewport debounce bounds the lag.
 
 **Sources resolve at open time, workers are engine-internal.** A URL source stays a
 URL — but each node load wraps it in a bounded getter that rebuilds copc.js's range
-wire format on `boundedFetch`, giving the request a ceiling
-(`DEFAULT_RANGE_REQUEST_TIMEOUT_MS`) and a real AbortError
-on cancellation; copc.js's own fetch path is never used for point data. File and
-ArrayBuffer sources become buffer getters (they read memory, cannot hang, and pass
-through untouched), and a File is read into a buffer once. The point worker
+wire format, giving the request a ceiling and a real AbortError on cancellation;
+copc.js's own fetch path is never used for point data. File and ArrayBuffer sources
+become buffer getters; a File is read into a buffer once. The point worker
 always allocates intensity and classification arrays — zeros when the source has no
 channel — so packing stays uniform. `WorkerPool` is created inside
-`loader.initialize()` with its own sizing heuristic, and every worker request carries
-a ceiling (`DEFAULT_WORKER_REQUEST_TIMEOUT_MS`) that rejects, terminates and
-respawns a wedged worker; dispose rejects
-everything still pending. The adapter creates the LazPerf promise and injects it
-into the loader's constructor.
+`loader.initialize()`, and every worker request carries a ceiling that rejects,
+terminates and respawns a wedged worker; dispose rejects everything still pending.
 
 **Failures: report once, then the channels take over.** An initialization failure
 reports through `reportLayerError` — the engine's only report site. An `addToMap`
 failure destroys the unit and rethrows into the layer manager's failed-unit channel
 (ADR-0010). A runtime load failure marks the node errored — protected from eviction —
-and retries with exponential backoff, keyed by the copc.js cache-operation error
-(recognized by its message). The backoff counts a streak of consecutive failures, so
-a load that succeeds ends the streak: without that reset a single transient failure
-would lengthen every later retry of that tile until it reached the cap, and the tile
-would stay sluggish for the rest of the session. Cancellation aborts the in-flight
-range request through the load's AbortController — one in-flight load per node key,
-so a cancelled-then-reenqueued node never runs two parallel fetches — and the settle
-state check stays as the last line of defense for sources the signal cannot reach.
+and retries with exponential backoff that resets on success, so a single transient
+failure does not lengthen later retries. Cancellation aborts the in-flight range
+request; one in-flight load per node key, so a re-enqueued node never runs two
+parallel fetches.
 
 **Picking works through the overlay port.** `picking.ts` extracts a picked point from
 the packed buffers — offsets plus coordinate origin, attributes by available channel —

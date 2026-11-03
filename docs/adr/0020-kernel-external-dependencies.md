@@ -25,38 +25,41 @@ and the path for a new package is undefined. The dependency graph's
   their record.
 - **Host singletons as peers** — `react`, `react-dom`, `mobx`,
   `mobx-react-lite`: ADR-0019.
-- **Geo math on vetted packages** — `delaunator` (the triangulation under
-  the TIN volume measurement, `lib/geo/delaunay2d.ts`), `@turf/distance` +
-  `@turf/helpers` (`lib/geo/spatial.ts`), `@turf/area`
-  (`map-tools/area-measure/logic/area.ts`). Hand-rolled geodesics and
-  triangulation are rejected: haversine edge cases and robust-predicate
-  pitfalls fail quietly, and a wrong measurement is worse than a dependency.
-- **Single-purpose utilities** — `react-grid-layout` (the widget grid),
-  `pmtiles` (the map domain's tile protocol), `proj4` in WMS feature info:
+- **Geo math on vetted packages** — `delaunator`, `@turf/distance` +
+  `@turf/helpers`, `@turf/area`. Hand-rolled geodesics and triangulation
+  are rejected: haversine edge cases and robust-predicate pitfalls fail
+  quietly, and a wrong measurement is worse than a dependency.
+- **Single-purpose utilities** — `react-grid-layout`, `pmtiles`, `proj4`:
   small, permissively licensed; this policy is their record.
 
 The license-check allowlist (`npm run license-check`) is the enforcement
 common to all groups: small, permissive licenses only.
 
-**A new package is an ADR.** The trigger list in `AGENTS.md` already demands
-it; this record sets the precedent's shape — name the package, name the
-sites, name the license, or name the architectural record it rides.
+**When a dependency needs an ADR.** The bar is the trigger list in
+`AGENTS.md`, restated for dependencies: a package that changes the
+architecture, a public contract or the execution model, or that materially
+affects the package's size or compatibility, gets an ADR — it names the
+package, its license and the architectural record it rides, if any. An
+ordinary dependency goes through code review; `npm run license-check` and
+the review verify its license and purpose.
 
 **"`lib` imports nothing" means project layers and frameworks.** The rule
 has two precise parts, and the eslint zone for `lib` enforces exactly them:
 no upper layer of this codebase (`@core/*` above lib, the app, the
 extensions) and no framework or engine (React, MobX, maplibre, deck.gl, the
-grid library). External packages are a third category: permitted, but each
-one is an ADR-triggered decision — the absolute wording is the high bar
-that keeps utility creep out of the bottom layer. Placement still follows
-the move test: a `lib/` file compiles in a fresh project that installs its
-own dependencies — geo math passes, so geo math lives in `lib/geo`.
+grid library). External packages are a third category: permitted with
+justification — a package in the bottom layer still needs a reason that
+survives review. Placement follows the move test: a `lib/` file compiles in
+a fresh project that installs its own dependencies — geo math passes, so
+geo math lives in `lib/geo`.
 
 ## Consequences
 
 - No dependency "just exists": every package sits under its architectural
   record or under this policy.
-- A new external package anywhere in the core requires an ADR.
+- A dependency that changes the architecture, a public contract, the
+  execution model or the package's size/compatibility requires an ADR;
+  ordinary dependencies pass through code review and license-check.
 - The dependency-graph line in `AGENTS.md` and the `lib` entry in
   `docs/architecture.md` carry the precise reading — layers and frameworks,
   not the world.
