@@ -1,6 +1,7 @@
 # ADR-0011: Point-cloud streaming — the COPC engine
 
-Status: Accepted · Date: 2026-09-22
+Status: Accepted · Date: 2026-09-22 · Updated: 2026-11-04 (worker decode, decoded-node
+LRU, distance-ranked eviction, two-part frames)
 
 ## Context
 
@@ -8,8 +9,8 @@ Point clouds are the only format the app streams. A COPC file can hold billions 
 points, and the browser must render exactly the slice the camera justifies: the visible
 octree nodes at their screen-space resolution. Fetching everything is impossible, so
 the engine keeps a bounded cache, loads nodes on demand, evicts them by use, and draws
-one deck.gl layer that is updated in place — never one layer per node. The engine lives
-entirely inside the COPC protocol (`domain/protocols/copc/engine/`). The rest of the
+a committed base layer plus a small streaming part — never one layer per node. The
+engine lives entirely inside the COPC protocol (`domain/protocols/copc/engine/`). The rest of the
 core sees none of it: the map sees a render unit that survives visibility toggles and
 keeps streaming while hidden (ADR-0010), the tree sees a node, tools see features. This
 ADR records how the engine is structured — the cycle that drives it, the traversal that
@@ -25,18 +26,19 @@ non-metric or GeoTIFF-keys file in real target data reopens this.
 
 ## Decision
 
-**The engine is a cycle: select, plan, evict, load, render.** A camera change triggers
+**The engine is a cycle: select, evict, plan, load, render.** A camera change triggers
 one cycle. `ViewportManager` listens to the map: `moveend`/`zoomend`/`pitchend`
 debounced start a traversal, raw `move` events only store the camera snapshot.
 The camera position, the active viewport and the frustum planes are read through
 the map context (ADR-0010) and the viewport type flows from the context's
 return types; the vertical FOV and the screen height are read directly from the map
 and the window; the engine names no deck import. `selectNodesSSE` enters a
-single-flight FSM (`CycleRunner`): a request that arrives mid-cycle marks the loop
-dirty and collapses into one more cycle after the current one; a failed cycle recovers
-into the next request. `CycleExecutor` then runs the fixed pipeline: traverse, cancel
-stale loads, plan the budget, evict, enqueue the load batch, await the drain, refresh
-the render, notify through `onPointsLoaded`.
+single-flight FSM (`CycleRunner`): a request that arrives mid-cycle supersedes it —
+the abort signal ends the running cycle's drain wait, and the replacement cycle
+prunes the loads it no longer wants. A failed cycle recovers into the next request.
+`CycleExecutor` then runs the fixed pipeline: traverse, cancel stale loads, evict,
+plan the budget, enqueue the load batch, await the drain, commit the render into
+a fresh base, notify through `onPointsLoaded`.
 
 **Traversal is pure and top-down, in a fixed order.** RBush spatial prefilter →
 anti-overzoom depth cap (relaxed near the camera) → frustum culling (four side
@@ -46,7 +48,8 @@ with early termination: a node whose screen error is within the threshold stops 
 subtree; a leaf is accepted regardless of SSE; a coarse node yields to its loaded
 children. Missing children are recorded as pending hierarchy expansions, capped per
 cycle; the orchestrator loads the pages and re-runs the
-traversal only when something new actually arrived.
+traversal only when something new actually arrived. The hierarchy loads lazily, one
+page per request — the first points render after the root page, not a full-tree walk.
 
 **Geometry lives in `engine/geometry/`.** The formulas — ground resolution, camera
 projection, screen-space error, the meters-per-degree conversion — are defined there
@@ -62,38 +65,55 @@ error, foveated factor, fractional depth — are normalized and packed into a si
 priority with a fixed criterion order (foveated dominates, depth breaks ties); the
 packing is order-only, so no criterion can carry into its neighbour's range.
 
-**Budget is counted in points, and eviction is LRU with protections.** `pointBudget`
+**Budget is counted in points, and eviction serves the current view.** `pointBudget`
 caps the total points across loaded and loading nodes; the adapter sets the baseline
 once at initialization — the single config path. Planning is one pass over the
 cache: the occupied budget accumulates in a running total, sibling blocks reserve
 atomically, and a block that will not fit whole falls back to accepting the parent
 plus whatever children the remainder affords — every step is charged everything it
-accepted, so a step that under-reports lets the plan over-commit. The plan ends with
-a deficit; eviction frees points, and the load list is truncated to the remaining
-budget. Eviction targets a fraction of the budget and stops at the frame boundary,
-in LRU order; the protected sets (visible, loading, errored, planned, parents of
-loading children, recent-frame hysteresis) are defined in `engine/eviction/`.
+accepted, so a step that under-reports lets the plan over-commit; the plan itself
+never accepts past the budget. Eviction runs before planning; its target is
+`max(0, budget − demand)`, where demand is the points the current candidates have
+not yet served. Victims are ranked farthest from the viewport rectangle first,
+stalest traversal stamp breaking ties; this cycle's candidates are untouchable,
+and a loaded parent whose region is still loading stays as the fallback renderer
+(`engine/eviction/`). Evicted nodes move to a byte-budgeted decoded LRU
+(`DecodedNodeCache`, `decodedCacheBytes`, default 256 MiB); a reload restores the
+payload without refetch or decode.
 
-**The render path packs visible nodes into one deck.gl layer.** After each cycle's
-drain the executor computes the visible set — a pure two-stage filter: the frustum
-pass, then the SSE pass. The SSE test here is separate from the traversal's: the
-traversal's decides what to load, the render filter's decides what to draw from the
-loaded set. Per-node typed arrays pack into one contiguous buffer (`RenderBufferPool`:
-grow-only, `subarray` views, positions as offsets from the coordinate origin). The
-adapter hands the packed `PointCloudData` to a single `PointCloudLayer`, updated in
-place with versioned update triggers; there are no per-node deck layers. Refresh is
+**The render path is a two-part frame: a committed base plus a streaming part.**
+After each cycle's drain the executor computes the visible set — a pure two-stage
+filter: the frustum pass, then the SSE pass. The SSE test here is separate from the
+traversal's: the traversal's decides what to load, the render filter's decides what
+to draw from the loaded set. Per-node typed arrays pack into two contiguous buffer
+pairs (`RenderBufferPool`: grow with doubling, shrink with hysteresis, `subarray`
+views, positions as offsets from the coordinate origin). The base envelope keeps
+its object reference between pushes — a renderer holding it skips the re-upload;
+nodes streamed since the last commit pack into a small incoming part. A commit
+folds the incoming part into a fresh base, automatically at a quarter of the base.
+The adapter runs two deck layers, the bare id and `<id>-incoming`; picking
+normalizes back to the tree layer id (`stripPointCloudLayerSuffix` in contracts).
+Frame envelopes are views into pool-owned memory, valid until the next push (the
+contract on `PointCloudFrame`). There are no per-node deck layers. Refresh is
 cycle-driven: a scheme switch re-renders without a cycle, raw camera moves do not —
 the viewport debounce bounds the lag.
 
 **Sources resolve at open time, workers are engine-internal.** A URL source stays a
-URL — but each node load wraps it in a bounded getter that rebuilds copc.js's range
-wire format, giving the request a ceiling and a real AbortError on cancellation;
-copc.js's own fetch path is never used for point data. File and ArrayBuffer sources
-become buffer getters; a File is read into a buffer once. The point worker
-always allocates intensity and classification arrays — zeros when the source has no
-channel — so packing stays uniform. `WorkerPool` is created inside
-`loader.initialize()`, and every worker request carries a ceiling that rejects,
-terminates and respawns a wedged worker; dispose rejects everything still pending.
+URL — but every read goes through bounded getters that rebuild copc.js's range wire
+format, giving each request a ceiling and a real AbortError on cancellation: node
+loads through a per-load getter, the header and hierarchy pages through a shared
+one; copc.js's own fetch path is never used. Range requests are sent `no-store`:
+ranges are unique bytes, and Chrome's disk cache intermittently fails ranged
+responses. The main thread only fetches a node's compressed bytes — laz-perf
+decompression, raw extraction, reprojection and color derivation run in the worker
+pool's process job. The wasm URL is absolutized against the page (inline-blob
+workers cannot resolve relative URLs); the pool queue is priority-ordered
+(interactive recolors ahead of bulk). File and ArrayBuffer sources become buffer
+getters; a File is read into a buffer once. The point worker always allocates
+intensity and classification arrays — zeros when the source has no channel — so
+packing stays uniform. `WorkerPool` is created inside `loader.initialize()`, and
+every worker request carries a ceiling that rejects, terminates and respawns a
+wedged worker; dispose rejects everything still pending.
 
 **Failures: report once, then the channels take over.** An initialization failure
 reports through `reportLayerError` — the engine's only report site. An `addToMap`
@@ -118,7 +138,8 @@ for non-point layers.
 - One cycle per camera change bounds work: bursts of viewport events collapse into a
   single traversal, and intermediate requests never queue up.
 - Memory is bounded in points, not nodes, and the protection rules keep the set the
-  current frame needs from being evicted under it.
+  current frame needs from being evicted under it; evicted bytes rest in the
+  decoded-node LRU up to its own byte budget — a revisit restores without a refetch.
 - Hidden clouds keep streaming — the engine keeps fetching while the layer is hidden,
-  so a re-shown cloud is already current, and the adapter re-creates the deck layer
+  so a re-shown cloud is already current, and the adapter re-creates the deck layers
   from retained data at once on show (ADR-0010).
