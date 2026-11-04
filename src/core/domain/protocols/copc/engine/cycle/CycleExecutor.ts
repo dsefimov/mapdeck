@@ -104,9 +104,6 @@ export class CycleExecutor {
         });
         this._updateCandidateMetadata(traversalResult.candidates);
 
-        // Evict before planning: the plan must see a budget already
-        // reserved for the view's unserved demand, or an over-spent
-        // residency starves it to a coarse fallback.
         const { finalToLoad, evictedCount, targetPoints } =
             this._evictThenPlan(traversalResult, viewportBounds);
 
@@ -116,7 +113,9 @@ export class CycleExecutor {
         const enqueuedCount = this._enqueueNodes(finalToLoad, (key) =>
             priorityByKey.get(key) ?? Infinity,
         );
-        if (enqueuedCount > 0) {
+        // Adopted loads count as work: enqueueBatch skips nodes already in
+        // flight, and their settle must still push a render.
+        if (enqueuedCount > 0 || this._services.nodeLoader.hasPendingWork()) {
             // Progressive rendering: push a frame every so often while nodes
             // stream in instead of waiting for the whole batch. The drain
             // ends early when a newer input supersedes this cycle — the
@@ -135,13 +134,13 @@ export class CycleExecutor {
             );
         }
 
+        // Superseded — the replacement cycle renders, commits and retries
+        // on its own; a commit here would re-pack a stale view.
+        if (supersedeSignal?.aborted) return;
+
         // The drain is over — fold the streamed nodes into a fresh base so
         // the next cycle starts from a committed snapshot.
         this._updateRenderAndNotify(false, true);
-
-        // A superseded cycle must not queue its own retry: the superseding
-        // input already carries a newer camera.
-        if (supersedeSignal?.aborted) return;
 
         // Lazy discovery: pages fetched for expansions mean deeper nodes may
         // now be reachable — one more cycle with the same camera converges

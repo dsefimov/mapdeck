@@ -5,7 +5,11 @@
  * COPC or deck.gl specifics, so any cloud protocol's data works.
  */
 import type { GeoPoint } from "@core/lib/geo";
-import type { CloudPoint, PointCloudData } from "./point-cloud";
+import {
+    stripPointCloudLayerSuffix,
+    type CloudPoint,
+    type PointCloudData,
+} from "./point-cloud";
 
 function hasRGB(
     data: PointCloudData,
@@ -230,9 +234,8 @@ function extractClassificationFromPoint(
 
 /**
  * Validate and extract the core picking information from a Deck.gl PickingInfo.
- * The picked layer id is used as-is: every deck.gl layer is registered under
- * the map layer id, and the picking index already points into the layer's
- * contiguous render buffer.
+ * The picked layer id is used as-is: a protocol may serve several deck layers
+ * per tree layer, and the picking index points into the picked one's buffer.
  */
 function extractValidPickingInfo(pickingInfo: PickingInfo): {
     mainLayerId: string;
@@ -327,7 +330,7 @@ export function getPointFromPickingInfo(
             lng,
             lat,
             z,
-            layerId: mainLayerId,
+            layerId: stripPointCloudLayerSuffix(mainLayerId),
             pointIndex,
             coordinateOrigin: cloudData.coordinateOrigin,
             attributes,

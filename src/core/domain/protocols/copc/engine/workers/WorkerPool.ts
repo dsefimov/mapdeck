@@ -132,27 +132,30 @@ export class WorkerPool {
 
     private _onResult(workerIdx: number, result: { requestId: string }): void {
         const pending = this._pending.get(result.requestId);
+        if (!pending) {
+            // A late result racing the timeout — freeing the respawned
+            // slot here would double-book it.
+            return;
+        }
         this._pending.delete(result.requestId);
-        pending?.disarm();
+        pending.disarm();
         this._workerBusy[workerIdx] = false;
         this._workerCurrentRequest[workerIdx] = null;
-        if (pending) {
-            if (
-                "kind" in result &&
-                (result as { kind?: string }).kind === "error"
-            ) {
-                // The request failed inside the worker (e.g. a decode
-                // error) — surface it as a rejection instead of waiting
-                // for the timeout to reap the slot.
-                pending.reject(
-                    new Error(
-                        (result as { message?: string }).message ??
-                            "worker error",
-                    ),
-                );
-            } else {
-                pending.resolve(result);
-            }
+        if (
+            "kind" in result &&
+            (result as { kind?: string }).kind === "error"
+        ) {
+            // The request failed inside the worker (e.g. a decode
+            // error) — surface it as a rejection instead of waiting
+            // for the timeout to reap the slot.
+            pending.reject(
+                new Error(
+                    (result as { message?: string }).message ??
+                        "worker error",
+                ),
+            );
+        } else {
+            pending.resolve(result);
         }
         this._drainQueue(workerIdx);
     }
@@ -166,7 +169,10 @@ export class WorkerPool {
             pending?.reject(new Error(`Worker error: ${e.message}`));
             this._workerCurrentRequest[workerIdx] = null;
         }
-        this._workerBusy[workerIdx] = false;
+        // An erroring worker cannot be trusted with the next request —
+        // respawn instead of burning a timeout per future dispatch.
+        this._workers[workerIdx]?.terminate();
+        this._spawn(workerIdx);
         this._drainQueue(workerIdx);
     }
 

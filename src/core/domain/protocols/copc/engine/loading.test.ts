@@ -449,4 +449,26 @@ describe("NodeLoader.drain supersede", () => {
         loader.onLoadSettled();
         expect(served).toEqual([URGENT, MIDDLE]);
     });
+
+    it("ends the wait at once for a signal that aborted before the call", async () => {
+        // The supersede landed before drain ran — a listener armed now
+        // would never fire.
+        const { loader, served } = harness(
+            [pending(URGENT), pending(MIDDLE)],
+            1,
+        );
+        loader.enqueueBatch([URGENT, MIDDLE], rankOf);
+
+        const controller = new AbortController();
+        controller.abort();
+
+        await expect(
+            loader.drain(undefined, controller.signal),
+        ).resolves.toBeUndefined();
+
+        // As above: the wait ended, the work runs on.
+        expect(served).toEqual([URGENT]);
+        loader.onLoadSettled();
+        expect(served).toEqual([URGENT, MIDDLE]);
+    });
 });

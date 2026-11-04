@@ -61,10 +61,14 @@ describe("CycleRunner", () => {
 
     it("supersedes a running cycle: the new input aborts the old signal", async () => {
         let releaseFirst: (() => void) | null = null;
+        let releaseFirstCalled = false;
         const firstCycle = vi.fn(
             (_input: CycleInput, signal: AbortSignal) =>
                 new Promise<void>((resolve) => {
-                    releaseFirst = resolve;
+                    releaseFirst = () => {
+                        releaseFirstCalled = true;
+                        resolve();
+                    };
                     signal.addEventListener("abort", () => resolve(), {
                         once: true,
                     });
@@ -89,6 +93,7 @@ describe("CycleRunner", () => {
         // The first cycle resolved via the abort — the runner moved on to
         // the second without releaseFirst ever being called.
         expect(releaseFirst).not.toBeNull();
+        expect(releaseFirstCalled).toBe(false);
     });
 
     it("does not abort a signal from an already-finished cycle", async () => {

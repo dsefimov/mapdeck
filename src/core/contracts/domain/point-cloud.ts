@@ -71,6 +71,12 @@ export enum ColorScheme {
  * pushes — a renderer holding it can skip re-uploading — while the small
  * incoming part is rebuilt on every push and folds into the base on the
  * next commit.
+ *
+ * Frame envelopes are views into producer-owned buffers: the bytes behind
+ * `base` and `incoming` are valid only until the producer pushes the next
+ * frame (a commit repacks the same backing memory in place). A consumer
+ * must upload or copy what it needs before asking for the next frame, not
+ * retain an old envelope and read it later.
  */
 export interface PointCloudFrame {
     /** Committed snapshot — null before the first commit. */

@@ -32,23 +32,28 @@ export class DecodedNodeCache {
 
     constructor(private readonly _maxBytes: number) {}
 
-    /** Current total size of retained payloads, in bytes. */
     get bytes(): number {
         return this._bytes;
     }
 
-    /** Retained payload count. */
     get size(): number {
         return this._entries.size;
     }
 
     /**
-     * Capture a node's decoded buffers. Only fully decoded nodes are
-     * worth keeping; a partially loaded node has nothing to salvage.
+     * Only fully decoded nodes are worth keeping — a partially loaded
+     * node has nothing to salvage.
      */
     salvage(node: CachedNode): void {
         if (this._maxBytes <= 0) return;
         if (node.state !== "loaded" || !node.positions) return;
+        if (
+            !node.colorsRgb ||
+            !node.intensities ||
+            !node.classifications
+        ) {
+            return;
+        }
 
         const payload: DecodedNodePayload = {
             pointCount: node.pointCount,
@@ -72,9 +77,8 @@ export class DecodedNodeCache {
     }
 
     /**
-     * Remove and return a node's payload — a cache hit means the reload
-     * needs neither a fetch nor a decode. A pointCount mismatch means the
-     * entry describes a different load and is dropped.
+     * A pointCount mismatch means the entry describes a different load —
+     * dropped, not returned.
      */
     take(key: string, pointCount: number): DecodedNodePayload | null {
         const payload = this._entries.get(key);
@@ -85,13 +89,11 @@ export class DecodedNodeCache {
         return payload;
     }
 
-    /** Drop everything. */
     clear(): void {
         this._entries.clear();
         this._bytes = 0;
     }
 
-    /** Shed the least recently used payloads until the budget holds. */
     private _trim(): void {
         while (this._bytes > this._maxBytes) {
             const oldest = this._entries.keys().next();

@@ -268,4 +268,99 @@ describe("RenderBufferPool", () => {
         expect(frame?.base?.pointCount).toBe(2);
         expect(frame?.base?.colors?.[0]).toBe(20);
     });
+
+    it("drops the committed snapshot when nothing is renderable", () => {
+        const pool = new RenderBufferPool();
+        const node = withPoints(FIRST_KEY, 3, 1);
+        const cache = cacheOf(node);
+
+        const first = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        // The node loses its buffers — eviction, scheme switch, whatever.
+        const heldPositions = node.positions!;
+        delete node.positions;
+        expect(
+            pool.build([FIRST_KEY], cache, ColorScheme.RGB, META),
+        ).toBeNull();
+
+        // The very same reference back — a retained snapshot would serve
+        // the old envelope, a dropped one commits fresh.
+        node.positions = heldPositions;
+        const after = pool.build(
+            [FIRST_KEY],
+            cache,
+            ColorScheme.RGB,
+            META,
+        );
+        expect(after?.base).not.toBe(first?.base);
+    });
+});
+
+describe("RenderBufferPool capacity", () => {
+    it("allocates exactly the first visible set", () => {
+        const pool = new RenderBufferPool();
+
+        pool.build(
+            [FIRST_KEY],
+            cacheOf(withPoints(FIRST_KEY, 3, 1)),
+            ColorScheme.RGB,
+            META,
+        );
+
+        expect(pool.capacity).toBe(3);
+    });
+
+    it("grows past the ask while doubling beats it", () => {
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(withPoints(FIRST_KEY, 3, 1));
+
+        pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        expect(pool.capacity).toBe(3);
+
+        cache.set(SECOND_KEY, withPoints(SECOND_KEY, 2, 2));
+        pool.commit([FIRST_KEY, SECOND_KEY], cache, ColorScheme.RGB, META);
+        // Doubling (6) beats the ask (5) — the next append stays in-pool.
+        expect(pool.capacity).toBe(6);
+    });
+
+    it("shrinks with headroom once usage falls to a quarter", () => {
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(withPoints(FIRST_KEY, 4, 1));
+
+        pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        expect(pool.capacity).toBe(4);
+
+        // A recommit onto a lone 1-point node: 4 >= 1 * 4 → shrink to 2.
+        cache.set(SECOND_KEY, withPoints(SECOND_KEY, 1, 2));
+        pool.commit([SECOND_KEY], cache, ColorScheme.RGB, META);
+        expect(pool.capacity).toBe(2);
+    });
+
+    it("holds the allocation inside the shrink band — a dive-back must not realloc", () => {
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(withPoints(FIRST_KEY, 3, 1));
+
+        pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        expect(pool.capacity).toBe(3);
+
+        // 3 < 1 * 4: above the band, the allocation stays.
+        cache.set(SECOND_KEY, withPoints(SECOND_KEY, 1, 2));
+        pool.commit([SECOND_KEY], cache, ColorScheme.RGB, META);
+        expect(pool.capacity).toBe(3);
+
+        cache.set(FIRST_KEY, withPoints(FIRST_KEY, 3, 1));
+        pool.commit([FIRST_KEY], cache, ColorScheme.RGB, META);
+        expect(pool.capacity).toBe(3);
+    });
+
+    it("overwrites the previous frame's bytes in place — envelopes are valid until the next push", () => {
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(withPoints(FIRST_KEY, 3, 1));
+
+        const first = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        cache.set(FIRST_KEY, withPoints(FIRST_KEY, 3, 9));
+        pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+
+        // The old envelope views the same pool memory the recommit repacked.
+        expect(first?.base?.positions[0]).toBe(9);
+    });
 });

@@ -94,7 +94,11 @@ export class RenderBufferPool {
         meta: RenderOutputMeta,
     ): PointCloudFrame | null {
         const visibleNodes = this._renderableNodes(visibleKeys, nodeCache, scheme);
-        if (visibleNodes.length === 0) return null;
+        if (visibleNodes.length === 0) {
+            // Nothing renderable — drop the snapshot rather than pin dead arrays.
+            this._committed = null;
+            return null;
+        }
 
         const committed = this._committed;
         if (committed && this._snapshotStale(committed, visibleNodes, scheme, meta)) {

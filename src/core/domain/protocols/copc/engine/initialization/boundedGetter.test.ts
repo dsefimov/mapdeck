@@ -132,7 +132,7 @@ describe("createHttpRangeGetter", () => {
         fetchMock.mockReset();
     });
 
-    it("sends the range, no-store and no caller signal", async () => {
+    it("sends the range with no-store; the ceiling is the only bound", async () => {
         fetchMock.mockImplementation(bodyFetch(new Uint8Array([1, 2, 3])));
 
         await createHttpRangeGetter(URL, TIMEOUT_MS)(0, 100);
@@ -148,9 +148,9 @@ describe("createHttpRangeGetter", () => {
         expect(calledUrl).toBe(URL);
         expect(init.headers.Range).toBe("bytes=0-99");
         expect(init.cache).toBe("no-store");
-        // No per-load channel for the header/hierarchy reads: the ceiling is
-        // the only bound, and the getter must not fabricate a signal.
-        expect(init.signal).toBeDefined();
+        // No per-load channel exists for the header/hierarchy reads, but
+        // the fetch still runs under boundedFetch's own ceiling signal.
+        expect(init.signal).toBeInstanceOf(AbortSignal);
     });
 
     it("rejects with a timeout error when the server hangs", async () => {

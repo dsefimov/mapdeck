@@ -10,6 +10,8 @@ import {
 const ORIGIN: [number, number, number] = [30, 60, 0];
 
 const CHUNK_SUFFIXED_LAYER_ID = "cloud-chunk5";
+/** A streaming cloud's incoming render-part deck layer id. */
+const INCOMING_LAYER_ID = "cloud-incoming";
 
 function makeCloudData(): PointCloudData {
     return {
@@ -128,6 +130,24 @@ describe("getPointFromPickingInfo", () => {
 
         expect(result).not.toBeNull();
         expect(result!.layerId).toBe(CHUNK_SUFFIXED_LAYER_ID);
+        expect(result!.pointIndex).toBe(1);
+    });
+
+    it("reports the tree layer id for a pick on the incoming part", () => {
+        const data = makeCloudData();
+        const lookedUp: string[] = [];
+        const result = getPointFromPickingInfo(
+            pickingInfo(INCOMING_LAYER_ID, 1),
+            (layerId) => {
+                lookedUp.push(layerId);
+                return layerId === INCOMING_LAYER_ID ? data : undefined;
+            },
+        );
+
+        // The lookup keeps the raw part id — the index points into it.
+        expect(lookedUp).toEqual([INCOMING_LAYER_ID]);
+        expect(result).not.toBeNull();
+        expect(result!.layerId).toBe("cloud");
         expect(result!.pointIndex).toBe(1);
     });
 });

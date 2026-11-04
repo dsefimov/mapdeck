@@ -36,10 +36,9 @@ export async function boundedFetch(
         signal?: AbortSignal | undefined;
         method?: string | undefined;
         /**
-         * Cache mode forwarded to fetch. Range requests want "no-store":
-         * each range is unique bytes, so caching re-uses nothing, and
-         * Chrome's disk cache intermittently fails ranged 206 responses
-         * outright (ERR_CACHE_OPERATION_NOT_SUPPORTED).
+         * Cache mode forwarded to fetch. Callers fetching unique-byte
+         * requests (e.g. HTTP ranges) pass "no-store" — the
+         * protocol-specific rationale lives with those callers.
          */
         cache?: RequestCache | undefined;
     } = {},

@@ -124,6 +124,14 @@ interface CycleHarness {
     enqueueBatch: ReturnType<typeof vi.fn>;
     evictToBudget: ReturnType<typeof vi.fn>;
     traversalRun: ReturnType<typeof vi.fn>;
+    renderPool: {
+        build: ReturnType<typeof vi.fn>;
+        commit: ReturnType<typeof vi.fn>;
+    };
+    nodeLoader: {
+        hasPendingWork: ReturnType<typeof vi.fn>;
+        drain: ReturnType<typeof vi.fn>;
+    };
 }
 
 /**
@@ -134,6 +142,11 @@ interface CycleHarness {
 function createCycleHarness(): CycleHarness {
     const enqueueBatch = vi.fn(() => 0);
     const evictToBudget = vi.fn(() => ({ freedPoints: 0, evictedCount: 0 }));
+    const hasPendingWork = vi.fn(() => false);
+    const drain = vi.fn(async () => {});
+    const commitFrame = { base: mockData(), incoming: null };
+    const build = vi.fn(() => mockData());
+    const commit = vi.fn(() => commitFrame);
 
     const candidate = {
         key: CANDIDATE_KEY,
@@ -155,12 +168,13 @@ function createCycleHarness(): CycleHarness {
 
     const services = {
         nodeCache,
-        renderPool: { build: vi.fn(() => mockData()) },
+        renderPool: { build, commit },
         eviction: { evictToBudget },
         nodeLoader: {
             cancelStale: vi.fn(),
             enqueueBatch,
-            drain: vi.fn(async () => {}),
+            drain,
+            hasPendingWork,
             errorKeys: new Set<string>(),
             loadStamp: 0,
         },
@@ -199,6 +213,8 @@ function createCycleHarness(): CycleHarness {
         enqueueBatch,
         evictToBudget,
         traversalRun: services.traversal.run as ReturnType<typeof vi.fn>,
+        renderPool: { build, commit },
+        nodeLoader: { hasPendingWork, drain },
     };
 }
 
@@ -264,6 +280,73 @@ describe("CycleExecutor.run", () => {
         expect(evictOrder).toBeDefined();
         expect(enqueueOrder).toBeDefined();
         expect(evictOrder!).toBeLessThan(enqueueOrder!);
+    });
+
+    it("stamps every candidate with the cycle's frame — the eviction protection", async () => {
+        const harness = createCycleHarness();
+
+        await runCycle(harness);
+
+        expect(harness.nodeCache.get(CANDIDATE_KEY)?.lastSeenAt).toBe(
+            harness.state.frameCounter,
+        );
+    });
+
+    it("waits out adopted loads even when it enqueued nothing of its own", async () => {
+        const harness = createCycleHarness();
+        // Everything wanted is already in flight from a superseded cycle.
+        harness.enqueueBatch.mockReturnValue(0);
+        harness.nodeLoader.hasPendingWork.mockReturnValue(true);
+
+        await runCycle(harness);
+
+        expect(harness.nodeLoader.drain).toHaveBeenCalledTimes(1);
+    });
+
+    it("skips the drain entirely when nothing was enqueued and nothing runs", async () => {
+        const harness = createCycleHarness();
+        harness.enqueueBatch.mockReturnValue(0);
+        harness.nodeLoader.hasPendingWork.mockReturnValue(false);
+
+        await runCycle(harness);
+
+        expect(harness.nodeLoader.drain).not.toHaveBeenCalled();
+    });
+});
+
+describe("CycleExecutor.run — post-drain commit", () => {
+    it("folds the streamed nodes into a committed base after the drain", async () => {
+        const harness = createCycleHarness();
+        harness.enqueueBatch.mockReturnValue(3);
+        harness.state.onPointsLoaded = vi.fn();
+
+        await runCycle(harness);
+
+        expect(harness.renderPool.commit).toHaveBeenCalledTimes(1);
+        expect(harness.renderPool.build).not.toHaveBeenCalled();
+        expect(harness.state.onPointsLoaded).toHaveBeenCalledWith(
+            harness.renderPool.commit.mock.results[0]?.value,
+        );
+    });
+
+    it("does not commit a superseded cycle's stale view", async () => {
+        const harness = createCycleHarness();
+        harness.enqueueBatch.mockReturnValue(3);
+        harness.state.onPointsLoaded = vi.fn();
+        const aborted = new AbortController();
+        aborted.abort();
+
+        await harness.executor.run(
+            {
+                cameraSnapshot: createCamera(),
+                viewportBounds: [10, 10, 11, 11],
+            },
+            vi.fn(),
+            aborted.signal,
+        );
+
+        expect(harness.renderPool.commit).not.toHaveBeenCalled();
+        expect(harness.state.onPointsLoaded).not.toHaveBeenCalled();
     });
 });
 

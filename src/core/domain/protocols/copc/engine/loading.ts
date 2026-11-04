@@ -53,10 +53,12 @@ export class NodeLoader {
         return this._errorKeys;
     }
 
-    /**
-     * Add a node to the priority queue. Resets error state if applicable.
-     * Returns false for keys already queued or in flight.
-     */
+    /** True while work is queued or in flight, adopted loads included. */
+    hasPendingWork(): boolean {
+        return this._queue.size > 0 || this._activeRequests > 0;
+    }
+
+    /** Returns false for keys already queued or in flight. */
     enqueueOne(node: CachedNode): boolean {
         if (this._inFlight.has(node.key)) return false;
         if (this._queuedKeys.has(node.key)) return false;
@@ -73,7 +75,6 @@ export class NodeLoader {
         return true;
     }
 
-    /** Start up to maxConcurrentRequests parallel loads from the queue. */
     startPending(): void {
         while (
             this._queue.size > 0 &&
@@ -98,14 +99,9 @@ export class NodeLoader {
     }
 
     /**
-     * Enqueue a batch of node keys with priority.
-     *
-     * `getPriority` returns the traversal's load rank for a key, where a lower
-     * value is more urgent — the queue is a min-heap, so it hands out the
-     * lowest rank first. Negating the rank on the way in reverses the whole
-     * loading order.
-     *
-     * Returns the number of nodes actually enqueued.
+     * Enqueue a batch of node keys with priority. Returns the number of
+     * nodes actually enqueued — nodes already queued, in flight, loaded or
+     * inside their retry wait are skipped.
      */
     enqueueBatch(keys: string[], getPriority: (key: string) => number): number {
         let count = 0;
@@ -216,7 +212,9 @@ export class NodeLoader {
      * `signal` ends the wait early without touching the loads: a superseding
      * cycle aborts the drain, and its own `cancelStale` prunes whatever the
      * old batch left in flight. Loads still running keep their slots and
-     * settle normally into the cache.
+     * settle normally into the cache. A signal that aborted before this
+     * call — the supersede landed during traversal — ends the wait the same
+     * way: an abort listener armed after the fact never fires.
      */
     async drain(
         onProgress?: () => void,
@@ -228,6 +226,8 @@ export class NodeLoader {
         if (this._activeRequests === 0 && this._queue.size === 0) {
             return;
         }
+
+        if (signal?.aborted) return;
 
         return new Promise<void>((resolve) => {
             this._drainResolve = resolve;
@@ -243,7 +243,6 @@ export class NodeLoader {
         });
     }
 
-    /** Release the pending drain, if any — resolved by completion or abort. */
     private _resolveDrain(): void {
         const resolve = this._drainResolve;
         if (!resolve) return;

@@ -192,6 +192,53 @@ describe("WorkerPool request timeout", () => {
         expect(workers[0]!.terminated).toBe(false);
         expect(workers).toHaveLength(1);
     });
+
+    it("ignores a late result racing the timeout — the slot stays booked", async () => {
+        const { pool, workers } = harness(1);
+
+        const hung = pool.post({ kind: "decode" }, []);
+        const hungId = lastRequest(workers[0]!).requestId;
+        const timedOut = expect(hung).rejects.toThrow(/timed out/);
+        vi.advanceTimersByTime(TIMEOUT_MS + 1);
+        await timedOut;
+        expect(workers).toHaveLength(2); // respawn took the slot
+
+        // The replacement request occupies the respawned worker…
+        const next = pool.post({ kind: "next" }, []);
+        expect(workers[1]!.posted).toHaveLength(1);
+
+        // …and the reaped request's late result must not free the busy slot.
+        pool.post({ kind: "queued" }, []);
+        workers[0]!.respond(hungId, {});
+        expect(workers[1]!.posted).toHaveLength(1);
+
+        workers[1]!.respond(lastRequest(workers[1]!).requestId, {});
+        await next;
+        expect(workers[1]!.posted).toHaveLength(2); // queued dispatched only now
+        workers[1]!.respond(lastRequest(workers[1]!).requestId, {});
+    });
+});
+
+describe("WorkerPool worker error", () => {
+    it("rejects the request and recovers the slot with a fresh worker", async () => {
+        const { pool, workers } = harness(1);
+
+        const posted = pool.post({ kind: "decode" }, []);
+        const failed = expect(posted).rejects.toThrow(
+            "Worker error: boom",
+        );
+
+        workers[0]!.onerror?.({ message: "boom" } as ErrorEvent);
+        await failed;
+
+        expect(workers[0]!.terminated).toBe(true);
+        expect(workers).toHaveLength(2);
+
+        const next = pool.post({ kind: "again" }, []);
+        expect(workers[1]!.posted).toHaveLength(1);
+        workers[1]!.respond(lastRequest(workers[1]!).requestId, {});
+        await expect(next).resolves.toBeDefined();
+    });
 });
 
 describe("WorkerPool.dispose", () => {
