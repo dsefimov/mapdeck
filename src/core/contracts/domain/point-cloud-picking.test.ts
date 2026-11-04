@@ -3,8 +3,10 @@ import { Bbox } from "@core/lib/geo";
 import type { PointCloudData } from "@core/contracts";
 import {
     getPointFromPickingInfo,
+    getPointWithFallback,
     pickPointFromCloud,
     type PickingInfo,
+    type PointPickingCamera,
 } from "./point-cloud-picking";
 
 const ORIGIN: [number, number, number] = [30, 60, 0];
@@ -164,7 +166,10 @@ describe("pickPointFromCloud", () => {
         return pickPointFromCloud({
             screenX: 10,
             screenY: 20,
-            overlayManager: { pickObject: () => picked },
+            overlayManager: {
+                pickObject: () => picked,
+                pickObjects: () => [],
+            },
             getPointCloudData,
             excludeLayerPrefix: EXCLUDE_PREFIX,
         });
@@ -203,5 +208,153 @@ describe("pickPointFromCloud", () => {
 
     it("returns null when the picked layer has no loaded data", () => {
         expect(pickWith(pickingInfo("unknown", 0))).toBeNull();
+    });
+});
+
+describe("pickPointFromCloud — depth-aware candidates", () => {
+    const EXCLUDE_PREFIX = "measure-";
+
+    /** Identity projection: ranking runs in the raw degree space of the data. */
+    const camera: PointPickingCamera = {
+        cameraPosition: [30, 60, 10],
+        projectPosition: (coords) => coords,
+    };
+
+    function pickAllWith(
+        picked: PickingInfo[],
+        getPointCloudData: (
+            layerId: string,
+        ) => PointCloudData | undefined = () => undefined,
+    ) {
+        return pickPointFromCloud({
+            screenX: 10,
+            screenY: 20,
+            overlayManager: {
+                pickObject: () => null,
+                pickObjects: () => picked,
+            },
+            getPointCloudData,
+            excludeLayerPrefix: EXCLUDE_PREFIX,
+            camera,
+        });
+    }
+
+    const cloudData = (layerId: string) =>
+        layerId === "cloud" || layerId === INCOMING_LAYER_ID
+            ? makeCloudData()
+            : undefined;
+
+    it("prefers the candidate nearest to the camera over the screen-closest one", () => {
+        // Index 0 is the ground under the cursor, index 2 the wire slightly
+        // off it — the wire is nearer to the camera and must win.
+        const point = pickAllWith(
+            [pickingInfo("cloud", 0), pickingInfo("cloud", 2)],
+            cloudData,
+        );
+
+        expect(point).toMatchObject({
+            lng: 34,
+            lat: 65,
+            z: 6,
+            layerId: "cloud",
+            pointIndex: 2,
+        });
+    });
+
+    it("keeps the first candidate on a tie", () => {
+        const point = pickAllWith(
+            [pickingInfo("cloud", 0), pickingInfo("cloud", 0)],
+            cloudData,
+        );
+
+        expect(point).toMatchObject({ pointIndex: 0 });
+    });
+
+    it("ranks by the buffer position, not the picked info coordinate", () => {
+        const point = pickAllWith(
+            [
+                pickingInfo("cloud", 1, [999, 999, 999]),
+                pickingInfo("cloud", 2),
+            ],
+            cloudData,
+        );
+
+        // Index 1 is nearer to the camera and wins with its real buffer
+        // position, ignoring the bogus picked coordinate.
+        expect(point).toMatchObject({ lng: 31, lat: 62, z: 3, pointIndex: 1 });
+    });
+
+    it("skips excluded, unknown and out-of-range candidates", () => {
+        const point = pickAllWith(
+            [
+                pickingInfo(`${EXCLUDE_PREFIX}helper`, 0),
+                pickingInfo("cloud", 3),
+                pickingInfo("unknown", 0),
+                pickingInfo("cloud", 1),
+            ],
+            cloudData,
+        );
+
+        expect(point).toMatchObject({ pointIndex: 1 });
+    });
+
+    it("reports the tree layer id for a candidate on the incoming part", () => {
+        const point = pickAllWith(
+            [pickingInfo(INCOMING_LAYER_ID, 2), pickingInfo("cloud", 0)],
+            cloudData,
+        );
+
+        expect(point).toMatchObject({ layerId: "cloud", pointIndex: 2 });
+    });
+
+    it("returns null when no candidate survives", () => {
+        expect(
+            pickAllWith([pickingInfo(`${EXCLUDE_PREFIX}helper`, 0)], cloudData),
+        ).toBeNull();
+    });
+
+    it("returns null when the multi pick reports no hits", () => {
+        expect(pickAllWith([], cloudData)).toBeNull();
+    });
+
+    it("discovers the camera from the overlay when not passed explicitly", () => {
+        const point = pickPointFromCloud({
+            screenX: 10,
+            screenY: 20,
+            overlayManager: {
+                pickObject: () => null,
+                pickObjects: () => [
+                    pickingInfo("cloud", 0),
+                    pickingInfo("cloud", 2),
+                ],
+                getPickCamera: () => camera,
+            },
+            getPointCloudData: cloudData,
+            excludeLayerPrefix: EXCLUDE_PREFIX,
+        });
+
+        expect(point).toMatchObject({ pointIndex: 2, z: 6 });
+    });
+});
+
+describe("getPointWithFallback", () => {
+    it("falls back to the event lngLat at z=0 when the cloud pick misses", () => {
+        const point = getPointWithFallback({
+            screenX: 10,
+            screenY: 20,
+            eventLngLat: { lng: 30.1, lat: 60.2 },
+            overlayManager: {
+                pickObject: () => null,
+                pickObjects: () => [],
+            },
+            getPointCloudData: () => undefined,
+            excludeLayerPrefix: "measure-",
+            camera: {
+                cameraPosition: [30, 60, 10],
+                projectPosition: (coords) => coords,
+            },
+        });
+
+        expect(point).toEqual({ lng: 30.1, lat: 60.2, z: 0 });
     });
 });

@@ -5,7 +5,10 @@ import type { MapboxOverlayProps } from "@deck.gl/mapbox";
 import type maplibregl from "maplibre-gl";
 import { logger } from "@core/lib/logger";
 import type { FrustumPlane, FrustumPlanes } from "@core/lib/geo";
-import type { OverlayManager as IOverlayManager } from "@core/contracts";
+import type {
+    OverlayManager as IOverlayManager,
+    PointPickingCamera,
+} from "@core/contracts";
 import { buildMapViewState, translatedPlaneDistance } from "../../logic/viewportState";
 import type { ManagedLayer, TypedOverlay, PickParams } from "./overlayTypes";
 
@@ -296,6 +299,16 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
             right: toPlane(planes.right),
             top: toPlane(planes.top),
             bottom: toPlane(planes.bottom),
+        };
+    }
+
+    getPickCamera(): PointPickingCamera | null {
+        const viewport = this.getViewport();
+        if (!viewport) return null;
+        return {
+            // deck types cameraPosition as number[]; it is always [x, y, z].
+            cameraPosition: viewport.cameraPosition as [number, number, number],
+            projectPosition: (coords) => viewport.projectPosition(coords),
         };
     }
 

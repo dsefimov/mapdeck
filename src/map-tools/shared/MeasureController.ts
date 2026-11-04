@@ -20,7 +20,6 @@ export interface MeasureAttachDeps {
     readonly map: maplibregl.Map;
     readonly overlayManager: OverlayManager<Layer>;
     readonly getPointCloudData: (layerId: string) => PointCloudData | undefined;
-    /** Called when Escape means "close the tool" (not in edit mode). */
     readonly onEscape: () => void;
 }
 

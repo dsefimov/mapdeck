@@ -31,14 +31,31 @@ function hasClassification(
 
 /**
  * Minimal overlay manager interface for point picking.
- * Only exposes the pickObject method needed by pickPointFromCloud.
+ * Exposes the pick methods needed by pickPointFromCloud; when the backend
+ * serves a pick camera, depth-aware selection works without an explicit one.
  */
 interface PointPickingOverlay {
     pickObject(x: number, y: number, radius?: number): PickingInfo | null;
+    pickObjects(x: number, y: number, radius?: number): PickingInfo[];
+    getPickCamera?(): PointPickingCamera | null;
+}
+
+/**
+ * Camera for depth-aware picking: the eye position and world→common-space
+ * projection, both in the same common space. The active deck.gl viewport
+ * satisfies this structurally.
+ */
+export interface PointPickingCamera {
+    readonly cameraPosition: readonly [number, number, number];
+    projectPosition(coordinates: [number, number, number]): [
+        number,
+        number,
+        number,
+    ];
 }
 
 /** Screen-distance in px within which a deck pick counts as a hit. */
-const PICK_RADIUS_PX = 20;
+const PICK_RADIUS_PX = 8;
 
 /** Options of {@link pickPointFromCloud}. */
 export interface PickPointFromCloudOptions {
@@ -47,6 +64,7 @@ export interface PickPointFromCloudOptions {
     overlayManager: PointPickingOverlay;
     getPointCloudData: (layerId: string) => PointCloudData | undefined;
     excludeLayerPrefix: string;
+    camera?: PointPickingCamera | null | undefined;
 }
 
 /** Options of {@link getPointWithFallback}. */
@@ -57,23 +75,124 @@ export interface GetPointWithFallbackOptions {
     overlayManager: PointPickingOverlay;
     getPointCloudData: (layerId: string) => PointCloudData | undefined;
     excludeLayerPrefix: string;
+    camera?: PointPickingCamera | null | undefined;
 }
 
 /**
- * Pick a point from point cloud at screen coordinates
+ * Pick a point from point cloud at screen coordinates.
+ *
+ * With a camera (passed explicitly or served by the overlay backend) every
+ * point rendered within {@link PICK_RADIUS_PX} of the cursor is a candidate,
+ * and the one nearest to the camera wins — thin foreground geometry (a power
+ * line) beats the dense surface behind it even when the cursor is slightly
+ * off it. Without a camera, deck's single pick (closest to the cursor on
+ * screen) is used.
  */
 export function pickPointFromCloud(
     options: PickPointFromCloudOptions,
 ): CloudPoint | null {
-    const { getPointCloudData } = options;
+    const camera =
+        options.camera ?? options.overlayManager.getPickCamera?.() ?? null;
+    const result = camera
+        ? pickNearestToCamera(options, camera)
+        : pickScreenClosest(options);
+    return result ? toCloudPoint(result) : null;
+}
 
-    const pickingInfo = pickValidPickedInfo(options);
-    if (!pickingInfo) {
+/**
+ * The picking result whose point is nearest to the camera among all valid
+ * candidates in the pick radius; the first one on a tie.
+ */
+function pickNearestToCamera(
+    options: PickPointFromCloudOptions,
+    camera: PointPickingCamera,
+): PickingResult | null {
+    const {
+        screenX,
+        screenY,
+        overlayManager,
+        excludeLayerPrefix,
+        getPointCloudData,
+    } = options;
+    const cameraPosition = camera.cameraPosition;
+
+    let best: PickingResult | null = null;
+    let bestDistanceSq = Infinity;
+
+    const infos = overlayManager.pickObjects(
+        screenX,
+        screenY,
+        PICK_RADIUS_PX,
+    );
+    for (const info of infos) {
+        const candidate = extractPointCandidate(
+            info,
+            excludeLayerPrefix,
+            getPointCloudData,
+        );
+        if (!candidate) {
+            continue;
+        }
+
+        const projected = camera.projectPosition([
+            candidate.lng,
+            candidate.lat,
+            candidate.z,
+        ]);
+        const dx = projected[0] - cameraPosition[0];
+        const dy = projected[1] - cameraPosition[1];
+        const dz = projected[2] - cameraPosition[2];
+        const distanceSq = dx * dx + dy * dy + dz * dz;
+
+        if (distanceSq < bestDistanceSq) {
+            bestDistanceSq = distanceSq;
+            best = candidate;
+        }
+    }
+    return best;
+}
+
+/**
+ * A valid candidate point (own layer, existing cloud data, index in range)
+ * reconstructed from the picked buffer position — accurate lng/lat/z.
+ */
+function extractPointCandidate(
+    pickingInfo: PickingInfo,
+    excludeLayerPrefix: string,
+    getPointCloudData: (layerId: string) => PointCloudData | undefined,
+): PickingResult | null {
+    const validInfo = extractValidPickingInfo(pickingInfo);
+    if (!validInfo || validInfo.mainLayerId.startsWith(excludeLayerPrefix)) {
+        return null;
+    }
+    const { mainLayerId, pointIndex } = validInfo;
+
+    const cloudData = getPointCloudData(mainLayerId);
+    if (!cloudData || !cloudData.positions) {
+        return null;
+    }
+    if (!isValidPointIndex(pointIndex, cloudData.pointCount)) {
         return null;
     }
 
-    const result = getPointFromPickingInfo(pickingInfo, getPointCloudData);
-    return result ? toCloudPoint(result) : null;
+    const coords = extractCoordinatesFromPositions(
+        cloudData.positions,
+        pointIndex,
+        cloudData.coordinateOrigin,
+    );
+    if (!coords) {
+        return null;
+    }
+
+    return {
+        lng: coords[0],
+        lat: coords[1],
+        z: coords[2],
+        layerId: stripPointCloudLayerSuffix(mainLayerId),
+        pointIndex,
+        coordinateOrigin: cloudData.coordinateOrigin,
+        attributes: extractPointAttributes(cloudData, pointIndex),
+    };
 }
 
 /**
@@ -101,6 +220,17 @@ function pickValidPickedInfo(
     return pickingInfo;
 }
 
+/** Legacy single-pick path: the candidate closest to the cursor on screen. */
+function pickScreenClosest(
+    options: PickPointFromCloudOptions,
+): PickingResult | null {
+    const pickingInfo = pickValidPickedInfo(options);
+    if (!pickingInfo) {
+        return null;
+    }
+    return getPointFromPickingInfo(pickingInfo, options.getPointCloudData);
+}
+
 /** Narrow a picking result to the plain cloud point (attributes dropped). */
 function toCloudPoint(result: PickingResult): CloudPoint {
     return {
@@ -126,6 +256,7 @@ export function getPointWithFallback(
         overlayManager,
         getPointCloudData,
         excludeLayerPrefix,
+        camera,
     } = options;
 
     const point = pickPointFromCloud({
@@ -134,6 +265,7 @@ export function getPointWithFallback(
         overlayManager,
         getPointCloudData,
         excludeLayerPrefix,
+        camera,
     });
 
     if (point) {

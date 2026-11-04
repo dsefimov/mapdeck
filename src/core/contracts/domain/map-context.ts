@@ -1,11 +1,13 @@
 import type maplibregl from "maplibre-gl";
 import type { Viewport, PickingInfo } from "@deck.gl/core";
 import type { FrustumPlanes } from "@core/lib/geo";
+import type { PointPickingCamera } from "./point-cloud-picking";
 
 /**
  * Port for the deck.gl overlay backend: attach/detach, layer lifecycle and
- * picking. Camera queries live on {@link MapContext} — the camera
- * is a property of the map, not of the overlay backend.
+ * picking. Map-level camera queries live on {@link MapContext} — the camera
+ * is a property of the map, not of the overlay backend; the pick camera is
+ * the exception, served here from the same viewport that renders and picks.
  */
 export interface OverlayManager<TLayer = unknown> {
     /** Attach overlay to maplibre map */
@@ -28,6 +30,8 @@ export interface OverlayManager<TLayer = unknown> {
     pickObject(x: number, y: number, radius?: number): PickingInfo | null;
     /** Pick all objects at screen coordinates */
     pickObjects(x: number, y: number, radius?: number): PickingInfo[];
+    /** Camera of the viewport that renders and picks — input to depth-aware picking. */
+    getPickCamera?(): PointPickingCamera | null;
     /** Clean up all resources */
     dispose(): void;
 }
