@@ -6,7 +6,7 @@ import type maplibregl from "maplibre-gl";
 import { logger } from "@core/lib/logger";
 import type { FrustumPlane, FrustumPlanes } from "@core/lib/geo";
 import type { OverlayManager as IOverlayManager } from "@core/contracts";
-import { buildMapViewState } from "../../logic/viewportState";
+import { buildMapViewState, translatedPlaneDistance } from "../../logic/viewportState";
 import type { ManagedLayer, TypedOverlay, PickParams } from "./overlayTypes";
 
 /** The plane shape deck.gl hands out, derived from its own viewport signature. */
@@ -189,39 +189,113 @@ export class DeckOverlayManager implements IOverlayManager<Layer> {
     }
 
     /**
-     * Get camera position [lng, lat, altitude] from the map viewport.
+     * The terrain camera's offset from this flat viewport's camera, in the
+     * flat viewport's common space.
+     *
+     * MapLibre's terrain camera is the flat (sea-level) camera translated
+     * vertically by the elevation under the view center — its transform
+     * applies a plain "elevate camera over terrain" translation and keeps
+     * the look direction. Visibility consumers of this viewport (COPC
+     * frustum culling, SSE distances) misjudge everything in view once that
+     * elevation is comparable to the camera altitude, so the camera position
+     * and frustum planes must shift by it. `queryTerrainElevation` reports
+     * the same exaggeration-multiplied value MapLibre's transform uses.
+     *
+     * Null when terrain is off or the elevation is not a usable number:
+     * MapLibre returns null without terrain and 0 while the DEM under the
+     * center is not loaded (its transform then also sits at 0) — the flat
+     * camera is already correct in both cases. Computed per accessor call:
+     * the elevation refines as DEM tiles load under a resting camera, and
+     * consumers re-read on their viewport-change events.
+     */
+    private terrainCameraOffset(
+        map: maplibregl.Map,
+        flat: Viewport,
+    ): [number, number, number] | null {
+        if (!map.getTerrain()) {
+            return null;
+        }
+        const elevation = map.queryTerrainElevation(map.getCenter());
+        if (elevation === null || !Number.isFinite(elevation)) {
+            return null;
+        }
+        if (elevation === 0) {
+            return null;
+        }
+        const { lng, lat } = map.getCenter();
+        // projectPosition is linear in altitude at a fixed lng/lat, so the
+        // difference is the common-space world-up direction, per meter.
+        const zero = flat.projectPosition([lng, lat, 0]);
+        const up = flat.projectPosition([lng, lat, 1]);
+        return [
+            (up[0] - zero[0]) * elevation,
+            (up[1] - zero[1]) * elevation,
+            (up[2] - zero[2]) * elevation,
+        ];
+    }
+
+    /**
+     * Get camera position [lng, lat, altitude] from the map viewport,
+     * translated to the real terrain-anchored camera when terrain is on.
      * Returns null if the overlay is not attached to a sized map.
      */
     getCameraPosition(): [number, number, number] | null {
         const vp = this.getViewport();
-        if (!vp) return null;
-        return vp.unprojectPosition(vp.cameraPosition);
+        if (!vp || !this.map) return null;
+
+        const [cx = 0, cy = 0, cz = 0] = vp.cameraPosition;
+        const offset = this.terrainCameraOffset(this.map, vp);
+        if (!offset) {
+            return vp.unprojectPosition([cx, cy, cz]);
+        }
+        return vp.unprojectPosition([
+            cx + offset[0],
+            cy + offset[1],
+            cz + offset[2],
+        ]);
     }
 
     /**
      * Get the active deck.gl Viewport. Exposes the raw Viewport instance
      * for coordinate projection (projectPosition) and center-offset access.
      * Returns null if the overlay is not attached to a sized map.
+     *
+     * The flat sea-level viewport by design: the terrain camera is a pure
+     * translation of it (see {@link terrainCameraOffset}), so projections
+     * stay in one common space and only the camera position and frustum
+     * planes carry the translation.
      */
     getActiveViewport(): Viewport | null {
         return this.getViewport();
     }
 
     /**
-     * Get frustum planes from the map viewport for 3D AABB culling.
+     * Get frustum planes for 3D AABB culling, translated to the real
+     * terrain-anchored camera when terrain is on.
      * Returns null if the overlay is not attached to a sized map.
      */
     getFrustumPlanes(): FrustumPlanes | null {
         const vp = this.getViewport();
-        if (!vp) return null;
+        if (!vp || !this.map) return null;
         const planes = vp.getFrustumPlanes();
+        const offset = this.terrainCameraOffset(this.map, vp);
+        const toPlane = offset
+            ? (plane: DeckFrustumPlane): FrustumPlane => ({
+                  normal: toFrustumPlane(plane).normal,
+                  distance: translatedPlaneDistance(
+                      plane.distance,
+                      plane.normal,
+                      offset,
+                  ),
+              })
+            : toFrustumPlane;
         return {
-            near: toFrustumPlane(planes.near),
-            far: toFrustumPlane(planes.far),
-            left: toFrustumPlane(planes.left),
-            right: toFrustumPlane(planes.right),
-            top: toFrustumPlane(planes.top),
-            bottom: toFrustumPlane(planes.bottom),
+            near: toPlane(planes.near),
+            far: toPlane(planes.far),
+            left: toPlane(planes.left),
+            right: toPlane(planes.right),
+            top: toPlane(planes.top),
+            bottom: toPlane(planes.bottom),
         };
     }
 

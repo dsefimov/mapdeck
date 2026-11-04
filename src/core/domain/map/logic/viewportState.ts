@@ -24,3 +24,25 @@ export function buildMapViewState(map: maplibregl.Map): MapViewStateFromMap {
         repeat: map.getRenderWorldCopies(),
     };
 }
+
+/**
+ * Distance of a deck.gl frustum plane after translating its camera.
+ *
+ * deck.gl planes and the kernel's culling test put a point inside a plane
+ * when `normal · point ≤ distance`. Translating the frustum by `offset`
+ * (common space) moves that half-space with it — `normal · (x − offset) ≤
+ * distance` — so the translated plane's distance is
+ * `distance + normal · offset`. This is how the terrain-anchored camera is
+ * modeled: MapLibre's terrain camera is the flat camera translated
+ * vertically, so the plane distances shift while projections stay in the
+ * flat viewport's common space.
+ */
+export function translatedPlaneDistance(
+    distance: number,
+    normal: readonly number[],
+    offset: readonly number[],
+): number {
+    const [nx = 0, ny = 0, nz = 0] = normal;
+    const [ox = 0, oy = 0, oz = 0] = offset;
+    return distance + nx * ox + ny * oy + nz * oz;
+}
