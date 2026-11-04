@@ -77,10 +77,6 @@ interface Harness {
 
 function createHarness(keys: string[] = [ROOT_KEY]): Harness {
     const renderPool = { build: vi.fn(() => mockData()) };
-    const eviction = {
-        markStartOfRenderFrame: vi.fn(),
-        markTileRendered: vi.fn(),
-    };
 
     const state: CycleState = {
         frameCounter: 0,
@@ -100,7 +96,6 @@ function createHarness(keys: string[] = [ROOT_KEY]): Harness {
     const services = {
         nodeCache,
         renderPool,
-        eviction,
         nodeLoader,
         geometricErrorByDepth: () => 0.5,
         coordinateOrigin: [0, 0, 0] as [number, number, number],
@@ -119,7 +114,8 @@ function createHarness(keys: string[] = [ROOT_KEY]): Harness {
 const CANDIDATE_KEY = "1-0-0-0";
 const CANDIDATE_RANK = 42;
 const POINT_BUDGET = 1_000_000;
-const EVICTION_RATIO = 0.8;
+/** The pending candidate's weight — the demand eviction must reserve for. */
+const CANDIDATE_POINTS = 300_000;
 
 interface CycleHarness {
     executor: CycleExecutor;
@@ -147,18 +143,20 @@ function createCycleHarness(): CycleHarness {
     };
 
     const nodeCache = new Map([
-        [CANDIDATE_KEY, { ...node(CANDIDATE_KEY), state: "pending" as const }],
+        [
+            CANDIDATE_KEY,
+            {
+                ...node(CANDIDATE_KEY),
+                state: "pending" as const,
+                pointCount: CANDIDATE_POINTS,
+            },
+        ],
     ]);
 
     const services = {
         nodeCache,
         renderPool: { build: vi.fn(() => mockData()) },
-        eviction: {
-            touch: vi.fn(),
-            evictToBudget,
-            markStartOfRenderFrame: vi.fn(),
-            markTileRendered: vi.fn(),
-        },
+        eviction: { evictToBudget },
         nodeLoader: {
             cancelStale: vi.fn(),
             enqueueBatch,
@@ -179,7 +177,6 @@ function createCycleHarness(): CycleHarness {
         coordinateOrigin: [0, 0, 0] as [number, number, number],
         bounds: BBOX,
         rootHierarchyPage: {},
-        evictionThresholdRatio: EVICTION_RATIO,
     } as unknown as CycleServices;
 
     const state: CycleState = {
@@ -245,16 +242,28 @@ describe("CycleExecutor.run", () => {
         );
     });
 
-    it("aims eviction below the budget, leaving the next cycle room to work", async () => {
+    it("reserves the view's unserved demand in the eviction target", async () => {
         const harness = createCycleHarness();
 
         await runCycle(harness);
 
         expect(harness.evictToBudget).toHaveBeenCalledWith(
             expect.objectContaining({
-                targetBudget: Math.floor(POINT_BUDGET * EVICTION_RATIO),
+                targetPoints: POINT_BUDGET - CANDIDATE_POINTS,
             }),
         );
+    });
+
+    it("evicts before planning, so the plan sees the freed budget", async () => {
+        const harness = createCycleHarness();
+
+        await runCycle(harness);
+
+        const evictOrder = harness.evictToBudget.mock.invocationCallOrder[0];
+        const enqueueOrder = harness.enqueueBatch.mock.invocationCallOrder[0];
+        expect(evictOrder).toBeDefined();
+        expect(enqueueOrder).toBeDefined();
+        expect(evictOrder!).toBeLessThan(enqueueOrder!);
     });
 });
 
@@ -431,16 +440,16 @@ describe("CycleExecutor.run — lazy hierarchy convergence", () => {
     });
 });
 
-describe("CycleExecutor.run — eviction-driven retry", () => {
+describe("CycleExecutor.run — settle retry", () => {
     const INPUT = {
         cameraSnapshot: createCamera(),
         viewportBounds: [10, 10, 11, 11] as [number, number, number, number],
     };
 
     /**
-     * A loaded node the traversal no longer visits holds the whole budget:
-     * the plan (computed before eviction) starves, while the eviction
-     * running right after it frees points — the stand's landing scenario.
+     * A loaded node the traversal never visits holds the whole budget —
+     * after the cycle's eviction, residency still sits above the target
+     * while the pending candidate keeps demand unserved.
      */
     function overspendBudget(harness: CycleHarness): void {
         const stale = {
@@ -452,7 +461,7 @@ describe("CycleExecutor.run — eviction-driven retry", () => {
         harness.state.totalLoadedPoints = POINT_BUDGET;
     }
 
-    it("retries when eviction frees room a starved plan could not use", async () => {
+    it("settles after a productive cycle that left demand unserved over target", async () => {
         const harness = createCycleHarness();
         overspendBudget(harness);
         harness.evictToBudget.mockReturnValue({
@@ -467,7 +476,7 @@ describe("CycleExecutor.run — eviction-driven retry", () => {
         expect(requestRetry).toHaveBeenCalledWith(INPUT);
     });
 
-    it("does not retry when eviction freed nothing — the retry would repeat the cycle", async () => {
+    it("does not retry when the cycle moved nothing — a retry would repeat it", async () => {
         const harness = createCycleHarness();
         overspendBudget(harness);
         const requestRetry = vi.fn();
@@ -477,12 +486,25 @@ describe("CycleExecutor.run — eviction-driven retry", () => {
         expect(requestRetry).not.toHaveBeenCalled();
     });
 
-    it("does not retry when every wanting candidate was already enqueued", async () => {
+    it("does not retry when the view's demand is satisfied", async () => {
         const harness = createCycleHarness();
+        overspendBudget(harness);
         harness.evictToBudget.mockReturnValue({
             freedPoints: 500,
             evictedCount: 1,
         });
+        const settled = harness.nodeCache.get(CANDIDATE_KEY)!;
+        settled.state = "loaded";
+        const requestRetry = vi.fn();
+
+        await harness.executor.run(INPUT, requestRetry);
+
+        expect(requestRetry).not.toHaveBeenCalled();
+    });
+
+    it("does not retry when residency already fits the target", async () => {
+        const harness = createCycleHarness();
+        harness.enqueueBatch.mockReturnValue(5);
         const requestRetry = vi.fn();
 
         await harness.executor.run(INPUT, requestRetry);

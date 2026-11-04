@@ -172,12 +172,11 @@ describe("CopcStreamingLoader._loadNode settle races", () => {
 describe("CopcStreamingLoader decoded-node LRU", () => {
     type LoaderWithEviction = {
         _eviction: {
-            touch: (n: CachedNode) => void;
-            markStartOfRenderFrame: () => void;
             evictToBudget: (ctx: {
                 totalPoints: number;
-                targetBudget: number;
+                targetPoints: number;
                 currentFrame: number;
+                viewportBounds: [number, number, number, number];
                 nodeCache: ReadonlyMap<string, CachedNode>;
                 errorKeys: Set<string>;
             }) => { freedPoints: number; evictedCount: number };
@@ -207,14 +206,14 @@ describe("CopcStreamingLoader decoded-node LRU", () => {
         const nodeCache = internals["_nodeCache"];
         const eviction = internals["_eviction"];
         nodeCache.set(node.key, node);
-        eviction.touch(node);
-        // Stale lastSeenAt + a fresh frame: no hysteresis protection.
+        // A stamp the current cycle did not leave: not a candidate.
         node.lastSeenAt = 0;
 
         const evicted = eviction.evictToBudget({
             totalPoints: 100,
-            targetBudget: 0,
+            targetPoints: 0,
             currentFrame: 10,
+            viewportBounds: [10, 10, 11, 11],
             nodeCache,
             errorKeys: internals["_nodeLoader"].errorKeys,
         });

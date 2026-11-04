@@ -127,7 +127,7 @@ export class CopcStreamingLoader {
     /** Per-node priority state side-car, filled by traversal metrics. */
     private _priorityStates = new WeakMap<CachedNode, PriorityState>();
 
-    private _eviction: TileEvictionManager<CachedNode>;
+    private _eviction: TileEvictionManager;
     /** Evicted nodes land here instead of being dropped — see C.2. */
     private readonly _decodedCache: DecodedNodeCache;
 
@@ -165,7 +165,7 @@ export class CopcStreamingLoader {
         this._decodedCache = new DecodedNodeCache(
             options.decodedCacheBytes ?? DEFAULT_DECODED_CACHE_BYTES,
         );
-        this._eviction = new TileEvictionManager<CachedNode>((node) =>
+        this._eviction = new TileEvictionManager((node) =>
             this._decodedCache.salvage(node),
         );
         this._cycleRunner = new CycleRunner((input, signal) =>
@@ -314,8 +314,6 @@ export class CopcStreamingLoader {
                 bounds: this._bounds,
                 rootHierarchyPage,
                 geometricErrorByDepth,
-                evictionThresholdRatio:
-                    this._options.evictionThresholdRatio ?? 0.8,
             },
             this._cycleState,
         );
@@ -448,7 +446,6 @@ export class CopcStreamingLoader {
         node.state = "loaded";
         clearRetryState(node);
         this._cycleState.totalLoadedNodes++;
-        this._eviction.touch(node);
         this._recolorToActiveScheme(node);
     }
 

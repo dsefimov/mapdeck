@@ -1,19 +1,20 @@
-import type { CachedNode, BudgetPlan } from "../../types";
+import type { CachedNode } from "../../types";
 import type { ColorScheme, PointCloudFrame } from "@core/contracts";
 import type { BBox3D } from "@core/lib/geo";
 import type { CameraSnapshot } from "../geometry";
 import type { EffectiveBaseline } from "../streamingConfig";
 import { traverseOctree } from "../traversal";
 import { computeBudgetPlan } from "../budget/computeBudgetPlan";
-import { truncateToPlan } from "../budget/truncateToPlan";
-import { shouldRetryAfterEviction } from "../budget/shouldRetryAfterEviction";
 import { computeVisibleCachedNodes } from "../render/computeVisibleCachedNodes";
 import { getOctreeParentKey } from "../octree/octreeKey";
+import type { ViewportRect } from "../eviction/distanceToViewport";
 import type { NodeLoader } from "../loading";
 import type { TileEvictionManager } from "../eviction/TileEvictionManager";
 import type { RenderBufferPool } from "../render/RenderBufferPool";
 import type { TraversalOrchestrator } from "../traversal/TraversalOrchestrator";
 import type { HierarchyLoadTracker } from "../octree/HierarchyLoadTracker";
+import { sumPendingDemandPoints } from "./demand";
+import { shouldSettleRetry } from "./shouldSettleRetry";
 import type { CycleInput } from "./CycleRunner";
 import type { Hierarchy } from "copc";
 
@@ -33,28 +34,11 @@ function sameVisibleSet(prev: string[] | null, next: string[]): boolean {
 /** Minimal gap between progressive render pushes while a cycle is loading. */
 const PROGRESS_RENDER_INTERVAL_MS = 120;
 
-/**
- * Candidates still wanting data — the demand the plan may leave unserved,
- * because it ran before eviction freed the over-spent budget. Enqueued
- * keys land in the load batch, so the two counts stay comparable.
- */
-function countPendingDemand(
-    candidates: ReturnType<typeof traverseOctree>["candidates"],
-    nodeCache: ReadonlyMap<string, CachedNode>,
-): number {
-    let demand = 0;
-    for (const candidate of candidates) {
-        const node = nodeCache.get(candidate.key);
-        if (node?.state === "pending" || node?.state === "error") demand++;
-    }
-    return demand;
-}
-
 /** Immutable services injected by CopcStreamingLoader. */
 export interface CycleServices {
     nodeCache: Map<string, CachedNode>;
     nodeLoader: NodeLoader;
-    eviction: TileEvictionManager<CachedNode>;
+    eviction: TileEvictionManager;
     hierarchyTracker: HierarchyLoadTracker;
     traversal: TraversalOrchestrator;
     renderPool: RenderBufferPool;
@@ -62,7 +46,6 @@ export interface CycleServices {
     bounds: BBox3D;
     rootHierarchyPage: Hierarchy.Page;
     geometricErrorByDepth: (depth: number) => number;
-    evictionThresholdRatio: number;
 }
 
 /** Mutable state shared between CopcStreamingLoader and CycleExecutor. */
@@ -81,7 +64,7 @@ export interface CycleState {
 
 /**
  * Encapsulates a single streaming cycle:
- * prepare → traverse → cancel stale → candidate update → plan & evict → load → render.
+ * prepare → traverse → cancel stale → candidate update → evict & plan → load → render.
  *
  * Operates on shared `CycleState` (mutable) and injected `CycleServices` (immutable).
  */
@@ -121,13 +104,11 @@ export class CycleExecutor {
         });
         this._updateCandidateMetadata(traversalResult.candidates);
 
-        const { finalToLoad, freedPoints } =
-            this._planAndEvict(traversalResult);
-
-        const pendingDemand = countPendingDemand(
-            traversalResult.candidates,
-            this._services.nodeCache,
-        );
+        // Evict before planning: the plan must see a budget already
+        // reserved for the view's unserved demand, or an over-spent
+        // residency starves it to a coarse fallback.
+        const { finalToLoad, evictedCount, targetPoints } =
+            this._evictThenPlan(traversalResult, viewportBounds);
 
         const priorityByKey = new Map(
             traversalResult.candidates.map((c) => [c.key, c.priority]),
@@ -170,14 +151,21 @@ export class CycleExecutor {
             return;
         }
 
-        // Eviction may have freed room the pre-eviction plan could not use;
-        // one more cycle fills it without waiting for a camera move.
+        // Settle: the drain can push residency past the target computed
+        // before it ran; while demand is unserved, one more cycle evicts
+        // what the view no longer holds and reinvests the budget. The
+        // progress guard keeps an unproductive chain from spinning.
         if (
-            shouldRetryAfterEviction(
-                finalToLoad.length,
-                pendingDemand,
-                freedPoints,
-            )
+            shouldSettleRetry({
+                enqueuedCount,
+                evictedCount,
+                pendingDemandPoints: sumPendingDemandPoints(
+                    traversalResult.candidates,
+                    this._services.nodeCache,
+                ),
+                totalPoints: this._state.totalLoadedPoints,
+                targetPoints,
+            })
         ) {
             requestRetry(input);
         }
@@ -234,53 +222,53 @@ export class CycleExecutor {
             node.lastSeenAt = this._state.frameCounter;
             node.priority = candidate.priority;
             node.distanceToCamera = candidate.distanceToCamera;
-
-            this._services.eviction.touch(node);
         }
     }
 
-    private _planAndEvict(traversalResult: ReturnType<typeof traverseOctree>): {
+    /**
+     * Evict, then plan. The eviction target reserves the budget the view's
+     * unserved demand still wants: `max(0, budget − demand)`. Invisible
+     * tiles keep memory only past that reservation, and the victim order
+     * sheds the most distant ones first (see TileEvictionManager).
+     */
+    private _evictThenPlan(
+        traversalResult: ReturnType<typeof traverseOctree>,
+        viewportBounds: ViewportRect,
+    ): {
         finalToLoad: string[];
-        freedPoints: number;
-        plan: BudgetPlan;
+        evictedCount: number;
+        targetPoints: number;
     } {
-        const plan = computeBudgetPlan(
-            traversalResult.candidates,
-            this._services.nodeCache,
-            this._state.effectiveBaseline.pointBudget,
-            traversalResult.fallbacks,
+        const budget = this._state.effectiveBaseline.pointBudget;
+        const demand = Math.min(
+            sumPendingDemandPoints(
+                traversalResult.candidates,
+                this._services.nodeCache,
+            ),
+            budget,
         );
-
-        const evictionThreshold = Math.floor(
-            this._state.effectiveBaseline.pointBudget *
-                this._services.evictionThresholdRatio,
-        );
+        const targetPoints = Math.max(0, budget - demand);
 
         const { freedPoints, evictedCount } =
             this._services.eviction.evictToBudget({
                 totalPoints: this._state.totalLoadedPoints,
-                targetBudget: evictionThreshold,
+                targetPoints,
                 currentFrame: this._state.frameCounter,
+                viewportBounds,
                 nodeCache: this._services.nodeCache,
                 errorKeys: this._services.nodeLoader.errorKeys,
             });
         this._state.totalLoadedPoints -= freedPoints;
         this._state.totalLoadedNodes -= evictedCount;
 
-        const effectiveDeficit = Math.max(0, plan.deficit - freedPoints);
-        let finalToLoad = plan.toLoad;
-        if (effectiveDeficit > 0) {
-            const remainingBudget =
-                this._state.effectiveBaseline.pointBudget -
-                this._state.totalLoadedPoints;
-            finalToLoad = truncateToPlan(
-                plan.toLoad,
-                this._services.nodeCache,
-                remainingBudget,
-            );
-        }
+        const plan = computeBudgetPlan(
+            traversalResult.candidates,
+            this._services.nodeCache,
+            budget,
+            traversalResult.fallbacks,
+        );
 
-        return { finalToLoad, freedPoints, plan };
+        return { finalToLoad: plan.toLoad, evictedCount, targetPoints };
     }
 
     private _enqueueNodes(
@@ -342,21 +330,9 @@ export class CycleExecutor {
         this._state.lastVisibleKeys = visibleKeys;
         this._renderedAtLoadStamp = loadStamp;
 
-        this._markVisibleTilesRendered(visibleKeys);
-
         const frame = this._buildRenderBuffer(visibleKeys, commit);
         if (!frame) return;
 
         this._state.onPointsLoaded(frame);
-    }
-
-    private _markVisibleTilesRendered(visibleKeys: string[]): void {
-        this._services.eviction.markStartOfRenderFrame();
-        for (const key of visibleKeys) {
-            const node = this._services.nodeCache.get(key);
-            if (node?.state === "loaded") {
-                this._services.eviction.markTileRendered(node);
-            }
-        }
     }
 }
