@@ -6,7 +6,13 @@ import type {
     RenderUnit,
 } from "@core/contracts";
 import { logger } from "@core/lib/logger";
-import { ColorScheme, type PointCloudData } from "@core/contracts";
+import {
+    ColorScheme,
+    POINT_CLOUD_INCOMING_SUFFIX,
+    stripPointCloudLayerSuffix,
+    type PointCloudData,
+    type PointCloudFrame,
+} from "@core/contracts";
 import type { OverlayManager } from "@core/contracts/domain/map-context";
 import type { StreamingLoaderOptions } from "../types";
 import {
@@ -19,6 +25,7 @@ import { comparer } from "mobx";
 import { CopcStreamingLoader } from "../engine/CopcStreamingLoader";
 import { ViewportManager } from "../engine/ViewportManager";
 import { createPointCloudLayer } from "./PointCloudLayerFactory";
+import { styleNumber } from "../../logic/styleValues";
 
 /** Deck layer type through the port — the protocol names no deck import. */
 type DeckLayer = Parameters<MapContext["overlayManager"]["addLayer"]>[1];
@@ -31,7 +38,12 @@ interface PointCloudLayerState {
     viewportManager: ViewportManager | null;
     initTask: ReturnType<typeof createCancellable>;
     config: Record<string, unknown>;
-    data: PointCloudData | null;
+    /** Latest frame from the loader. */
+    frame: PointCloudFrame | null;
+    /** Base envelopes already handed to deck — a same reference means deck can skip the upload. */
+    pushedBase: PointCloudData | null;
+    pushedIncoming: PointCloudData | null;
+    /** Monotonic base version for updateTriggers. */
     dataVersion: number;
     /** Last visibility applied via updateVisibility — re-applied on every deck re-add. */
     visible: boolean;
@@ -104,7 +116,9 @@ export class PointCloudAdapter
                 viewportManager: null,
                 initTask: task,
                 config: pointCloudConfig,
-                data: null,
+                frame: null,
+                pushedBase: null,
+                pushedIncoming: null,
                 dataVersion: 0,
                 visible: true,
             };
@@ -142,8 +156,8 @@ export class PointCloudAdapter
                 loader.switchScheme(initialScheme);
             }
 
-            loader.setOnPointsLoaded((data: PointCloudData) => {
-                state.data = data;
+            loader.setOnPointsLoaded((frame: PointCloudFrame) => {
+                state.frame = frame;
                 this._updateDeckLayer(layerId, overlayManager);
             });
 
@@ -203,6 +217,7 @@ export class PointCloudAdapter
             state.viewportManager.destroy();
         }
         state.loader.destroy();
+        ctx.overlayManager.removeLayer(this._incomingLayerId(layerId));
         ctx.overlayManager.removeLayer(layerId);
 
         this._layers.delete(layerId);
@@ -212,13 +227,19 @@ export class PointCloudAdapter
         const state = this._layers.get(layerId);
         if (state) state.visible = visible;
 
-        if (visible && state?.data) {
-            // Re-create the deck layer from retained data so the re-shown
-            // layer actually renders without waiting for a viewport change
+        if (visible && state?.frame) {
+            // Re-create the deck layers from retained frames so the re-shown
+            // layers actually render without waiting for a viewport change
             // (re-adding the same layer instance via setProps does not
             // reliably re-render in the interleaved overlay).
+            state.pushedBase = null;
+            state.pushedIncoming = null;
             this._updateDeckLayer(layerId, ctx.overlayManager);
         } else {
+            ctx.overlayManager.setLayerVisibility(
+                this._incomingLayerId(layerId),
+                visible,
+            );
             ctx.overlayManager.setLayerVisibility(layerId, visible);
         }
     }
@@ -255,19 +276,12 @@ export class PointCloudAdapter
             // loads alive and avoids the abort cascade. Before the first
             // points arrive there is no deck layer to update — state.config
             // is already stored, so the next data push builds with it.
-            if (!state.data) return;
+            if (!state.pushedBase && !state.pushedIncoming) return;
 
+            // Visual-only props: patch the layers in place — the data
+            // objects stay untouched, so deck keeps its GPU buffers.
             try {
-                const layer = createPointCloudLayer(
-                    layerId,
-                    state.data,
-                    config,
-                    state.dataVersion,
-                );
-                ctx.overlayManager.updateLayer(
-                    layerId,
-                    layer.props as Partial<DeckLayer>,
-                );
+                this._applyVisualProps(layerId, config, ctx);
             } catch (error) {
                 logger.error(
                     `PointCloudAdapter: failed to apply visual update for layer "${layerId}":`,
@@ -304,6 +318,33 @@ export class PointCloudAdapter
         return true;
     }
 
+    /**
+     * Patch visual props (point size, opacity) onto the deck layers
+     * without replacing their data objects — deck.gl keeps its uploaded
+     * GPU buffers when the external buffer references are unchanged.
+     */
+    private _applyVisualProps(
+        layerId: string,
+        config: Record<string, unknown>,
+        ctx: MapContext,
+    ): void {
+        const state = this._layers.get(layerId);
+        const pointSize = styleNumber(config.pointSize, 2);
+        const opacity = styleNumber(config.opacity, 1.0);
+        const props = { pointSize, opacity } as Partial<DeckLayer>;
+        ctx.overlayManager.updateLayer(layerId, props);
+        if (state?.pushedIncoming) {
+            ctx.overlayManager.updateLayer(
+                this._incomingLayerId(layerId),
+                props,
+            );
+        }
+    }
+
+    private _incomingLayerId(layerId: string): string {
+        return layerId + POINT_CLOUD_INCOMING_SUFFIX;
+    }
+
     private _updateDeckLayer(
         layerId: string,
         overlayManager: OverlayManager<DeckLayer>,
@@ -311,29 +352,9 @@ export class PointCloudAdapter
         const state = this._layers.get(layerId);
         if (!state) return;
 
-        const { config, data, dataVersion } = state;
-
-        if (!data) {
-            return;
-        }
-
         try {
-            state.dataVersion = dataVersion + 1;
-
-            const layer = createPointCloudLayer(
-                layerId,
-                data,
-                config,
-                state.dataVersion,
-            );
-
-            overlayManager.addLayer(layerId, layer);
-
-            this._applyRetainedVisibility(
-                layerId,
-                state.visible,
-                overlayManager,
-            );
+            this._pushBaseLayer(layerId, state, overlayManager);
+            this._pushIncomingLayer(layerId, state, overlayManager);
         } catch (error) {
             logger.error(
                 `PointCloudAdapter: failed to add deck layer "${layerId}":`,
@@ -346,6 +367,65 @@ export class PointCloudAdapter
      * Deck layers are created visible; a hidden unit keeps streaming, so
      * the retained visibility is restored on every re-add.
      */
+    /**
+     * The base is pushed only when its envelope object changes — between
+     * commits the same reference means deck skips the upload entirely.
+     */
+    private _pushBaseLayer(
+        layerId: string,
+        state: PointCloudLayerState,
+        overlayManager: OverlayManager<DeckLayer>,
+    ): void {
+        const base = state.frame?.base ?? null;
+        if (!base || base === state.pushedBase) return;
+
+        state.dataVersion += 1;
+        overlayManager.addLayer(
+            layerId,
+            createPointCloudLayer(layerId, base, state.config, state.dataVersion),
+        );
+        state.pushedBase = base;
+        this._applyRetainedVisibility(
+            layerId,
+            state.visible,
+            overlayManager,
+        );
+    }
+
+    /**
+     * The incoming part is small and hot — every push swaps its layer. A
+     * commit folds it into the base and takes its layer down.
+     */
+    private _pushIncomingLayer(
+        layerId: string,
+        state: PointCloudLayerState,
+        overlayManager: OverlayManager<DeckLayer>,
+    ): void {
+        const incoming = state.frame?.incoming ?? null;
+        const incomingId = this._incomingLayerId(layerId);
+
+        if (incoming && incoming !== state.pushedIncoming) {
+            overlayManager.addLayer(
+                incomingId,
+                createPointCloudLayer(
+                    incomingId,
+                    incoming,
+                    state.config,
+                    state.dataVersion,
+                ),
+            );
+            state.pushedIncoming = incoming;
+            this._applyRetainedVisibility(
+                incomingId,
+                state.visible,
+                overlayManager,
+            );
+        } else if (!incoming && state.pushedIncoming) {
+            overlayManager.removeLayer(incomingId);
+            state.pushedIncoming = null;
+        }
+    }
+
     private _applyRetainedVisibility(
         layerId: string,
         visible: boolean,
@@ -374,8 +454,14 @@ export class PointCloudAdapter
         this._layers.clear();
     }
 
+    /** Serves both deck layer ids — the bare id and the incoming part's. */
     getLoadedData(layerId: string): PointCloudData | undefined {
-        return this._layers.get(layerId)?.data ?? undefined;
+        const incoming = layerId.endsWith(POINT_CLOUD_INCOMING_SUFFIX);
+        const state = this._layers.get(
+            stripPointCloudLayerSuffix(layerId),
+        );
+        if (!state?.frame) return undefined;
+        return (incoming ? state.frame.incoming : state.frame.base) ?? undefined;
     }
 
     /**
@@ -384,8 +470,11 @@ export class PointCloudAdapter
     getAllLoadedData(): PointCloudData[] {
         const result: PointCloudData[] = [];
         for (const state of this._layers.values()) {
-            if (state.data) {
-                result.push(state.data);
+            if (state.frame?.base) {
+                result.push(state.frame.base);
+            }
+            if (state.frame?.incoming) {
+                result.push(state.frame.incoming);
             }
         }
         return result;

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
     MapContext,
     PointCloudData,
+    PointCloudFrame,
     RenderDescriptor,
     RenderUnit,
 } from "@core/contracts";
@@ -121,8 +122,10 @@ function triggerPointsLoaded(
     const loader = mockLoaderInstances[loaderIndex];
     if (!loader) throw new Error(`No mock loader at index ${loaderIndex}`);
     const calls = loader.setOnPointsLoaded.mock.calls;
-    const callback = calls[calls.length - 1]![0] as (d: PointCloudData) => void;
-    callback(data);
+    const callback = calls[calls.length - 1]![0] as (
+        frame: PointCloudFrame,
+    ) => void;
+    callback({ base: data, incoming: null });
 }
 
 describe("PointCloudAdapter visibility retention", () => {
@@ -230,7 +233,8 @@ describe("PointCloudAdapter visibility retention", () => {
 
         // Showing re-creates the deck layer from retained data so it renders
         // immediately — no viewport change required. Visibility was touched
-        // only once (the hide); the show goes through addLayer instead.
+        // only by the hide (base + incoming parts); the show goes through
+        // addLayer instead.
         adapter.updateVisibility("cloud", true, ctx);
 
         expect(overlayManager.addLayer).toHaveBeenCalledTimes(2);
@@ -238,7 +242,7 @@ describe("PointCloudAdapter visibility retention", () => {
             "cloud",
             expect.anything(),
         );
-        expect(overlayManager.setLayerVisibility).toHaveBeenCalledTimes(1);
+        expect(overlayManager.setLayerVisibility).toHaveBeenCalledTimes(2);
         expect(overlayManager.setLayerVisibility).toHaveBeenCalledWith(
             "cloud",
             false,
@@ -259,6 +263,130 @@ describe("PointCloudAdapter visibility retention", () => {
             "cloud",
             true,
         );
+    });
+});
+
+describe("PointCloudAdapter streaming frames", () => {
+    const INCOMING_ID = "cloud-incoming";
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockLoaderInstances.length = 0;
+    });
+
+    function frame(
+        base: PointCloudData | null,
+        incoming: PointCloudData | null,
+    ): PointCloudFrame {
+        return { base, incoming };
+    }
+
+    it("pushes the base once and serves appends through the incoming layer", async () => {
+        const { overlayManager, ctx } = createHarness();
+        const adapter = new PointCloudAdapter();
+
+        adapter.addToMap("cloud", DESCRIPTOR, ctx);
+        await flushAsync();
+
+        const loader = mockLoaderInstances[0]!;
+        const cb = loader.setOnPointsLoaded.mock.calls[0]![0] as (
+            f: PointCloudFrame,
+        ) => void;
+
+        const base = mockData();
+        cb(frame(base, null));
+        cb(frame(base, mockData()));
+        cb(frame(base, mockData()));
+
+        // The base envelope is uploaded exactly once; appends only touch
+        // the incoming layer.
+        const baseAdds = overlayManager.addLayer.mock.calls.filter(
+            ([id]) => id === "cloud",
+        );
+        const incomingAdds = overlayManager.addLayer.mock.calls.filter(
+            ([id]) => id === INCOMING_ID,
+        );
+        expect(baseAdds).toHaveLength(1);
+        expect(incomingAdds).toHaveLength(2);
+    });
+
+    it("removes the incoming layer when a commit folds it into the base", async () => {
+        const { overlayManager, ctx } = createHarness();
+        const adapter = new PointCloudAdapter();
+
+        adapter.addToMap("cloud", DESCRIPTOR, ctx);
+        await flushAsync();
+
+        const loader = mockLoaderInstances[0]!;
+        const cb = loader.setOnPointsLoaded.mock.calls[0]![0] as (
+            f: PointCloudFrame,
+        ) => void;
+
+        cb(frame(mockData(), mockData()));
+        const committed = mockData();
+        cb(frame(committed, null));
+
+        expect(overlayManager.removeLayer).toHaveBeenCalledWith(
+            INCOMING_ID,
+        );
+        // The new base envelope was pushed.
+        expect(
+            overlayManager.addLayer.mock.calls.filter(
+                ([id]) => id === "cloud",
+            ),
+        ).toHaveLength(2);
+    });
+
+    it("serves the data port for both the bare and the incoming layer id", async () => {
+        const { ctx } = createHarness();
+        const adapter = new PointCloudAdapter();
+
+        adapter.addToMap("cloud", DESCRIPTOR, ctx);
+        await flushAsync();
+
+        const loader = mockLoaderInstances[0]!;
+        const cb = loader.setOnPointsLoaded.mock.calls[0]![0] as (
+            f: PointCloudFrame,
+        ) => void;
+        const base = mockData();
+        const incoming = mockData();
+        cb(frame(base, incoming));
+
+        expect(adapter.getLoadedData("cloud")).toBe(base);
+        expect(adapter.getLoadedData(INCOMING_ID)).toBe(incoming);
+        expect(adapter.getLoadedData("other")).toBeUndefined();
+        expect(adapter.getAllLoadedData()).toEqual([base, incoming]);
+    });
+
+    it("patches visual props onto both layers without new data objects", async () => {
+        const { overlayManager, ctx } = createHarness();
+        const adapter = new PointCloudAdapter();
+
+        adapter.addToMap("cloud", DESCRIPTOR, ctx);
+        await flushAsync();
+
+        const loader = mockLoaderInstances[0]!;
+        const cb = loader.setOnPointsLoaded.mock.calls[0]![0] as (
+            f: PointCloudFrame,
+        ) => void;
+        cb(frame(mockData(), mockData()));
+
+        const unit = {
+            id: "cloud",
+            protocolId: "copc",
+            adapter,
+            descriptor: {
+                sourceUrl: DESCRIPTOR.sourceUrl,
+                config: { pointSize: 4 },
+            },
+        } as unknown as RenderUnit;
+        adapter.updateConfig(unit, ctx);
+
+        const updateIds = overlayManager.updateLayer.mock.calls.map(
+            ([id]) => id,
+        );
+        expect(updateIds).toContain("cloud");
+        expect(updateIds).toContain(INCOMING_ID);
     });
 });
 

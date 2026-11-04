@@ -1,5 +1,5 @@
 import type { CachedNode, BudgetPlan } from "../../types";
-import type { ColorScheme, PointCloudData } from "@core/contracts";
+import type { ColorScheme, PointCloudFrame } from "@core/contracts";
 import type { BBox3D } from "@core/lib/geo";
 import type { CameraSnapshot } from "../geometry";
 import type { EffectiveBaseline } from "../streamingConfig";
@@ -59,7 +59,7 @@ export interface CycleState {
     maxDepthInHierarchy: number;
     effectiveBaseline: EffectiveBaseline;
     activeScheme: ColorScheme;
-    onPointsLoaded: ((data: PointCloudData) => void) | null;
+    onPointsLoaded: ((frame: PointCloudFrame) => void) | null;
 }
 
 /**
@@ -132,7 +132,9 @@ export class CycleExecutor {
             );
         }
 
-        this._updateRenderAndNotify();
+        // The drain is over — fold the streamed nodes into a fresh base so
+        // the next cycle starts from a committed snapshot.
+        this._updateRenderAndNotify(false, true);
 
         // A superseded cycle must not queue its own retry: the superseding
         // input already carries a newer camera.
@@ -161,10 +163,11 @@ export class CycleExecutor {
      * Rebuild and push the render buffer for the current visible set.
      * Render-only: no traversal, no loading, no eviction. Pass `force`
      * when data changed outside the loader's accounting (e.g. lazily
-     * derived color buffers finished arriving).
+     * derived color buffers finished arriving) — a forced refresh also
+     * commits, because those changes rewrite the base's baked bytes.
      */
     refreshRender(force = false): void {
-        this._updateRenderAndNotify(force);
+        this._updateRenderAndNotify(force, force);
     }
 
     /** Loaded cached nodes in the current visible set — a scheme switch's recolor scope. */
@@ -263,16 +266,27 @@ export class CycleExecutor {
         return this._services.nodeLoader.enqueueBatch(keys, getPriority);
     }
 
-    private _buildRenderBuffer(visibleKeys: string[]): PointCloudData | null {
-        return this._services.renderPool.build(
-            visibleKeys,
-            this._services.nodeCache,
-            this._state.activeScheme,
-            {
-                coordinateOrigin: this._services.coordinateOrigin,
-                bounds: this._services.bounds,
-            },
-        );
+    private _buildRenderBuffer(
+        visibleKeys: string[],
+        commit: boolean,
+    ): PointCloudFrame | null {
+        const meta = {
+            coordinateOrigin: this._services.coordinateOrigin,
+            bounds: this._services.bounds,
+        };
+        return commit
+            ? this._services.renderPool.commit(
+                  visibleKeys,
+                  this._services.nodeCache,
+                  this._state.activeScheme,
+                  meta,
+              )
+            : this._services.renderPool.build(
+                  visibleKeys,
+                  this._services.nodeCache,
+                  this._state.activeScheme,
+                  meta,
+              );
     }
 
     private _computeCurrentVisibleKeys(): string[] | null {
@@ -288,7 +302,7 @@ export class CycleExecutor {
         );
     }
 
-    private _updateRenderAndNotify(force = false): void {
+    private _updateRenderAndNotify(force = false, commit = false): void {
         if (!this._state.onPointsLoaded) return;
         const visibleKeys = this._computeCurrentVisibleKeys();
         if (!visibleKeys) return;
@@ -297,17 +311,19 @@ export class CycleExecutor {
         const dataUnchanged =
             sameVisibleSet(this._state.lastVisibleKeys, visibleKeys) &&
             loadStamp === this._renderedAtLoadStamp;
-        if (!force && dataUnchanged) return;
+        // A commit must not be skipped by the unchanged guard: folding the
+        // incoming part into the base matters even when no new data arrived.
+        if (!force && !commit && dataUnchanged) return;
 
         this._state.lastVisibleKeys = visibleKeys;
         this._renderedAtLoadStamp = loadStamp;
 
         this._markVisibleTilesRendered(visibleKeys);
 
-        const data = this._buildRenderBuffer(visibleKeys);
-        if (!data) return;
+        const frame = this._buildRenderBuffer(visibleKeys, commit);
+        if (!frame) return;
 
-        this._state.onPointsLoaded(data);
+        this._state.onPointsLoaded(frame);
     }
 
     private _markVisibleTilesRendered(visibleKeys: string[]): void {

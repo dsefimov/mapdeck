@@ -3,7 +3,7 @@ import { Hierarchy, type Getter } from "copc";
 import type { Copc as CopcType } from "copc";
 import RBush from "rbush";
 
-import { ColorScheme, type PointCloudData } from "@core/contracts";
+import { ColorScheme, type PointCloudFrame } from "@core/contracts";
 import { Bbox, type BBox3D } from "@core/lib/geo";
 import { logger } from "@core/lib/logger";
 import type {
@@ -538,7 +538,7 @@ export class CopcStreamingLoader {
         this._cycleState.effectiveBaseline = baseline;
     }
 
-    setOnPointsLoaded(callback: (data: PointCloudData) => void): void {
+    setOnPointsLoaded(callback: (frame: PointCloudFrame) => void): void {
         this._cycleState.onPointsLoaded = callback;
     }
 

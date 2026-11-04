@@ -38,61 +38,155 @@ describe("RenderBufferPool", () => {
         ).toBeNull();
     });
 
-    it("shrinks the allocation once usage falls to a quarter of it", () => {
-        const pool = new RenderBufferPool();
-        pool.build([FIRST_KEY], cacheOf(withPoints(FIRST_KEY, 400, 1)), ColorScheme.RGB, META);
-        expect(pool.capacity).toBe(400);
-
-        pool.build([FIRST_KEY], cacheOf(withPoints(FIRST_KEY, 90, 1)), ColorScheme.RGB, META);
-
-        // 90 ≤ 400/4 — shrunk to double headroom above usage.
-        expect(pool.capacity).toBe(180);
-    });
-
-    it("keeps the allocation when usage is still above the shrink band", () => {
-        const pool = new RenderBufferPool();
-        pool.build([FIRST_KEY], cacheOf(withPoints(FIRST_KEY, 400, 1)), ColorScheme.RGB, META);
-
-        pool.build([FIRST_KEY], cacheOf(withPoints(FIRST_KEY, 150, 1)), ColorScheme.RGB, META);
-
-        // 150 > 400/4 — no shrink, no churn on ordinary view changes.
-        expect(pool.capacity).toBe(400);
-    });
-
-    it("a shrunk pool still packs a full dive back in", () => {
-        const pool = new RenderBufferPool();
-        pool.build([FIRST_KEY], cacheOf(withPoints(FIRST_KEY, 400, 1)), ColorScheme.RGB, META);
-        pool.build([FIRST_KEY], cacheOf(withPoints(FIRST_KEY, 50, 1)), ColorScheme.RGB, META);
-        expect(pool.capacity).toBe(100);
-
-        const data = pool.build(
-            [FIRST_KEY],
-            cacheOf(withPoints(FIRST_KEY, 350, 7)),
+    it("commits the whole visible set on the first build", () => {
+        const frame = new RenderBufferPool().build(
+            [FIRST_KEY, SECOND_KEY],
+            cacheOf(withPoints(FIRST_KEY, 3, 1), withPoints(SECOND_KEY, 2, 2)),
             ColorScheme.RGB,
             META,
         );
 
-        expect(data?.pointCount).toBe(350);
-        expect(data?.positions).toHaveLength(350 * 3);
-        expect(data?.positions[0]).toBe(7);
+        expect(frame?.base?.pointCount).toBe(5);
+        expect(frame?.base?.positions).toHaveLength(15);
+        expect(frame?.incoming).toBeNull();
     });
 
-    it("packs every visible node into one contiguous pair of buffers", () => {
-        const cache = cacheOf(
-            withPoints(FIRST_KEY, 3, 1),
-            withPoints(SECOND_KEY, 2, 2),
-        );
+    it("keeps the committed base by reference while only new nodes stream in", () => {
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(withPoints(FIRST_KEY, 3, 1));
 
-        const data = new RenderBufferPool().build(
+        const first = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        cache.set(SECOND_KEY, withPoints(SECOND_KEY, 2, 2));
+        const appended = pool.build(
             [FIRST_KEY, SECOND_KEY],
             cache,
             ColorScheme.RGB,
             META,
         );
 
-        expect(data?.pointCount).toBe(5);
-        expect(data?.positions).toHaveLength(15);
-        expect(data?.colors).toHaveLength(20);
+        // Same envelope object — the renderer skips the base re-upload.
+        expect(appended?.base).toBe(first?.base);
+        expect(appended?.incoming?.pointCount).toBe(2);
+        expect(appended?.incoming?.positions[0]).toBe(2);
+
+        // The frozen base bytes survive the append untouched.
+        expect(appended?.base?.positions[0]).toBe(1);
+    });
+
+    it("recommits when a committed node leaves the visible set", () => {
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(
+            withPoints(FIRST_KEY, 2, 1),
+            withPoints(SECOND_KEY, 2, 2),
+        );
+
+        const first = pool.build(
+            [FIRST_KEY, SECOND_KEY],
+            cache,
+            ColorScheme.RGB,
+            META,
+        );
+        const afterEviction = pool.build(
+            [FIRST_KEY],
+            cache,
+            ColorScheme.RGB,
+            META,
+        );
+
+        expect(afterEviction?.base).not.toBe(first?.base);
+        expect(afterEviction?.base?.pointCount).toBe(2);
+        expect(afterEviction?.incoming).toBeNull();
+    });
+
+    it("recommits when a committed node's buffers are replaced", () => {
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(withPoints(FIRST_KEY, 2, 1));
+
+        const first = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        cache.set(FIRST_KEY, withPoints(FIRST_KEY, 2, 9));
+        const reloaded = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+
+        expect(reloaded?.base).not.toBe(first?.base);
+        expect(reloaded?.base?.positions[0]).toBe(9);
+    });
+
+    it("recommits on a scheme change — baked colors are per scheme", () => {
+        const node = cachedNode(FIRST_KEY, {
+            pointCount: 2,
+            positions: new Float32Array(6).fill(7),
+            colorsRgb: new Uint8Array(8).fill(10),
+            colorsIntensity: new Uint8Array(8).fill(30),
+        });
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(node);
+
+        const rgb = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        const intensity = pool.build(
+            [FIRST_KEY],
+            cache,
+            ColorScheme.INTENSITY,
+            META,
+        );
+
+        expect(intensity?.base).not.toBe(rgb?.base);
+        expect(intensity?.base?.colors?.[0]).toBe(30);
+    });
+
+    it("auto-commits once the incoming part rivals the base", () => {
+        const pool = new RenderBufferPool();
+        // base 500k → auto-commit above 125k incoming.
+        const cache = cacheOf(withPoints(FIRST_KEY, 500_000, 1));
+        pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+
+        cache.set(SECOND_KEY, withPoints(SECOND_KEY, 130_000, 2));
+        const appended = pool.build(
+            [FIRST_KEY, SECOND_KEY],
+            cache,
+            ColorScheme.RGB,
+            META,
+        );
+
+        expect(appended?.incoming).toBeNull();
+        expect(appended?.base?.pointCount).toBe(630_000);
+
+        // Below the threshold the incoming part is served as-is.
+        cache.set("1-1-1-2", withPoints("1-1-1-2", 10_000, 3));
+        const small = pool.build(
+            [FIRST_KEY, SECOND_KEY, "1-1-1-2"],
+            cache,
+            ColorScheme.RGB,
+            META,
+        );
+        expect(small?.incoming?.pointCount).toBe(10_000);
+    });
+
+    it("commit() folds everything visible and drops the incoming part", () => {
+        const pool = new RenderBufferPool();
+        const cache = cacheOf(withPoints(FIRST_KEY, 3, 1));
+
+        pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
+        cache.set(SECOND_KEY, withPoints(SECOND_KEY, 2, 2));
+        pool.build([FIRST_KEY, SECOND_KEY], cache, ColorScheme.RGB, META);
+
+        const committed = pool.commit(
+            [FIRST_KEY, SECOND_KEY],
+            cache,
+            ColorScheme.RGB,
+            META,
+        );
+
+        expect(committed?.base?.pointCount).toBe(5);
+        expect(committed?.incoming).toBeNull();
+
+        // After the commit the same visible set has nothing incoming.
+        const after = pool.build(
+            [FIRST_KEY, SECOND_KEY],
+            cache,
+            ColorScheme.RGB,
+            META,
+        );
+        expect(after?.base).toBe(committed?.base);
+        expect(after?.incoming).toBeNull();
     });
 
     it("packs by key, so the visible-key order cannot shuffle the output", () => {
@@ -101,43 +195,15 @@ describe("RenderBufferPool", () => {
             withPoints(SECOND_KEY, 2, 2),
         );
 
-        const data = new RenderBufferPool().build(
+        const frame = new RenderBufferPool().build(
             [SECOND_KEY, FIRST_KEY],
             cache,
             ColorScheme.RGB,
             META,
         );
 
-        expect(data?.positions[0]).toBe(1);
-        expect(data?.positions[6]).toBe(2);
-    });
-
-    it("reuses the allocation for a smaller frame and grows for a larger one", () => {
-        const pool = new RenderBufferPool();
-        const cache = cacheOf(
-            withPoints(FIRST_KEY, 100, 1),
-            withPoints(SECOND_KEY, 500, 2),
-        );
-
-        const grown = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
-        const shrunk = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
-        const regrown = pool.build([SECOND_KEY], cache, ColorScheme.RGB, META);
-
-        expect(shrunk?.positions.buffer).toBe(grown?.positions.buffer);
-        expect(regrown?.positions.buffer).not.toBe(grown?.positions.buffer);
-    });
-
-    it("hands out views into the pool, so the previous frame's data is overwritten", () => {
-        const pool = new RenderBufferPool();
-        const cache = cacheOf(
-            withPoints(FIRST_KEY, 2, 1),
-            withPoints(SECOND_KEY, 2, 2),
-        );
-
-        const first = pool.build([FIRST_KEY], cache, ColorScheme.RGB, META);
-        pool.build([SECOND_KEY], cache, ColorScheme.RGB, META);
-
-        expect(first?.positions[0]).toBe(2);
+        expect(frame?.base?.positions[0]).toBe(1);
+        expect(frame?.base?.positions[6]).toBe(2);
     });
 
     it.each<[ColorScheme, number]>([
@@ -155,14 +221,14 @@ describe("RenderBufferPool", () => {
             colorsClassification: new Uint8Array(8).fill(40),
         });
 
-        const data = new RenderBufferPool().build(
+        const frame = new RenderBufferPool().build(
             [FIRST_KEY],
             cacheOf(node),
             scheme,
             META,
         );
 
-        expect(data?.colors?.[0]).toBe(expected);
+        expect(frame?.base?.colors?.[0]).toBe(expected);
     });
 
     it("skips a node that has not derived the active scheme's buffer yet", () => {
@@ -171,14 +237,14 @@ describe("RenderBufferPool", () => {
             positions: new Float32Array(6).fill(7),
         });
 
-        const data = new RenderBufferPool().build(
+        const frame = new RenderBufferPool().build(
             [FIRST_KEY],
             cacheOf(node),
             ColorScheme.ELEVATION,
             META,
         );
 
-        expect(data).toBeNull();
+        expect(frame).toBeNull();
     });
 
     it("packs only the nodes holding the active scheme's buffer in a mixed set", () => {
@@ -192,14 +258,14 @@ describe("RenderBufferPool", () => {
             positions: new Float32Array(9),
         });
 
-        const data = new RenderBufferPool().build(
+        const frame = new RenderBufferPool().build(
             [FIRST_KEY, SECOND_KEY],
             cacheOf(colored, notYetColored),
             ColorScheme.ELEVATION,
             META,
         );
 
-        expect(data?.pointCount).toBe(2);
-        expect(data?.colors?.[0]).toBe(20);
+        expect(frame?.base?.pointCount).toBe(2);
+        expect(frame?.base?.colors?.[0]).toBe(20);
     });
 });

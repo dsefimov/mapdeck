@@ -66,6 +66,34 @@ export enum ColorScheme {
 }
 
 /**
+ * One render frame of a streaming cloud: a committed base plus the nodes
+ * streamed since that commit. The base object keeps its reference between
+ * pushes — a renderer holding it can skip re-uploading — while the small
+ * incoming part is rebuilt on every push and folds into the base on the
+ * next commit.
+ */
+export interface PointCloudFrame {
+    /** Committed snapshot — null before the first commit. */
+    base: PointCloudData | null;
+    /** Nodes added since the last commit — null right after one. */
+    incoming: PointCloudData | null;
+}
+
+/**
+ * The deck layer id suffix of a frame's incoming part. Ids with this
+ * suffix belong to the same tree layer as the bare id — picking normalizes
+ * them back with {@link stripPointCloudLayerSuffix}.
+ */
+export const POINT_CLOUD_INCOMING_SUFFIX = "-incoming";
+
+/** The tree-layer id of any point cloud deck layer id (bare or incoming). */
+export function stripPointCloudLayerSuffix(layerId: string): string {
+    return layerId.endsWith(POINT_CLOUD_INCOMING_SUFFIX)
+        ? layerId.slice(0, -POINT_CLOUD_INCOMING_SUFFIX.length)
+        : layerId;
+}
+
+/**
  * Read access to loaded cloud data, served by a point cloud protocol's
  * adapter. Tools consume this port instead of a concrete adapter class.
  */
