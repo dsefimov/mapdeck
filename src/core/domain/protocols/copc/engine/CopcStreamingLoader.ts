@@ -128,7 +128,7 @@ export class CopcStreamingLoader {
     private _priorityStates = new WeakMap<CachedNode, PriorityState>();
 
     private _eviction: TileEvictionManager;
-    /** Evicted nodes land here instead of being dropped — see C.2. */
+    /** Evicted nodes land here instead of being dropped. */
     private readonly _decodedCache: DecodedNodeCache;
 
     /** Derives lazily-requested scheme buffers for loaded nodes. */
@@ -229,7 +229,6 @@ export class CopcStreamingLoader {
         };
     }
 
-    /** Apply the init pipeline's outcome onto the engine's fields. */
     private _applyInitResult(init: CopcInit): void {
         this._copc = init.copc;
         this._source = init.resolvedSource;
@@ -244,7 +243,6 @@ export class CopcStreamingLoader {
         this._needsTransform = init.needsTransform;
     }
 
-    /** Worker pool and the node-data services running over it. */
     private _buildDataRuntime(copc: CopcType): void {
         this._workerPool = new WorkerPool(
             () => new PointProcessingWorker(),
@@ -271,7 +269,6 @@ export class CopcStreamingLoader {
         );
     }
 
-    /** Hierarchy tracker, traversal orchestrator and cycle executor wiring. */
     private _buildTraversalRuntime(
         geometricErrorByDepth: (depth: number) => number,
         rootHierarchyPage: Hierarchy.Page,
@@ -330,7 +327,6 @@ export class CopcStreamingLoader {
         }
     }
 
-    /** Cache a discovered node, index it spatially and record its depth. */
     private _registerNode(
         key: string,
         keyArray: NodeKey,
@@ -340,13 +336,10 @@ export class CopcStreamingLoader {
         const cachedNode = buildCachedNode(key, keyArray, entry, nodeBounds);
 
         this._nodeCache.set(key, cachedNode);
-        // Incremental RBush insert: new nodes are added once (on hierarchy
-        // decode), never per camera movement.
         this._spatialIndex.insert(
             toNodeBBoxEntry(key, nodeBounds.boundsWgs84),
         );
 
-        // Merged on discovery, no second pass over the cache needed.
         this._cycleState.maxDepthInHierarchy = recordNodeDepth(
             this._cycleState.depthDistribution,
             this._cycleState.maxDepthInHierarchy,
@@ -441,7 +434,6 @@ export class CopcStreamingLoader {
         }
     }
 
-    /** The post-load tail shared by fresh loads and cache restores. */
     private _settleLoadedNode(node: CachedNode): void {
         node.state = "loaded";
         clearRetryState(node);
@@ -526,20 +518,11 @@ export class CopcStreamingLoader {
         });
     }
 
-    /**
-     * Request a new load cycle. Called by selectNodesSSE (which is called by
-     * the adapter on viewport change).
-     *
-     * Delegates FSM management to CycleRunner.
-     */
     private _requestCycle(input: CycleInput): void {
         if (this._destroyed) return;
         this._cycleRunner.request(input);
     }
 
-    /**
-     * A single load cycle: delegates to CycleExecutor.
-     */
     private async _runCycle(
         input: CycleInput,
         supersedeSignal: AbortSignal,
@@ -562,7 +545,8 @@ export class CopcStreamingLoader {
     }
 
     /**
-     * SSE-based node selection. Called by adapter with frustum footprint + camera position.
+     * SSE-based node selection. Called by the adapter on viewport change
+     * with the frustum footprint and camera snapshot.
      */
     selectNodesSSE(
         camera: CameraSnapshot,
@@ -633,7 +617,6 @@ export class CopcStreamingLoader {
         pump(0);
     }
 
-    /** Save the latest camera snapshot for visible-set computation. */
     setCameraSnapshot(snapshot: CameraSnapshot): void {
         this._cycleState.lastCameraSnapshot = snapshot;
     }

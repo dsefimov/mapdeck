@@ -20,7 +20,7 @@ import {
     type ViewportRect,
 } from "./distanceToViewport";
 
-/** Result of evictToBudget. */
+/** Outcome of one {@link TileEvictionManager.evictToBudget} pass. */
 export interface EvictionResult {
     freedPoints: number;
     evictedCount: number;
@@ -48,10 +48,8 @@ export class TileEvictionManager {
     constructor(private readonly _onEvict?: (tile: CachedNode) => void) {}
 
     /**
-     * Single pass over the loaded set: rank the evictable tiles and evict
-     * from the worst end until the target holds. The loaded set is a few
-     * hundred nodes at most, so a scan-and-sort beats maintaining a
-     * replacement queue.
+     * The loaded set is a few hundred nodes at most — a scan-and-sort
+     * beats maintaining a replacement queue.
      */
     evictToBudget(ctx: EvictionContext): EvictionResult {
         if (ctx.totalPoints <= ctx.targetPoints) {

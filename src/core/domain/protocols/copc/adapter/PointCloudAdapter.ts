@@ -364,10 +364,6 @@ export class PointCloudAdapter
     }
 
     /**
-     * Deck layers are created visible; a hidden unit keeps streaming, so
-     * the retained visibility is restored on every re-add.
-     */
-    /**
      * The base is pushed only when its envelope object changes — between
      * commits the same reference means deck skips the upload entirely.
      */
@@ -426,6 +422,10 @@ export class PointCloudAdapter
         }
     }
 
+    /**
+     * Deck layers are created visible; a hidden unit keeps streaming, so
+     * the retained visibility is restored on every re-add.
+     */
     private _applyRetainedVisibility(
         layerId: string,
         visible: boolean,
