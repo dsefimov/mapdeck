@@ -66,7 +66,7 @@ export const PointSizeSliderComponent: (
                 step={POINT_SIZE_STEP}
                 value={displayPointSize}
                 onChange={(size) => viewModel.update(size)}
-                onCommit={viewModel.commit}
+                onCommit={() => viewModel.commit()}
             />
         </Field>
     );

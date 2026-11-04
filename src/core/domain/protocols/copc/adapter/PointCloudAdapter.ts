@@ -57,9 +57,15 @@ export class PointCloudAdapter
      * @param lazPerfWasmUrl - Where the LazPerf decoder binary lives.
      *   Page-relative by default so a sub-path deployment resolves it
      *   against its own origin; the composition root may override it from
-     *   the deployment's runtime config.
+     *   the deployment's runtime config. The value is absolutized against
+     *   the page before use: the decoder runs in inline-blob workers, and
+     *   a relative URL cannot resolve from a blob: base.
      */
-    constructor(private readonly _lazPerfWasmUrl = "laz-perf.wasm") {}
+    constructor(lazPerfWasmUrl = "laz-perf.wasm") {
+        this._lazPerfWasmUrl = absolutizeWasmUrl(lazPerfWasmUrl);
+    }
+
+    private readonly _lazPerfWasmUrl: string;
 
     addToMap(
         layerId: string,
@@ -383,5 +389,22 @@ export class PointCloudAdapter
             }
         }
         return result;
+    }
+}
+
+/**
+ * Resolve the wasm location against the page: the decoder instantiates in
+ * inline-blob workers, where a relative URL fails to parse ("blob:" has no
+ * usable base for it). Outside a document (tests, SSR) the value passes
+ * through untouched.
+ */
+export function absolutizeWasmUrl(url: string, base?: string): string {
+    const documentBase =
+        base ?? (typeof document === "undefined" ? undefined : document.baseURI);
+    if (!documentBase) return url;
+    try {
+        return new URL(url, documentBase).href;
+    } catch {
+        return url;
     }
 }

@@ -6,7 +6,7 @@ import type {
     RenderUnit,
 } from "@core/contracts";
 import { logger } from "@core/lib/logger";
-import { PointCloudAdapter } from "./PointCloudAdapter";
+import { PointCloudAdapter, absolutizeWasmUrl } from "./PointCloudAdapter";
 
 interface MockLoader {
     initialize: ReturnType<typeof vi.fn>;
@@ -431,5 +431,26 @@ describe("PointCloudAdapter error reporting", () => {
             expect.stringContaining('failed to add deck layer "cloud"'),
             expect.any(Error),
         );
+    });
+});
+
+describe("absolutizeWasmUrl", () => {
+    const BASE = "https://localhost:3005/app/";
+    const WASM = "/laz-perf.wasm";
+
+    it("resolves a page-relative wasm location against the page base", () => {
+        expect(absolutizeWasmUrl(WASM, BASE)).toBe(
+            "https://localhost:3005/laz-perf.wasm",
+        );
+        expect(absolutizeWasmUrl("laz-perf.wasm", BASE)).toBe(
+            "https://localhost:3005/app/laz-perf.wasm",
+        );
+    });
+
+    it("keeps an absolute URL and passes through without a base", () => {
+        expect(absolutizeWasmUrl("https://cdn/laz-perf.wasm", BASE)).toBe(
+            "https://cdn/laz-perf.wasm",
+        );
+        expect(absolutizeWasmUrl(WASM)).toBe(WASM);
     });
 });
