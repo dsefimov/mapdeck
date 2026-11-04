@@ -6,7 +6,7 @@ import type { EffectiveBaseline } from "../streamingConfig";
 import { traverseOctree } from "../traversal";
 import { computeBudgetPlan } from "../budget/computeBudgetPlan";
 import { truncateToPlan } from "../budget/truncateToPlan";
-import { shouldRetryAfterTruncation } from "../budget/shouldRetryAfterTruncation";
+import { shouldRetryAfterEviction } from "../budget/shouldRetryAfterEviction";
 import { computeVisibleCachedNodes } from "../render/computeVisibleCachedNodes";
 import { getOctreeParentKey } from "../octree/octreeKey";
 import type { NodeLoader } from "../loading";
@@ -32,6 +32,23 @@ function sameVisibleSet(prev: string[] | null, next: string[]): boolean {
 
 /** Minimal gap between progressive render pushes while a cycle is loading. */
 const PROGRESS_RENDER_INTERVAL_MS = 120;
+
+/**
+ * Candidates still wanting data — the demand the plan may leave unserved,
+ * because it ran before eviction freed the over-spent budget. Enqueued
+ * keys land in the load batch, so the two counts stay comparable.
+ */
+function countPendingDemand(
+    candidates: ReturnType<typeof traverseOctree>["candidates"],
+    nodeCache: ReadonlyMap<string, CachedNode>,
+): number {
+    let demand = 0;
+    for (const candidate of candidates) {
+        const node = nodeCache.get(candidate.key);
+        if (node?.state === "pending" || node?.state === "error") demand++;
+    }
+    return demand;
+}
 
 /** Immutable services injected by CopcStreamingLoader. */
 export interface CycleServices {
@@ -104,8 +121,13 @@ export class CycleExecutor {
         });
         this._updateCandidateMetadata(traversalResult.candidates);
 
-        const { finalToLoad, freedPoints, plan } =
+        const { finalToLoad, freedPoints } =
             this._planAndEvict(traversalResult);
+
+        const pendingDemand = countPendingDemand(
+            traversalResult.candidates,
+            this._services.nodeCache,
+        );
 
         const priorityByKey = new Map(
             traversalResult.candidates.map((c) => [c.key, c.priority]),
@@ -148,10 +170,12 @@ export class CycleExecutor {
             return;
         }
 
+        // Eviction may have freed room the pre-eviction plan could not use;
+        // one more cycle fills it without waiting for a camera move.
         if (
-            shouldRetryAfterTruncation(
+            shouldRetryAfterEviction(
                 finalToLoad.length,
-                plan.toLoad.length,
+                pendingDemand,
                 freedPoints,
             )
         ) {

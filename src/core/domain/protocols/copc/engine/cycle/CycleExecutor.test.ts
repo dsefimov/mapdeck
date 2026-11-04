@@ -123,6 +123,7 @@ const EVICTION_RATIO = 0.8;
 
 interface CycleHarness {
     executor: CycleExecutor;
+    state: CycleState;
     nodeCache: Map<string, CachedNode>;
     enqueueBatch: ReturnType<typeof vi.fn>;
     evictToBudget: ReturnType<typeof vi.fn>;
@@ -196,6 +197,7 @@ function createCycleHarness(): CycleHarness {
 
     return {
         executor: new CycleExecutor(services, state),
+        state,
         nodeCache,
         enqueueBatch,
         evictToBudget,
@@ -424,6 +426,66 @@ describe("CycleExecutor.run — lazy hierarchy convergence", () => {
         aborted.abort();
 
         await harness.executor.run(INPUT, requestRetry, aborted.signal);
+
+        expect(requestRetry).not.toHaveBeenCalled();
+    });
+});
+
+describe("CycleExecutor.run — eviction-driven retry", () => {
+    const INPUT = {
+        cameraSnapshot: createCamera(),
+        viewportBounds: [10, 10, 11, 11] as [number, number, number, number],
+    };
+
+    /**
+     * A loaded node the traversal no longer visits holds the whole budget:
+     * the plan (computed before eviction) starves, while the eviction
+     * running right after it frees points — the stand's landing scenario.
+     */
+    function overspendBudget(harness: CycleHarness): void {
+        const stale = {
+            ...node("9-9-9-9"),
+            state: "loaded" as const,
+            pointCount: POINT_BUDGET,
+        };
+        harness.nodeCache.set(stale.key, stale);
+        harness.state.totalLoadedPoints = POINT_BUDGET;
+    }
+
+    it("retries when eviction frees room a starved plan could not use", async () => {
+        const harness = createCycleHarness();
+        overspendBudget(harness);
+        harness.evictToBudget.mockReturnValue({
+            freedPoints: 500,
+            evictedCount: 1,
+        });
+        const requestRetry = vi.fn();
+
+        await harness.executor.run(INPUT, requestRetry);
+
+        expect(requestRetry).toHaveBeenCalledTimes(1);
+        expect(requestRetry).toHaveBeenCalledWith(INPUT);
+    });
+
+    it("does not retry when eviction freed nothing — the retry would repeat the cycle", async () => {
+        const harness = createCycleHarness();
+        overspendBudget(harness);
+        const requestRetry = vi.fn();
+
+        await harness.executor.run(INPUT, requestRetry);
+
+        expect(requestRetry).not.toHaveBeenCalled();
+    });
+
+    it("does not retry when every wanting candidate was already enqueued", async () => {
+        const harness = createCycleHarness();
+        harness.evictToBudget.mockReturnValue({
+            freedPoints: 500,
+            evictedCount: 1,
+        });
+        const requestRetry = vi.fn();
+
+        await harness.executor.run(INPUT, requestRetry);
 
         expect(requestRetry).not.toHaveBeenCalled();
     });
