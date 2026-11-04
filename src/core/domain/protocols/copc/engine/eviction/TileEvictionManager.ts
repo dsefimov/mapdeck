@@ -81,19 +81,27 @@ export class TileEvictionManager<T extends CachedNode> {
      * Single-pass eviction from tail toward head.
      * Returns total points freed.
      *
-     * Protection rules (skip tile if any apply):
-     * 1. Past frame boundary (rendered in current frame).
-     * 2. lastSeenAt >= currentFrame - 1 (2-frame hysteresis).
-     * 3. Any discovered child has not finished loading: a loading child
-     *    pins its parent unconditionally; a pending or errored child pins
-     *    it only while still traversal-relevant (seen within the
-     *    hysteresis window), so abandoned subtrees — including ones with
-     *    permanently broken children — cannot pin memory forever.
-     */
+ * Protection rules (skip tile if any apply):
+ * 1. Past frame boundary (rendered in current frame).
+ * 2. lastSeenAt within the grace window: two frames while the budget
+ *    holds, but only the current cycle once it is over-spent. Cycles run
+ *    on camera moves, not render frames — a wide window under pressure
+ *    would park the over-spend until the camera moves again, while the
+ *    decoded LRU makes an early eviction cheap to undo on a revisit.
+ * 3. Any discovered child has not finished loading: a loading child
+ *    pins its parent unconditionally; a pending or errored child pins
+ *    it only while still traversal-relevant (fresh within the same
+ *    window), so abandoned subtrees — including ones with permanently
+ *    broken children — cannot pin memory forever.
+ */
 evictToBudget(ctx: EvictionContext): EvictionResult {
         let freed = 0;
         let count = 0;
         let node = this._tail;
+
+        const freshCutoff = ctx.totalPoints > ctx.targetBudget
+            ? ctx.currentFrame
+            : ctx.currentFrame - 1;
 
         while (node && ctx.totalPoints - freed > ctx.targetBudget) {
             // Protection 1: frame boundary — stop, don't evict current-frame tiles.
@@ -102,7 +110,7 @@ evictToBudget(ctx: EvictionContext): EvictionResult {
             const tile = node.item;
             const prev = node.prev;
 
-            if (this._isProtected(tile, ctx)) {
+            if (this._isProtected(tile, ctx, freshCutoff)) {
                 node = prev;
                 continue;
             }
@@ -118,18 +126,21 @@ evictToBudget(ctx: EvictionContext): EvictionResult {
     }
 
     /** Check if a tile is protected from eviction. */
-    private _isProtected(tile: T, ctx: EvictionContext): boolean {
+    private _isProtected(
+        tile: T,
+        ctx: EvictionContext,
+        freshCutoff: number,
+    ): boolean {
         if (tile.state !== "loaded") return true;
 
-        // 2-frame hysteresis.
         if (
             tile.lastSeenAt !== undefined &&
-            tile.lastSeenAt >= ctx.currentFrame - 1
+            tile.lastSeenAt >= freshCutoff
         ) {
             return true;
         }
 
-        return this._hasUnfinishedChildren(tile, ctx);
+        return this._hasUnfinishedChildren(tile, ctx, freshCutoff);
     }
 
     /**
@@ -144,6 +155,7 @@ evictToBudget(ctx: EvictionContext): EvictionResult {
     private _hasUnfinishedChildren(
         tile: T,
         ctx: EvictionContext,
+        freshCutoff: number,
     ): boolean {
         const childKeys = getOctreeChildKeys(tile.key);
         return childKeys.some((ck) => {
@@ -156,7 +168,7 @@ evictToBudget(ctx: EvictionContext): EvictionResult {
                 case "pending":
                     return (
                         child.lastSeenAt !== undefined &&
-                        child.lastSeenAt >= ctx.currentFrame - 1
+                        child.lastSeenAt >= freshCutoff
                     );
                 default:
                     return false;

@@ -128,15 +128,29 @@ describe("TileEvictionManager", () => {
         expect(spare.state).toBe("pending");
     });
 
-    it("keeps a tile seen in the previous frame, giving it two frames of grace", () => {
+    it("evicts a previous-frame tile once the budget is over-spent — pressure narrows grace to this cycle", () => {
         const recent = loaded(OLDEST, { lastSeenAt: CURRENT_FRAME - 1 });
         const stale = loaded(MIDDLE);
         const manager = managerOver([recent, stale]);
 
         manager.evictToBudget(context([recent, stale]));
 
-        expect(recent.state).toBe("loaded");
+        // Over budget (200 > 100): the walk takes the previous-frame tile
+        // at the tail and stops once it holds — the decoded LRU makes the
+        // early eviction cheap to undo if the camera swings back.
+        expect(recent.state).toBe("pending");
+        expect(stale.state).toBe("loaded");
+    });
+
+    it("keeps a previous-frame tile when staler tiles already satisfied the budget", () => {
+        const stale = loaded(OLDEST);
+        const recent = loaded(MIDDLE, { lastSeenAt: CURRENT_FRAME - 1 });
+        const manager = managerOver([stale, recent]);
+
+        manager.evictToBudget(context([stale, recent]));
+
         expect(stale.state).toBe("pending");
+        expect(recent.state).toBe("loaded");
     });
 
     it("keeps a parent while a child of it is loading — in-flight outright", () => {
