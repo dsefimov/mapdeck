@@ -137,7 +137,22 @@ export class WorkerPool {
         this._workerBusy[workerIdx] = false;
         this._workerCurrentRequest[workerIdx] = null;
         if (pending) {
-            pending.resolve(result);
+            if (
+                "kind" in result &&
+                (result as { kind?: string }).kind === "error"
+            ) {
+                // The request failed inside the worker (e.g. a decode
+                // error) — surface it as a rejection instead of waiting
+                // for the timeout to reap the slot.
+                pending.reject(
+                    new Error(
+                        (result as { message?: string }).message ??
+                            "worker error",
+                    ),
+                );
+            } else {
+                pending.resolve(result);
+            }
         }
         this._drainQueue(workerIdx);
     }

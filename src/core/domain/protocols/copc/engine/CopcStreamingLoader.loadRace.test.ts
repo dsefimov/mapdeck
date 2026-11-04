@@ -12,19 +12,32 @@ import { CopcStreamingLoader } from "./CopcStreamingLoader";
 
 const { extractMock } = vi.hoisted(() => ({
     extractMock:
-        vi.fn<(view: unknown, node: CachedNode) => Promise<void>>(),
+        vi.fn<(node: CachedNode, bytes: Uint8Array) => Promise<void>>(),
 }));
 
 vi.mock("copc", () => ({
-    Copc: { loadPointDataView: vi.fn(async () => ({})) },
     Hierarchy: {},
     Getter: () => {},
 }));
 
 vi.mock("./initialization/initCopc", () => ({
     initCopc: vi.fn(async () => ({
-        copc: { header: { min: [-1, -1, -1], max: [1, 1, 1] }, wkt: null },
-        resolvedSource: "fake-source",
+        copc: {
+            header: {
+                min: [-1, -1, -1],
+                max: [1, 1, 1],
+                pointDataRecordFormat: 0,
+                pointDataRecordLength: 20,
+                scale: [1, 1, 1],
+                offset: [0, 0, 0],
+            },
+            wkt: null,
+            eb: [],
+        },
+        // A real getter (not a URL string): createBoundedGetter passes
+        // non-string sources through untouched, so node loads never touch
+        // the network.
+        resolvedSource: async () => new Uint8Array(8),
         meta: {
             bounds: { minX: -1, minY: -1, minZ: -1, maxX: 1, maxY: 1, maxZ: 1 },
             coordinateOrigin: [0, 0, 0],
@@ -57,7 +70,7 @@ async function makeInitializedLoader(): Promise<CopcStreamingLoader> {
     const loader = new CopcStreamingLoader(
         "https://example.com/cloud.copc.laz",
         { maxConcurrentRequests: 2, maxOctreeDepth: 20 },
-        Promise.resolve({} as never),
+        "laz-perf.wasm",
     );
     await loader.initialize();
     return loader;
@@ -109,7 +122,7 @@ describe("CopcStreamingLoader._loadNode settle races", () => {
         const gate = new Promise<void>((resolve) => {
             release = resolve;
         });
-        extractMock.mockImplementation(async (_view, n) => {
+        extractMock.mockImplementation(async (n) => {
             n.positions = new Float32Array(3);
             await gate;
         });
@@ -132,7 +145,7 @@ describe("CopcStreamingLoader._loadNode settle races", () => {
         const loader = await makeInitializedLoader();
         const node = makeNode(100);
 
-        extractMock.mockImplementation(async (_view, n) => {
+        extractMock.mockImplementation(async (n) => {
             n.positions = new Float32Array([1, 2, 3]);
         });
 

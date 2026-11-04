@@ -2,7 +2,7 @@ import type { View } from "copc";
 import type { BBox3D } from "@core/lib/geo";
 import type {
     RawLasFields,
-    ProcessRequest,
+    ProcessRawRequest,
 } from "../workers/pointProcessing.types";
 
 /** Convert BBox3D to the tuple format required by ProcessRequest. */
@@ -71,25 +71,21 @@ export interface WorkerPayloadContext {
 }
 
 /**
- * Build the worker payload from raw LAS fields. `activeScheme` is left to
- * the caller — it varies per request, not per extraction context.
+ * Build the raw-fields worker payload from already-extracted LAS fields —
+ * the production path sends compressed bytes instead (see
+ * NodeDataExtractor); this builder serves tests and any caller that
+ * already holds extracted fields. `activeScheme` is left to the caller —
+ * it varies per request, not per extraction context.
  * Pure function — takes context as explicit parameter.
  */
 export function buildWorkerPayload(
     raw: RawLasFields,
     ctx: WorkerPayloadContext,
-): Omit<ProcessRequest, "requestId" | "activeScheme"> {
+): Omit<ProcessRawRequest, "requestId" | "activeScheme"> {
     return {
         kind: "process",
         pointCount: raw.x.length,
-        rawX: raw.x,
-        rawY: raw.y,
-        rawZ: raw.z,
-        rawIntensity: raw.intensity,
-        rawClassification: raw.classification,
-        rawR: raw.r,
-        rawG: raw.g,
-        rawB: raw.b,
+        raw,
         hasColor: ctx.hasColor,
         wkt: ctx.needsTransform ? (ctx.wkt ?? null) : null,
         coordinateOrigin: ctx.coordinateOrigin,

@@ -2,6 +2,8 @@
 // Runs off the main thread to prevent UI freezes during large point cloud loads.
 
 import proj4 from "proj4";
+import { createLazPerf, type LazPerf } from "laz-perf";
+import { Las } from "copc";
 import { extractProjcsFromWkt } from "../geometry/crs";
 import { clampLatLng } from "../geometry/wgs84";
 import {
@@ -12,12 +14,15 @@ import {
     extractHeights,
     getElevationParams,
 } from "../../logic/colorize";
+import { readRawLasFields } from "../extraction/rawExtraction";
 import type {
+    CompressedPointSource,
     DerivableScheme,
     EngineRequest,
     EngineResult,
     ProcessRequest,
     ProcessResult,
+    RawLasFields,
     RecolorRequest,
     RecolorResult,
 } from "./pointProcessing.types";
@@ -45,16 +50,70 @@ function getTransformer(
     return fn;
 }
 
+// --- laz-perf instances (one per wasm URL, created once per worker) ---
+
+const lazPerfByUrl = new Map<string, Promise<LazPerf>>();
+
+function getLazPerf(wasmUrl: string): Promise<LazPerf> {
+    const cached = lazPerfByUrl.get(wasmUrl);
+    if (cached) return cached;
+
+    const promise = createLazPerf({
+        locateFile: (path: string) =>
+            path.endsWith(".wasm") ? wasmUrl : path,
+    });
+    lazPerfByUrl.set(wasmUrl, promise);
+    return promise;
+}
+
+/**
+ * Decompresses a node's point data and reads the raw LAS fields — the exact
+ * calls the main thread used to run (`Las.PointData.decompressChunk` +
+ * `Las.View.create` + `readRawLasFields`), so both paths read identically.
+ */
+async function decodeSource(
+    source: CompressedPointSource,
+    hasColor: boolean,
+): Promise<RawLasFields> {
+    const lazPerf = await getLazPerf(source.wasmUrl);
+    const buffer = await Las.PointData.decompressChunk(
+        source.compressed,
+        {
+            pointCount: source.pointCount,
+            pointDataRecordFormat: source.pointDataRecordFormat,
+            pointDataRecordLength: source.pointDataRecordLength,
+        },
+        lazPerf,
+    );
+    const view = Las.View.create(
+        buffer,
+        {
+            pointDataRecordFormat: source.pointDataRecordFormat,
+            pointDataRecordLength: source.pointDataRecordLength,
+            scale: source.scale,
+            offset: source.offset,
+        },
+        // Parsed by copc's own VLR reader on the main thread and carried
+        // here through structured clone — the shape is as trusted as it was
+        // before the transfer; the loose type keeps worker types dependency-free.
+        source.extraBytes as Parameters<typeof Las.View.create>[2],
+    );
+    return readRawLasFields(view, source.pointCount, hasColor);
+}
+
 /**
  * Turns raw LAS fields into render-ready buffers: reprojected positions,
  * unit intensities, the true-color (RGB) scheme and — when one is requested
  * — the active-at-load scheme's colors derived from the arrays this job has
  * just built, byte-identically to the recolor path. Every other scheme
- * derives later via a recolor request. Pure — the message tail below is the
- * only side effect.
+ * derives later via a recolor request. A compressed source is decoded in
+ * this same job — one worker round-trip per node. Pure (aside from the
+ * laz-perf instance memo) — the message tail below is the only side effect.
  */
-export function process(req: ProcessRequest): ProcessResult {
+export async function process(req: ProcessRequest): Promise<ProcessResult> {
     const { pointCount, coordinateOrigin } = req;
+    const raw: RawLasFields =
+        "raw" in req ? req.raw : await decodeSource(req.source, req.hasColor);
 
     const positions = new Float32Array(pointCount * 3);
     const coordBuf: [number, number] = [0, 0];
@@ -62,35 +121,35 @@ export function process(req: ProcessRequest): ProcessResult {
     if (req.wkt) {
         const transform = getTransformer(req.wkt);
         for (let i = 0; i < pointCount; i++) {
-            coordBuf[0] = req.rawX[i]!;
-            coordBuf[1] = req.rawY[i]!;
+            coordBuf[0] = raw.x[i]!;
+            coordBuf[1] = raw.y[i]!;
             const [rawLng, rawLat] = transform(coordBuf);
             const [lng, lat] = clampLatLng(rawLng, rawLat);
             positions[i * 3] = lng - coordinateOrigin[0];
             positions[i * 3 + 1] = lat - coordinateOrigin[1];
-            positions[i * 3 + 2] = req.rawZ[i]!;
+            positions[i * 3 + 2] = raw.z[i]!;
         }
     } else {
         for (let i = 0; i < pointCount; i++) {
-            positions[i * 3] = req.rawX[i]! - coordinateOrigin[0];
-            positions[i * 3 + 1] = req.rawY[i]! - coordinateOrigin[1];
-            positions[i * 3 + 2] = req.rawZ[i]!;
+            positions[i * 3] = raw.x[i]! - coordinateOrigin[0];
+            positions[i * 3 + 1] = raw.y[i]! - coordinateOrigin[1];
+            positions[i * 3 + 2] = raw.z[i]!;
         }
     }
 
     const intensities = new Float32Array(pointCount);
     for (let i = 0; i < pointCount; i++) {
-        intensities[i] = req.rawIntensity[i]! / 65535;
+        intensities[i] = raw.intensity[i]! / 65535;
     }
 
-    const classifications = new Uint8Array(req.rawClassification);
+    const classifications = new Uint8Array(raw.classification);
 
     return {
         kind: "process",
         requestId: req.requestId,
         positions,
         colorsRgb: deriveRgbColors(
-            { r: req.rawR, g: req.rawG, b: req.rawB },
+            { r: raw.r, g: raw.g, b: raw.b },
             req.hasColor,
             pointCount,
         ),
@@ -165,21 +224,42 @@ export function recolor(req: RecolorRequest): RecolorResult {
 
 self.onmessage = (e: MessageEvent<EngineRequest>) => {
     const req = e.data;
-    const result: EngineResult = req.kind === "recolor" ? recolor(req) : process(req);
     const workerScope = self as unknown as {
         postMessage(message: EngineResult, transfer: Transferable[]): void;
     };
-    workerScope.postMessage(result, transferOf(result));
+    Promise.resolve(
+        req.kind === "recolor" ? recolor(req) : process(req),
+    ).then(
+        (result) => {
+            workerScope.postMessage(result, transferOf(result));
+        },
+        (error: unknown) => {
+            // A decode failure must reject its request, not hang the pool
+            // slot until the timeout reaps the worker.
+            workerScope.postMessage(
+                {
+                    kind: "error",
+                    requestId: req.requestId,
+                    message:
+                        error instanceof Error
+                            ? error.message
+                            : String(error),
+                },
+                [],
+            );
+        },
+    );
 };
 
 function transferOf(result: EngineResult): Transferable[] {
-    return result.kind === "recolor"
-        ? [result.colors.buffer]
-        : [
-              result.positions.buffer,
-              result.colorsRgb.buffer,
-              ...(result.colorsActive ? [result.colorsActive.buffer] : []),
-              result.intensities.buffer,
-              result.classifications.buffer,
-          ];
+    if (result.kind === "error" || result.kind === "recolor") {
+        return result.kind === "recolor" ? [result.colors.buffer] : [];
+    }
+    return [
+        result.positions.buffer,
+        result.colorsRgb.buffer,
+        ...(result.colorsActive ? [result.colorsActive.buffer] : []),
+        result.intensities.buffer,
+        result.classifications.buffer,
+    ];
 }

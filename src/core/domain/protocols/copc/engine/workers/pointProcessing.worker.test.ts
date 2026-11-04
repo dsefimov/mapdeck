@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import proj4 from "proj4";
 import type {
-    ProcessRequest,
+    ProcessRawRequest,
+    RawLasFields,
     RecolorRequest,
 } from "./pointProcessing.types";
 import { process, recolor } from "./pointProcessing.worker";
@@ -26,25 +27,37 @@ const utm33nToWgs84 = proj4(
     "EPSG:4326",
 );
 
-function request(overrides: Partial<ProcessRequest> = {}): ProcessRequest {
+function rawFields(overrides: Partial<RawLasFields> = {}): RawLasFields {
+    return {
+        x: Float64Array.from([10, 20]),
+        y: Float64Array.from([30, 40]),
+        z: Float32Array.from([100, 200]),
+        intensity: Uint16Array.from([65535, 32767]),
+        classification: Uint8Array.from([2, 12]),
+        r: null,
+        g: null,
+        b: null,
+        ...overrides,
+    };
+}
+
+function request(
+    overrides: Partial<Omit<ProcessRawRequest, "raw">> & {
+        raw?: RawLasFields;
+    } = {},
+): ProcessRawRequest {
+    const { raw, ...rest } = overrides;
     return {
         kind: "process",
         requestId: "r1",
         pointCount: 2,
-        rawX: Float64Array.from([10, 20]),
-        rawY: Float64Array.from([30, 40]),
-        rawZ: Float32Array.from([100, 200]),
-        rawIntensity: Uint16Array.from([65535, 32767]),
-        rawClassification: Uint8Array.from([2, 12]),
-        rawR: null,
-        rawG: null,
-        rawB: null,
         hasColor: false,
         activeScheme: null,
         wkt: null,
         coordinateOrigin: [10, 30, 0],
         globalBounds: null,
-        ...overrides,
+        ...rest,
+        raw: raw ?? rawFields(),
     };
 }
 
@@ -64,32 +77,34 @@ function recolorRequest(
 }
 
 describe("point processing worker", () => {
-    it("echoes the request id", () => {
-        expect(process(request({ requestId: "req-9" })).requestId).toBe(
+    it("echoes the request id", async () => {
+        expect((await process(request({ requestId: "req-9" }))).requestId).toBe(
             "req-9",
         );
     });
 
-    it("lays a geographic cloud out relative to the origin, heights untouched", () => {
-        const result = process(request());
+    it("lays a geographic cloud out relative to the origin, heights untouched", async () => {
+        const result = await process(request());
 
         expect([...result.positions]).toEqual([0, 0, 100, 10, 10, 200]);
     });
 
-    it("reprojects a projected cloud through its WKT before shifting", () => {
+    it("reprojects a projected cloud through its WKT before shifting", async () => {
         const utm = { x: 500_000, y: 5_000_000 };
         const [lng, lat] = utm33nToWgs84.forward([
             utm.x,
             utm.y,
         ]) as [number, number];
-        const result = process(
+        const result = await process(
             request({
                 pointCount: 1,
-                rawX: Float64Array.from([utm.x]),
-                rawY: Float64Array.from([utm.y]),
-                rawZ: Float32Array.from([7]),
                 wkt: UTM33N_WKT,
                 coordinateOrigin: [0, 0, 0],
+                raw: rawFields({
+                    x: Float64Array.from([utm.x]),
+                    y: Float64Array.from([utm.y]),
+                    z: Float32Array.from([7]),
+                }),
             }),
         );
 
@@ -98,24 +113,26 @@ describe("point processing worker", () => {
         expect(result.positions[2]).toBe(7);
     });
 
-    it("scales intensities into the unit range", () => {
-        const result = process(request());
+    it("scales intensities into the unit range", async () => {
+        const result = await process(request());
 
         expect(result.intensities[0]).toBeCloseTo(1, 5);
         expect(result.intensities[1]).toBeCloseTo(32767 / 65535, 5);
     });
 
-    it("copies classifications verbatim", () => {
-        expect([...process(request()).classifications]).toEqual([2, 12]);
+    it("copies classifications verbatim", async () => {
+        expect([...(await process(request())).classifications]).toEqual([2, 12]);
     });
 
-    it("keeps 8-bit rgb as-is and folds 16-bit down by a byte", () => {
-        const result = process(
+    it("keeps 8-bit rgb as-is and folds 16-bit down by a byte", async () => {
+        const result = await process(
             request({
                 hasColor: true,
-                rawR: Uint16Array.from([200, 65_280]),
-                rawG: Uint16Array.from([100, 256]),
-                rawB: Uint16Array.from([50, 51_000]),
+                raw: rawFields({
+                    r: Uint16Array.from([200, 65_280]),
+                    g: Uint16Array.from([100, 256]),
+                    b: Uint16Array.from([50, 51_000]),
+                }),
             }),
         );
 
@@ -124,8 +141,8 @@ describe("point processing worker", () => {
         ]);
     });
 
-    it("paints an opaque white fallback when no color channel exists", () => {
-        const result = process(request());
+    it("paints an opaque white fallback when no color channel exists", async () => {
+        const result = await process(request());
 
         expect([...result.colorsRgb]).toEqual([
             255, 255, 255, 255, 255, 255, 255, 255,
@@ -137,8 +154,8 @@ describe("process — the active scheme rides the job", () => {
     const ELEVATION_BOUNDS: [number, number, number, number, number, number] =
         [0, 0, 100, 0, 0, 200];
 
-    it("derives intensity colors byte-identically to the recolor path", () => {
-        const result = process(request({ activeScheme: "intensity" }));
+    it("derives intensity colors byte-identically to the recolor path", async () => {
+        const result = await process(request({ activeScheme: "intensity" }));
 
         const viaRecolor = recolor(
             recolorRequest({
@@ -150,8 +167,8 @@ describe("process — the active scheme rides the job", () => {
         expect(result.colorsActive).toEqual(viaRecolor.colors);
     });
 
-    it("derives elevation colors byte-identically to the recolor path", () => {
-        const result = process(
+    it("derives elevation colors byte-identically to the recolor path", async () => {
+        const result = await process(
             request({
                 activeScheme: "elevation",
                 globalBounds: ELEVATION_BOUNDS,
@@ -169,8 +186,10 @@ describe("process — the active scheme rides the job", () => {
         expect(result.colorsActive).toEqual(viaRecolor.colors);
     });
 
-    it("derives classification colors byte-identically to the recolor path", () => {
-        const result = process(request({ activeScheme: "classification" }));
+    it("derives classification colors byte-identically to the recolor path", async () => {
+        const result = await process(
+            request({ activeScheme: "classification" }),
+        );
 
         const viaRecolor = recolor(
             recolorRequest({
@@ -182,8 +201,97 @@ describe("process — the active scheme rides the job", () => {
         expect(result.colorsActive).toEqual(viaRecolor.colors);
     });
 
-    it("produces no active buffer when none is requested", () => {
-        expect(process(request()).colorsActive).toBeNull();
+    it("produces no active buffer when none is requested", async () => {
+        expect((await process(request())).colorsActive).toBeNull();
+    });
+});
+
+describe("process — the compressed source rides the same job", () => {
+    // decompressChunk is the only wasm-bound step; the rest of the decode
+    // chain (View.create + extractors) runs for real against hand-built
+    // PDRF-0 records. laz-perf itself is stubbed — its node build cannot
+    // load the wasm binary in a test environment.
+    const decompressMock = vi.hoisted(() => vi.fn());
+
+    vi.mock("laz-perf", () => ({
+        createLazPerf: vi.fn(async () => ({}) as never),
+    }));
+
+    vi.mock("copc", async (importOriginal) => {
+        const actual = await importOriginal<typeof import("copc")>();
+        return {
+            ...actual,
+            Las: {
+                ...actual.Las,
+                PointData: {
+                    ...actual.Las.PointData,
+                    decompressChunk: decompressMock,
+                },
+            },
+        };
+    });
+
+    /**
+     * Two PDRF-0 records whose scaled values reproduce the raw fixture:
+     * X/Y/Z int32 × 0.001 → 10/20, 30/40, 100/200.
+     */
+    function buildPdrf0Records(): Uint8Array {
+        const recordLength = 20;
+        const out = new Uint8Array(2 * recordLength);
+        const dv = new DataView(out.buffer);
+        const points = [
+            { x: 10_000, y: 30_000, z: 100_000, intensity: 65_535, cls: 2 },
+            { x: 20_000, y: 40_000, z: 200_000, intensity: 32_767, cls: 12 },
+        ];
+        points.forEach((p, i) => {
+            const o = i * recordLength;
+            dv.setInt32(o, p.x, true);
+            dv.setInt32(o + 4, p.y, true);
+            dv.setInt32(o + 8, p.z, true);
+            dv.setUint16(o + 12, p.intensity, true);
+            dv.setUint8(o + 15, p.cls);
+        });
+        return out;
+    }
+
+    it("decodes, extracts and processes a compressed source like the raw one", async () => {
+        decompressMock.mockResolvedValue(buildPdrf0Records());
+
+        const viaSource = await process({
+            kind: "process",
+            requestId: "r1",
+            pointCount: 2,
+            hasColor: false,
+            activeScheme: null,
+            wkt: null,
+            coordinateOrigin: [10, 30, 0],
+            globalBounds: null,
+            source: {
+                compressed: new Uint8Array([1, 2, 3]),
+                wasmUrl: "laz-perf.wasm",
+                pointCount: 2,
+                pointDataRecordFormat: 0,
+                pointDataRecordLength: 20,
+                scale: [0.001, 0.001, 0.001],
+                offset: [0, 0, 0],
+                extraBytes: [],
+            },
+        });
+        // PDRF-0 maps classification 12 (Overlap) to 0, so the raw-path
+        // expectation mirrors that quirk for the second point.
+        const viaRaw = await process(
+            request({
+                raw: rawFields({
+                    classification: Uint8Array.from([2, 0]),
+                }),
+            }),
+        );
+
+        expect(decompressMock).toHaveBeenCalledTimes(1);
+        expect(viaSource.positions).toEqual(viaRaw.positions);
+        expect(viaSource.intensities).toEqual(viaRaw.intensities);
+        expect(viaSource.classifications).toEqual(viaRaw.classifications);
+        expect(viaSource.colorsRgb).toEqual(viaRaw.colorsRgb);
     });
 });
 

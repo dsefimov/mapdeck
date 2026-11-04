@@ -19,7 +19,6 @@ import { comparer } from "mobx";
 import { CopcStreamingLoader } from "../engine/CopcStreamingLoader";
 import { ViewportManager } from "../engine/ViewportManager";
 import { createPointCloudLayer } from "./PointCloudLayerFactory";
-import { createLazPerf } from "laz-perf";
 
 /** Deck layer type through the port — the protocol names no deck import. */
 type DeckLayer = Parameters<MapContext["overlayManager"]["addLayer"]>[1];
@@ -84,20 +83,12 @@ export class PointCloudAdapter
                 );
             }
 
-            const wasmUrl = this._lazPerfWasmUrl;
-            const lazPerfPromise = createLazPerf({
-                locateFile: (path: string) => {
-                    if (path.endsWith(".wasm")) {
-                        return wasmUrl;
-                    }
-                    return path;
-                },
-            });
-
+            // Decode runs in the worker pool — the main thread only hands
+            // the wasm URL over; each worker instantiates its own laz-perf.
             const loader = new CopcStreamingLoader(
                 sourceRef,
                 PointCloudAdapter.DEFAULT_STREAMING_OPTIONS,
-                lazPerfPromise,
+                this._lazPerfWasmUrl,
             );
 
             const task = createCancellable();

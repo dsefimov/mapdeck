@@ -1,7 +1,6 @@
 /* global navigator, queueMicrotask */
-import { Copc, Hierarchy, Getter } from "copc";
-import type { Copc as CopcType, View } from "copc";
-import type { LazPerf } from "laz-perf";
+import { Hierarchy, type Getter } from "copc";
+import type { Copc as CopcType } from "copc";
 import RBush from "rbush";
 
 import { ColorScheme, type PointCloudData } from "@core/contracts";
@@ -71,8 +70,8 @@ export class CopcStreamingLoader {
     private _originalSource: StreamingSource;
     private _source: string | Getter = "";
     private _copc: CopcType | null = null;
-    private _lazPerf: LazPerf | null = null;
-    private _lazPerfPromise: Promise<LazPerf>;
+    /** Where the worker pool's laz-perf wasm lives — decode runs off-thread. */
+    private _lazPerfWasmUrl: string;
     private _options: StreamingLoaderOptions;
 
     private _hierarchyTracker: HierarchyLoadTracker | null = null;
@@ -137,11 +136,11 @@ export class CopcStreamingLoader {
     constructor(
         source: StreamingSource,
         options: StreamingLoaderOptions,
-        lazPerfPromise: Promise<LazPerf>,
+        lazPerfWasmUrl: string,
     ) {
         this._originalSource = source;
         this._options = options;
-        this._lazPerfPromise = lazPerfPromise;
+        this._lazPerfWasmUrl = lazPerfWasmUrl;
 
         this._cycleState = {
             frameCounter: 0,
@@ -184,8 +183,6 @@ export class CopcStreamingLoader {
         spacing: number;
         spacingMeters: number;
     }> {
-        this._lazPerf = await this._lazPerfPromise;
-
         const init = await initCopc(this._originalSource);
         this._applyInitResult(init);
 
@@ -252,6 +249,12 @@ export class CopcStreamingLoader {
             wkt: copc.wkt ?? null,
             coordinateOrigin: this._coordinateOrigin,
             bounds: this._bounds,
+            wasmUrl: this._lazPerfWasmUrl,
+            pointDataRecordFormat: copc.header.pointDataRecordFormat,
+            pointDataRecordLength: copc.header.pointDataRecordLength,
+            scale: copc.header.scale,
+            offset: copc.header.offset,
+            extraBytes: copc.eb,
         });
 
         this._colorizer = new SchemeColorizer(this._workerPool, () =>
@@ -368,29 +371,25 @@ export class CopcStreamingLoader {
             // Loads are only requested through the cycle executor, which
             // exists exclusively after initialize() — the guard is narrowing.
             const copc = this._copc;
-            const lazPerf = this._lazPerf;
-            if (!copc || !lazPerf) return;
+            if (!copc) return;
 
-            const hierarchyNode: Hierarchy.Node = {
-                pointCount: node.pointCount,
-                pointDataOffset: node.pointDataOffset,
-                pointDataLength: node.pointDataLength,
-            };
-
-            const view = await Copc.loadPointDataView(
-                createBoundedGetter(
-                    this._source,
-                    signal,
-                    DEFAULT_RANGE_REQUEST_TIMEOUT_MS,
-                ),
-                copc,
-                hierarchyNode,
-                { lazPerf },
+            // The main thread only fetches the node's compressed bytes —
+            // decode, extraction, reprojection and colors all run in the
+            // worker job. This is the same single range request
+            // loadPointDataView used to issue internally.
+            const get = createBoundedGetter(
+                this._source,
+                signal,
+                DEFAULT_RANGE_REQUEST_TIMEOUT_MS,
+            );
+            const compressed = await get(
+                node.pointDataOffset,
+                node.pointDataOffset + node.pointDataLength,
             );
 
             if (node.state !== "loading") return;
 
-            await this._extractAndProcessNode(view, node);
+            await this._extractAndProcessNode(node, compressed);
 
             // The worker phase is unreachable by the abort signal: a cancel
             // during extraction has already reset the state and refunded
@@ -440,8 +439,8 @@ export class CopcStreamingLoader {
     }
 
     private async _extractAndProcessNode(
-        view: View,
         node: CachedNode,
+        compressed: Uint8Array,
     ): Promise<void> {
         // Created in initialize(); extraction is only reachable post-init —
         // the guard is narrowing.
@@ -450,7 +449,11 @@ export class CopcStreamingLoader {
         // The active scheme rides the process job: the node lands with its
         // colors already derived, and the post-load converge below finds the
         // buffer in place.
-        await extractor.extract(view, node, this._cycleState.activeScheme);
+        await extractor.extract(
+            node,
+            compressed,
+            this._cycleState.activeScheme,
+        );
     }
 
     /**

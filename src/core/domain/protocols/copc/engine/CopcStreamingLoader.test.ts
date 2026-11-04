@@ -13,24 +13,40 @@ import type { CameraSnapshot } from "./geometry";
 import type { CycleState } from "./cycle/CycleExecutor";
 import { CopcStreamingLoader } from "./CopcStreamingLoader";
 
-const { initCopcMock, loadPointDataViewMock, extractMock, ensureMock, disposeMock } =
+const { initCopcMock, sourceGetMock, extractMock, ensureMock, disposeMock } =
     vi.hoisted(() => ({
         initCopcMock: vi.fn<() => Promise<unknown>>(),
-        loadPointDataViewMock: vi.fn<() => Promise<unknown>>(),
-        extractMock: vi.fn<(view: unknown, node: CachedNode) => Promise<void>>(),
+        sourceGetMock: vi.fn<
+            (begin: number, end: number) => Promise<Uint8Array>
+        >(),
+        extractMock:
+            vi.fn<(node: CachedNode, bytes: Uint8Array) => Promise<void>>(),
         ensureMock: vi.fn<(scheme: unknown, nodes: unknown[]) => Promise<void>>(),
         disposeMock: vi.fn<() => void>(),
     }));
 
 vi.mock("copc", () => ({
-    Copc: { loadPointDataView: loadPointDataViewMock },
     Hierarchy: {},
     Getter: () => {},
 }));
 
 const INIT_FIXTURE = {
-    copc: { header: { min: [-1, -1, -1], max: [1, 1, 1] }, wkt: null },
-    resolvedSource: "fake-source",
+    copc: {
+        header: {
+            min: [-1, -1, -1],
+            max: [1, 1, 1],
+            pointDataRecordFormat: 0,
+            pointDataRecordLength: 20,
+            scale: [1, 1, 1],
+            offset: [0, 0, 0],
+        },
+        wkt: null,
+        eb: [],
+    },
+    // A real getter (not a URL string): createBoundedGetter passes
+    // non-string sources through untouched, so node loads never touch
+    // the network — and the mock lets failure tests reject the fetch.
+    resolvedSource: sourceGetMock,
     meta: {
         bounds: { minX: -1, minY: -1, minZ: -1, maxX: 1, maxY: 1, maxZ: 1 },
         coordinateOrigin: [0, 0, 0],
@@ -108,11 +124,13 @@ function makeNode(pointCount = 100, key = "0-0-0-0"): CachedNode {
     };
 }
 
+const WASM_URL = "laz-perf.wasm";
+
 async function makeInitializedLoader(): Promise<CopcStreamingLoader> {
     const loader = new CopcStreamingLoader(
         SOURCE_URL,
         { maxConcurrentRequests: 2, maxOctreeDepth: 20 },
-        Promise.resolve({} as never),
+        WASM_URL,
     );
     await loader.initialize();
     return loader;
@@ -144,8 +162,8 @@ async function flushMicrotasks(): Promise<void> {
 beforeEach(() => {
     initCopcMock.mockReset();
     initCopcMock.mockResolvedValue(INIT_FIXTURE);
-    loadPointDataViewMock.mockReset();
-    loadPointDataViewMock.mockResolvedValue({});
+    sourceGetMock.mockReset();
+    sourceGetMock.mockResolvedValue(new Uint8Array(8));
     extractMock.mockReset();
     extractMock.mockResolvedValue(undefined);
     ensureMock.mockReset();
@@ -158,7 +176,7 @@ describe("CopcStreamingLoader.switchScheme before initialization", () => {
         const loader = new CopcStreamingLoader(
             SOURCE_URL,
             { maxConcurrentRequests: 4, maxOctreeDepth: 20 },
-            Promise.resolve({} as never),
+            WASM_URL,
         );
 
         loader.switchScheme(ColorScheme.ELEVATION);
@@ -175,7 +193,7 @@ describe("CopcStreamingLoader.initialize", () => {
         const loader = new CopcStreamingLoader(
             SOURCE_URL,
             { maxConcurrentRequests: 2, maxOctreeDepth: 20 },
-            Promise.resolve({} as never),
+            WASM_URL,
         );
 
         const meta = await loader.initialize();
@@ -194,7 +212,7 @@ describe("CopcStreamingLoader.initialize", () => {
         const loader = new CopcStreamingLoader(
             SOURCE_URL,
             { maxConcurrentRequests: 2, maxOctreeDepth: 20 },
-            Promise.resolve({} as never),
+            WASM_URL,
         );
 
         await expect(loader.initialize()).rejects.toThrow("Invalid COPC header");
@@ -272,7 +290,7 @@ describe("CopcStreamingLoader load accounting", () => {
     it("counts a successful load in the point and node budget", async () => {
         const loader = await makeInitializedLoader();
         const node = makeNode(100);
-        extractMock.mockImplementation(async (_view, target) => {
+        extractMock.mockImplementation(async (target) => {
             target.positions = new Float32Array(3);
         });
 
@@ -289,7 +307,7 @@ describe("CopcStreamingLoader load accounting", () => {
     it("refunds the budget and schedules a retry when a load fails", async () => {
         const loader = await makeInitializedLoader();
         const node = makeNode(100);
-        loadPointDataViewMock.mockRejectedValue(new Error("HTTP 500"));
+        sourceGetMock.mockRejectedValue(new Error("HTTP 500"));
 
         await callLoadNode(loader, node);
 
@@ -306,7 +324,7 @@ describe("CopcStreamingLoader load accounting", () => {
     it("returns an aborted node to pending without error tracking", async () => {
         const loader = await makeInitializedLoader();
         const node = makeNode(100);
-        loadPointDataViewMock.mockRejectedValue(
+        sourceGetMock.mockRejectedValue(
             new DOMException("Aborted", "AbortError"),
         );
 

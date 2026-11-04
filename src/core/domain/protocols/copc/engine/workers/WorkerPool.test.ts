@@ -81,6 +81,23 @@ describe("WorkerPool", () => {
         workers[0]!.respond(lastRequest(workers[0]!).requestId, {});
         await second;
     });
+
+    it("rejects on a worker error result instead of hanging the slot", async () => {
+        const { pool, workers } = harness(1);
+
+        const posted = pool.post({ kind: "process" }, []);
+        workers[0]!.respond(lastRequest(workers[0]!).requestId, {
+            kind: "error",
+            message: "decode failed",
+        });
+
+        await expect(posted).rejects.toThrow("decode failed");
+        // The slot recovered — the next request dispatches immediately.
+        const next = pool.post({ kind: "again" }, []);
+        expect(workers[0]!.posted).toHaveLength(2);
+        workers[0]!.respond(lastRequest(workers[0]!).requestId, {});
+        await next;
+    });
 });
 
 describe("WorkerPool priority dispatch", () => {
