@@ -1,8 +1,13 @@
 import type { View } from "copc";
+import { ColorScheme } from "@core/contracts";
 import type { BBox3D } from "@core/lib/geo";
 import type { CachedNode } from "../../types";
 import { WorkerPool } from "../workers/WorkerPool";
-import type { ProcessResult } from "../workers/pointProcessing.types";
+import type {
+    DerivableScheme,
+    ProcessResult,
+} from "../workers/pointProcessing.types";
+import { setNodeColors } from "../render/schemeBuffers";
 import {
     readRawLasFields,
     buildWorkerPayload,
@@ -41,8 +46,15 @@ export class NodeDataExtractor {
     /**
      * Extract raw LAS fields from a COPC View, process via worker pool,
      * and assign result arrays to the node (zero-copy Transferable).
+     * When `activeScheme` is a derivable scheme, its color buffer rides the
+     * same worker job — the node lands with the scheme already applied and
+     * needs no follow-up recolor.
      */
-    async extract(view: View, node: CachedNode): Promise<void> {
+    async extract(
+        view: View,
+        node: CachedNode,
+        activeScheme: ColorScheme = ColorScheme.RGB,
+    ): Promise<void> {
         const pointCount = node.pointCount;
         const raw = readRawLasFields(view, pointCount, this._payloadCtx.hasColor);
 
@@ -57,7 +69,10 @@ export class NodeDataExtractor {
             transferList.push(raw.r.buffer, raw.g!.buffer, raw.b!.buffer);
         }
 
-        const payload = buildWorkerPayload(raw, this._payloadCtx);
+        const payload = {
+            ...buildWorkerPayload(raw, this._payloadCtx),
+            activeScheme: toDerivableScheme(activeScheme),
+        };
 
         const result = await this._workerPool.post<
             Record<string, unknown>,
@@ -68,5 +83,21 @@ export class NodeDataExtractor {
         node.colorsRgb = result.colorsRgb;
         node.intensities = result.intensities;
         node.classifications = result.classifications;
+        if (result.colorsActive) {
+            setNodeColors(node, activeScheme, result.colorsActive);
+        }
+    }
+}
+
+function toDerivableScheme(scheme: ColorScheme): DerivableScheme | null {
+    switch (scheme) {
+        case ColorScheme.ELEVATION:
+            return "elevation";
+        case ColorScheme.INTENSITY:
+            return "intensity";
+        case ColorScheme.CLASSIFICATION:
+            return "classification";
+        default:
+            return null;
     }
 }

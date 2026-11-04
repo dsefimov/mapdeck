@@ -293,6 +293,39 @@ describe("PointCloudAdapter color scheme switching", () => {
 
         expect(loader.switchScheme).toHaveBeenCalledWith("elevation");
     });
+
+    it("converges to the layer's configured scheme once initialized", async () => {
+        const { ctx } = createHarness();
+        const adapter = new PointCloudAdapter();
+
+        adapter.addToMap(
+            "cloud",
+            {
+                ...DESCRIPTOR,
+                config: { pointSize: 2, colorScheme: "intensity" },
+            },
+            ctx,
+        );
+        await flushAsync();
+
+        const loader = mockLoaderInstances[0]!;
+        expect(loader.switchScheme).toHaveBeenCalledWith("intensity");
+    });
+
+    it("does not switch a default-RGB layer at init", async () => {
+        const { ctx } = createHarness();
+        const adapter = new PointCloudAdapter();
+
+        adapter.addToMap(
+            "cloud",
+            { ...DESCRIPTOR, config: { pointSize: 2, colorScheme: "rgb" } },
+            ctx,
+        );
+        await flushAsync();
+
+        const loader = mockLoaderInstances[0]!;
+        expect(loader.switchScheme).not.toHaveBeenCalled();
+    });
 });
 
 describe("PointCloudAdapter error reporting", () => {

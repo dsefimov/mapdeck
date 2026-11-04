@@ -28,13 +28,18 @@ export class SchemeColorizer {
     /**
      * Queues recolor jobs for every loaded node still missing `scheme`'s
      * buffer and resolves when they all settle. Duplicate jobs for the same
-     * node+scheme are coalesced.
+     * node+scheme are coalesced. `priority` rides the pool queue: visible
+     * nodes recolor ahead of loads, the background rest recolors behind them.
      */
-    ensure(scheme: ColorScheme, nodes: Iterable<CachedNode>): Promise<void> {
+    ensure(
+        scheme: ColorScheme,
+        nodes: Iterable<CachedNode>,
+        priority = 1,
+    ): Promise<void> {
         const jobs: Promise<void>[] = [];
         if (scheme !== ColorScheme.RGB) {
             for (const node of nodes) {
-                const job = this._ensureOne(scheme, node);
+                const job = this._ensureOne(scheme, node, priority);
                 if (job) jobs.push(job);
             }
         }
@@ -44,6 +49,7 @@ export class SchemeColorizer {
     private _ensureOne(
         scheme: ColorScheme,
         node: CachedNode,
+        priority: number,
     ): Promise<void> | null {
         if (node.state !== "loaded") return null;
         if (pickNodeColors(node, scheme)) return null;
@@ -56,14 +62,18 @@ export class SchemeColorizer {
             pending = new Map();
             this._pending.set(node, pending);
         }
-        const job = this._run(scheme, node).finally(() => {
+        const job = this._run(scheme, node, priority).finally(() => {
             pending!.delete(scheme);
         });
         pending.set(scheme, job);
         return job;
     }
 
-    private async _run(scheme: ColorScheme, node: CachedNode): Promise<void> {
+    private async _run(
+        scheme: ColorScheme,
+        node: CachedNode,
+        priority: number,
+    ): Promise<void> {
         // Identity guard: eviction or reload swaps/deletes positions — such
         // a result must not land in the replaced node's slot.
         const positionsAtEnqueue = node.positions;
@@ -72,6 +82,7 @@ export class SchemeColorizer {
         const result = await this._pool.post<RecolorRequest, RecolorResult>(
             request,
             transferList(request),
+            priority,
         );
 
         if (

@@ -9,10 +9,14 @@ type QueuedItem = {
     data: unknown;
     transfer: Transferable[];
     requestId: string;
+    /** Dispatch order: lower value runs first; equal values stay FIFO. */
+    priority: number;
 };
 
 /**
  * Fixed-size worker pool: posts requests to a free worker, queues the rest.
+ * The queue is a priority queue — interactive work (a visible node's
+ * recolor) jumps ahead of bulk work instead of waiting behind a load burst.
  *
  * Every dispatched request carries a time ceiling — a worker wedged mid-decode
  * is terminated and respawned so its slot recovers instead of stalling the
@@ -44,6 +48,7 @@ export class WorkerPool {
     post<TReq extends object, TRes>(
         data: TReq,
         transfer: Transferable[],
+        priority = 1,
     ): Promise<TRes> {
         const requestId = String(++this._requestCounter);
         const payload = { ...data, requestId };
@@ -63,7 +68,7 @@ export class WorkerPool {
             if (freeIdx !== -1) {
                 this._dispatch(freeIdx, payload, transfer, requestId);
             } else {
-                this._queue.push({ data: payload, transfer, requestId });
+                this._queue.push({ data: payload, transfer, requestId, priority });
             }
         });
     }
@@ -151,7 +156,20 @@ export class WorkerPool {
     }
 
     private _drainQueue(workerIdx: number): void {
-        const next = this._queue.shift();
+        // The queue is small (in-flight node loads plus bounded recolor
+        // chunks) — a linear scan for the lowest priority is cheaper than
+        // keeping it sorted on insert.
+        let nextIdx = -1;
+        for (let i = 0; i < this._queue.length; i++) {
+            if (
+                nextIdx === -1 ||
+                this._queue[i]!.priority < this._queue[nextIdx]!.priority
+            ) {
+                nextIdx = i;
+            }
+        }
+        const next =
+            nextIdx === -1 ? undefined : this._queue.splice(nextIdx, 1)[0];
         if (next) {
             this._dispatch(workerIdx, next.data, next.transfer, next.requestId);
         }

@@ -71,13 +71,14 @@ export interface WorkerPayloadContext {
 }
 
 /**
- * Build the worker payload from raw LAS fields.
+ * Build the worker payload from raw LAS fields. `activeScheme` is left to
+ * the caller — it varies per request, not per extraction context.
  * Pure function — takes context as explicit parameter.
  */
 export function buildWorkerPayload(
     raw: RawLasFields,
     ctx: WorkerPayloadContext,
-): Omit<ProcessRequest, "requestId"> {
+): Omit<ProcessRequest, "requestId" | "activeScheme"> {
     return {
         kind: "process",
         pointCount: raw.x.length,

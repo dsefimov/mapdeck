@@ -447,7 +447,10 @@ export class CopcStreamingLoader {
         // the guard is narrowing.
         const extractor = this._dataExtractor;
         if (!extractor) return;
-        await extractor.extract(view, node);
+        // The active scheme rides the process job: the node lands with its
+        // colors already derived, and the post-load converge below finds the
+        // buffer in place.
+        await extractor.extract(view, node, this._cycleState.activeScheme);
     }
 
     /**
@@ -554,7 +557,7 @@ export class CopcStreamingLoader {
         const visibleNodes = executor.currentVisibleLoadedNodes();
 
         void colorizer
-            .ensure(scheme, visibleNodes)
+            .ensure(scheme, visibleNodes, 0)
             .then(() => {
                 if (generation === this._schemeGeneration) {
                     executor.refreshRender(true);
@@ -573,16 +576,17 @@ export class CopcStreamingLoader {
     }
 
     /**
-     * Background recolor of the non-visible cache in small chained chunks:
-     * posting the whole cache at once would fill the worker queue and starve
-     * node loads behind one scheme flip's worth of jobs.
+     * Background recolor of the non-visible cache in small chained chunks at
+     * the bulk priority: posting the whole cache at once would fill the
+     * worker queue, and even then it must never queue ahead of node loads
+     * or a visible node's recolor.
      */
     private _recolorRest(scheme: ColorScheme, nodes: CachedNode[]): void {
         const CHUNK = 16;
         const pump = (from: number): void => {
             if (this._destroyed || from >= nodes.length) return;
             void this._colorizer
-                ?.ensure(scheme, nodes.slice(from, from + CHUNK))
+                ?.ensure(scheme, nodes.slice(from, from + CHUNK), 2)
                 .catch(() => {})
                 .then(() => pump(from + CHUNK));
         };

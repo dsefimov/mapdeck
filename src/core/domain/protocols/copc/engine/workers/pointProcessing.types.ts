@@ -29,6 +29,8 @@ export interface ProcessRequest {
     rawG: Uint16Array | null;
     rawB: Uint16Array | null;
     hasColor: boolean;
+    /** Scheme whose buffer to derive in the same job; null = RGB only. */
+    activeScheme: DerivableScheme | null;
     wkt: string | null;
     coordinateOrigin: [number, number, number];
     globalBounds: [number, number, number, number, number, number] | null;
@@ -50,20 +52,25 @@ export interface RecolorRequest {
     globalBounds: [number, number, number, number, number, number] | null;
 }
 
+/** The schemes a job can derive from processed arrays (RGB is always eager). */
+export type DerivableScheme = RecolorRequest["scheme"];
+
 /** Either kind of work the worker accepts. */
 export type EngineRequest = ProcessRequest | RecolorRequest;
 
 /**
- * Response to a process request. Only the active-at-load scheme's colors are
- * produced (RGB, which needs source channels that exist solely here);
- * every other scheme derives later via a recolor request.
- * All TypedArrays are Transferable.
+ * Response to a process request. RGB colors are always produced (their
+ * source channels exist solely here); the scheme active at load rides the
+ * same job as `colorsActive`, every other scheme derives later via a
+ * recolor request. All TypedArrays are Transferable.
  */
 export interface ProcessResult {
     kind: "process";
     requestId: string;
     positions: Float32Array;
     colorsRgb: Uint8Array;
+    /** Derived buffer for `ProcessRequest.activeScheme`; null when none was requested. */
+    colorsActive: Uint8Array | null;
     intensities: Float32Array;
     classifications: Uint8Array;
 }

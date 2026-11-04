@@ -83,6 +83,61 @@ describe("WorkerPool", () => {
     });
 });
 
+describe("WorkerPool priority dispatch", () => {
+    it("dispatches the lowest priority first when a worker frees up", async () => {
+        const { pool, workers } = harness(1);
+
+        const first = pool.post({ kind: "first" }, []);
+        const bulk = pool.post({ kind: "bulk" }, [], 2);
+        const normal = pool.post({ kind: "normal" }, [], 1);
+        const interactive = pool.post({ kind: "interactive" }, [], 0);
+
+        const dispatched: string[] = [];
+        const settleNext = (): void => {
+            const req = workers[0]!.posted.at(-1)!.data as {
+                kind: string;
+                requestId: string;
+            };
+            dispatched.push(req.kind);
+            workers[0]!.respond(req.requestId, {});
+        };
+
+        settleNext();
+        await first;
+        settleNext();
+        await interactive;
+        settleNext();
+        await normal;
+        settleNext();
+        await bulk;
+
+        expect(dispatched).toEqual(["first", "interactive", "normal", "bulk"]);
+    });
+
+    it("keeps FIFO order within one priority", async () => {
+        const { pool, workers } = harness(1);
+
+        const first = pool.post({ kind: "first" }, []);
+        const second = pool.post({ kind: "bulk-early" }, [], 2);
+        const third = pool.post({ kind: "bulk-late" }, [], 2);
+
+        workers[0]!.respond(lastRequest(workers[0]!).requestId, {});
+        await first;
+        // The earlier bulk job won the slot, not the later one.
+        expect(
+            (workers[0]!.posted[1]!.data as { kind: string }).kind,
+        ).toBe("bulk-early");
+        workers[0]!.respond(lastRequest(workers[0]!).requestId, {});
+        await second;
+
+        expect(
+            (workers[0]!.posted[2]!.data as { kind: string }).kind,
+        ).toBe("bulk-late");
+        workers[0]!.respond(lastRequest(workers[0]!).requestId, {});
+        await third;
+    });
+});
+
 describe("WorkerPool request timeout", () => {
     beforeEach(() => {
         vi.useFakeTimers();

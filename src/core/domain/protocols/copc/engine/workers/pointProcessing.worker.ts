@@ -9,9 +9,11 @@ import {
     deriveElevationColors,
     deriveIntensityColors,
     deriveRgbColors,
+    extractHeights,
     getElevationParams,
 } from "../../logic/colorize";
 import type {
+    DerivableScheme,
     EngineRequest,
     EngineResult,
     ProcessRequest,
@@ -45,9 +47,11 @@ function getTransformer(
 
 /**
  * Turns raw LAS fields into render-ready buffers: reprojected positions,
- * unit intensities and the true-color (RGB) scheme. Every other color scheme
- * derives later from the returned arrays via a recolor request. Pure — the
- * message tail below is the only side effect.
+ * unit intensities, the true-color (RGB) scheme and — when one is requested
+ * — the active-at-load scheme's colors derived from the arrays this job has
+ * just built, byte-identically to the recolor path. Every other scheme
+ * derives later via a recolor request. Pure — the message tail below is the
+ * only side effect.
  */
 export function process(req: ProcessRequest): ProcessResult {
     const { pointCount, coordinateOrigin } = req;
@@ -79,6 +83,8 @@ export function process(req: ProcessRequest): ProcessResult {
         intensities[i] = req.rawIntensity[i]! / 65535;
     }
 
+    const classifications = new Uint8Array(req.rawClassification);
+
     return {
         kind: "process",
         requestId: req.requestId,
@@ -88,9 +94,43 @@ export function process(req: ProcessRequest): ProcessResult {
             req.hasColor,
             pointCount,
         ),
+        colorsActive: deriveActive(
+            req.activeScheme,
+            { positions, intensities, classifications },
+            req.globalBounds,
+        ),
         intensities,
-        classifications: new Uint8Array(req.rawClassification),
+        classifications,
     };
+}
+
+/**
+ * Derives the requested scheme's colors from the arrays the process job has
+ * just produced — the exact inputs the recolor path would copy and send, so
+ * both paths return byte-identical buffers.
+ */
+function deriveActive(
+    scheme: DerivableScheme | null,
+    processed: {
+        positions: Float32Array;
+        intensities: Float32Array;
+        classifications: Uint8Array;
+    },
+    globalBounds: ProcessRequest["globalBounds"],
+): Uint8Array | null {
+    switch (scheme) {
+        case "elevation":
+            return deriveElevationColors(
+                extractHeights(processed.positions),
+                getElevationParams(globalBounds),
+            );
+        case "intensity":
+            return deriveIntensityColors(processed.intensities);
+        case "classification":
+            return deriveClassificationColors(processed.classifications);
+        default:
+            return null;
+    }
 }
 
 /**
@@ -138,6 +178,7 @@ function transferOf(result: EngineResult): Transferable[] {
         : [
               result.positions.buffer,
               result.colorsRgb.buffer,
+              ...(result.colorsActive ? [result.colorsActive.buffer] : []),
               result.intensities.buffer,
               result.classifications.buffer,
           ];

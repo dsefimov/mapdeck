@@ -23,11 +23,17 @@ const BOUNDS: [number, number, number, number, number, number] = [
 class FakePool {
     readonly requests: RecolorRequest[] = [];
     readonly transfers: Transferable[][] = [];
+    readonly priorities: number[] = [];
     resultByte = 7;
 
-    post(data: RecolorRequest, transfer: Transferable[]): Promise<RecolorResult> {
+    post(
+        data: RecolorRequest,
+        transfer: Transferable[],
+        priority = 1,
+    ): Promise<RecolorResult> {
         this.requests.push(data);
         this.transfers.push(transfer);
+        this.priorities.push(priority);
         return Promise.resolve({
             kind: "recolor",
             requestId: data.requestId,
@@ -64,6 +70,15 @@ describe("SchemeColorizer", () => {
         expect(pool.requests).toHaveLength(1);
         expect(pool.requests[0]?.kind).toBe("recolor");
         expect(pickNodeColors(node, ColorScheme.INTENSITY)?.[0]).toBe(7);
+    });
+
+    it("rides the given priority into the pool queue", async () => {
+        const { pool, colorizer } = realHarness();
+        const node = loadedNode("1-0-0-0");
+
+        await colorizer.ensure(ColorScheme.INTENSITY, [node], 0);
+
+        expect(pool.priorities).toEqual([0]);
     });
 
     it("skips the default RGB scheme — it is computed at load time", async () => {

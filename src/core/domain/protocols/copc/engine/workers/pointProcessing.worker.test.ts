@@ -5,6 +5,7 @@ import type {
     RecolorRequest,
 } from "./pointProcessing.types";
 import { process, recolor } from "./pointProcessing.worker";
+import { extractHeights } from "../../logic/colorize";
 
 // The worker module registers self.onmessage at import time; node has no
 // `self`, so alias it to globalThis before the module evaluates.
@@ -39,6 +40,7 @@ function request(overrides: Partial<ProcessRequest> = {}): ProcessRequest {
         rawG: null,
         rawB: null,
         hasColor: false,
+        activeScheme: null,
         wkt: null,
         coordinateOrigin: [10, 30, 0],
         globalBounds: null,
@@ -128,6 +130,60 @@ describe("point processing worker", () => {
         expect([...result.colorsRgb]).toEqual([
             255, 255, 255, 255, 255, 255, 255, 255,
         ]);
+    });
+});
+
+describe("process — the active scheme rides the job", () => {
+    const ELEVATION_BOUNDS: [number, number, number, number, number, number] =
+        [0, 0, 100, 0, 0, 200];
+
+    it("derives intensity colors byte-identically to the recolor path", () => {
+        const result = process(request({ activeScheme: "intensity" }));
+
+        const viaRecolor = recolor(
+            recolorRequest({
+                scheme: "intensity",
+                intensities: result.intensities,
+            }),
+        );
+
+        expect(result.colorsActive).toEqual(viaRecolor.colors);
+    });
+
+    it("derives elevation colors byte-identically to the recolor path", () => {
+        const result = process(
+            request({
+                activeScheme: "elevation",
+                globalBounds: ELEVATION_BOUNDS,
+            }),
+        );
+
+        const viaRecolor = recolor(
+            recolorRequest({
+                scheme: "elevation",
+                heights: extractHeights(result.positions),
+                globalBounds: ELEVATION_BOUNDS,
+            }),
+        );
+
+        expect(result.colorsActive).toEqual(viaRecolor.colors);
+    });
+
+    it("derives classification colors byte-identically to the recolor path", () => {
+        const result = process(request({ activeScheme: "classification" }));
+
+        const viaRecolor = recolor(
+            recolorRequest({
+                scheme: "classification",
+                classifications: result.classifications,
+            }),
+        );
+
+        expect(result.colorsActive).toEqual(viaRecolor.colors);
+    });
+
+    it("produces no active buffer when none is requested", () => {
+        expect(process(request()).colorsActive).toBeNull();
     });
 });
 

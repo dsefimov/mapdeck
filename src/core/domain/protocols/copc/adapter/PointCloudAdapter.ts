@@ -135,6 +135,16 @@ export class PointCloudAdapter
             await loader.initialize();
             if (signal.aborted) return;
 
+            // The loader boots in RGB; a layer configured with another
+            // scheme must converge to it before the first nodes load, or
+            // it renders (and caches) RGB colors until a manual switch.
+            const initialScheme =
+                (state.config.colorScheme as ColorScheme | undefined) ??
+                ColorScheme.RGB;
+            if (initialScheme !== ColorScheme.RGB) {
+                loader.switchScheme(initialScheme);
+            }
+
             loader.setOnPointsLoaded((data: PointCloudData) => {
                 state.data = data;
                 this._updateDeckLayer(layerId, overlayManager);
