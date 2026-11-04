@@ -26,6 +26,7 @@ import { CopcStreamingLoader } from "../engine/CopcStreamingLoader";
 import { ViewportManager } from "../engine/ViewportManager";
 import { createPointCloudLayer } from "./PointCloudLayerFactory";
 import { styleNumber } from "../../logic/styleValues";
+import { DEFAULT_OPACITY, DEFAULT_POINT_SIZE_PX } from "../defaults";
 import { resolveHiddenClassifications } from "../logic/classificationFilter";
 
 /** Deck layer type through the port — the protocol names no deck import. */
@@ -364,8 +365,8 @@ export class PointCloudAdapter
         ctx: MapContext,
     ): void {
         const state = this._layers.get(layerId);
-        const pointSize = styleNumber(config.pointSize, 2);
-        const opacity = styleNumber(config.opacity, 1.0);
+        const pointSize = styleNumber(config.pointSize, DEFAULT_POINT_SIZE_PX);
+        const opacity = styleNumber(config.opacity, DEFAULT_OPACITY);
         const props = { pointSize, opacity } as Partial<DeckLayer>;
         ctx.overlayManager.updateLayer(layerId, props);
         if (state?.pushedIncoming) {

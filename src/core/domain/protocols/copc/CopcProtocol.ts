@@ -8,6 +8,7 @@ import type { Protocol } from "@core/contracts";
 import { resolveStyle } from "../logic/resolveStyle";
 import { styleNumber } from "../logic/styleValues";
 import { COPC_PROTOCOL_ID } from "./types";
+import { DEFAULT_OPACITY, DEFAULT_POINT_SIZE_PX } from "./defaults";
 import { resolveColorScheme } from "./logic/colorScheme";
 import { resolveHiddenClassifications } from "./logic/classificationFilter";
 import { PointCloudAdapter } from "./adapter";
@@ -28,7 +29,10 @@ export class CopcProtocol implements Protocol<CopcConfig> {
     readonly id = COPC_PROTOCOL_ID;
     readonly label = "COPC Point Cloud";
     readonly defaultStyle: LayerStyle = {
-        paint: { "circle-radius": 2, "circle-opacity": 1 },
+        paint: {
+            "circle-radius": DEFAULT_POINT_SIZE_PX,
+            "circle-opacity": DEFAULT_OPACITY,
+        },
         metadata: { colorScheme: ColorScheme.RGB },
     };
     private readonly adapter: PointCloudAdapter;
@@ -53,14 +57,14 @@ export class CopcProtocol implements Protocol<CopcConfig> {
                 url: sourceUrl,
                 pointSize: styleNumber(
                     mergedStyle.paint?.["circle-radius"],
-                    2,
+                    DEFAULT_POINT_SIZE_PX,
                 ),
                 colorScheme: resolveColorScheme(
                     mergedStyle.metadata?.colorScheme,
                 ),
                 opacity: styleNumber(
                     mergedStyle.paint?.["circle-opacity"],
-                    1.0,
+                    DEFAULT_OPACITY,
                 ),
                 hiddenClassifications: resolveHiddenClassifications(
                     mergedStyle.metadata?.hiddenClassifications,

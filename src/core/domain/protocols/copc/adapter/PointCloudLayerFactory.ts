@@ -2,6 +2,10 @@ import { COORDINATE_SYSTEM, type Layer } from "@deck.gl/core";
 import { PointCloudLayer } from "@deck.gl/layers";
 import { type PointCloudData } from "@core/contracts";
 import { styleNumber } from "../../logic/styleValues";
+import {
+    DEFAULT_OPACITY,
+    DEFAULT_POINT_SIZE_PX,
+} from "../defaults";
 
 /**
  * Creates a deck.gl PointCloudLayer from point cloud data and config.
@@ -18,8 +22,8 @@ export function createPointCloudLayer(
     config: Record<string, unknown>,
     version: number = 0,
 ): Layer {
-    const pointSize = styleNumber(config.pointSize, 2);
-    const opacity = styleNumber(config.opacity, 1.0);
+    const pointSize = styleNumber(config.pointSize, DEFAULT_POINT_SIZE_PX);
+    const opacity = styleNumber(config.opacity, DEFAULT_OPACITY);
 
     return new PointCloudLayer({
         id: layerId,

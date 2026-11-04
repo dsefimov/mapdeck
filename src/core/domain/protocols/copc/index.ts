@@ -6,3 +6,4 @@
 export { CopcProtocol } from "./CopcProtocol";
 export { OverlayFeatureProvider } from "./OverlayFeatureProvider";
 export { COPC_PROTOCOL_ID } from "./types";
+export { DEFAULT_OPACITY, DEFAULT_POINT_SIZE_PX } from "./defaults";

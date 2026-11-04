@@ -2,6 +2,7 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/shell";
 import { isLayerNode } from "@core/contracts";
+import { DEFAULT_POINT_SIZE_PX } from "@core/domain/protocols/copc";
 import { formatDict, typedDict } from "@core/lib/text";
 import { logger } from "@core/lib/logger";
 import { SliderInput } from "@core/ui/components/primitives/inputs";
@@ -34,7 +35,8 @@ export const PointSizeSliderComponent: (
     }
 
     const paint = (node.style?.paint ?? {}) as Record<string, unknown>;
-    const displayPointSize = (paint["circle-radius"] as number) ?? 2;
+    const displayPointSize =
+        (paint["circle-radius"] as number) ?? DEFAULT_POINT_SIZE_PX;
 
     // The debounced style write lives in the view model;
     // cached per node, safe across panel remounts.

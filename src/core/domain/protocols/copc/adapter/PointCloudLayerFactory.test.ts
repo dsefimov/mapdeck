@@ -75,7 +75,7 @@ describe("createPointCloudLayer", () => {
     });
 
     it.each([
-        ["defaults to", {}, 2, 1],
+        ["defaults to", {}, 0.5, 1],
         ["reads pointSize and opacity from config", { pointSize: 5, opacity: 0.4 }, 5, 0.4],
     ])("%s a fixed point size and opacity", (_case, config, size, opacity) => {
         const layer = createPointCloudLayer(
