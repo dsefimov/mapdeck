@@ -6,12 +6,13 @@ import {
     scheduleRetry,
 } from "./utils";
 
-/** The browser cache condition the loader backs off from harder. */
+/** The browser cache condition the loader recognizes (no-store removes it
+ * at the source; the marker only keeps the retry at the normal pace). */
 const CACHE_MARKER = "ERR_CACHE_OPERATION_NOT_SUPPORTED";
 const GENERIC = "timeout";
 
 const GENERIC_BASE = 1_000;
-const CACHE_BASE = 10_000;
+const CACHE_BASE = 1_000;
 const CAP = 60_000;
 
 const NOW = 1_700_000_000_000;
@@ -38,7 +39,7 @@ describe("computeRetryDelay", () => {
             expected: GENERIC_BASE * 4,
         },
         {
-            title: "starts a cache failure ten times further out, since it will not clear in a second",
+            title: "retries a cache failure at the same base pace — no-store removed the source",
             message: CACHE_MARKER,
             retryCount: 0,
             expected: CACHE_BASE,
@@ -58,7 +59,7 @@ describe("computeRetryDelay", () => {
         {
             title: "caps a cache wait that would overshoot a minute",
             message: CACHE_MARKER,
-            retryCount: 3,
+            retryCount: 6,
             expected: CAP,
         },
         {

@@ -80,6 +80,7 @@ export class CycleExecutor {
     async run(
         input: CycleInput,
         requestRetry: (input: CycleInput) => void,
+        supersedeSignal?: AbortSignal,
     ): Promise<void> {
         const { cameraSnapshot, viewportBounds } = input;
 
@@ -114,16 +115,21 @@ export class CycleExecutor {
         );
         if (enqueuedCount > 0) {
             // Progressive rendering: push a frame every so often while nodes
-            // stream in instead of waiting for the whole batch.
+            // stream in instead of waiting for the whole batch. The drain
+            // ends early when a newer input supersedes this cycle — the
+            // replacement cycle re-plans and prunes the leftovers itself.
             let lastProgressBuild = 0;
-            await this._services.nodeLoader.drain(() => {
-                const now = Date.now();
-                if (now - lastProgressBuild < PROGRESS_RENDER_INTERVAL_MS) {
-                    return;
-                }
-                lastProgressBuild = now;
-                this._updateRenderAndNotify();
-            });
+            await this._services.nodeLoader.drain(
+                () => {
+                    const now = Date.now();
+                    if (now - lastProgressBuild < PROGRESS_RENDER_INTERVAL_MS) {
+                        return;
+                    }
+                    lastProgressBuild = now;
+                    this._updateRenderAndNotify();
+                },
+                supersedeSignal,
+            );
         }
 
         this._updateRenderAndNotify();

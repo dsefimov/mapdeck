@@ -422,3 +422,31 @@ describe("NodeLoader.drain", () => {
         expect(progress).toHaveBeenCalledTimes(2);
     });
 });
+
+describe("NodeLoader.drain supersede", () => {
+    it("ends the wait on an abort signal while work is still queued", async () => {
+        // One slot, two pending nodes: URGENT dispatches (its settle is
+        // manual in this harness, so the slot stays busy), MIDDLE queues.
+        const { loader, served } = harness(
+            [pending(URGENT), pending(MIDDLE)],
+            1,
+        );
+        loader.enqueueBatch([URGENT, MIDDLE], rankOf);
+
+        const controller = new AbortController();
+        const drained = loader.drain(undefined, controller.signal);
+        // drain()'s startPending dispatched URGENT into the single slot;
+        // MIDDLE stays queued behind it.
+        expect(served).toEqual([URGENT]);
+        controller.abort();
+
+        // The wait ends even though the slot is busy and the queue is full.
+        await expect(drained).resolves.toBeUndefined();
+
+        // The abort ended the *wait*, not the work: the queued node still
+        // dispatches when a slot frees — the superseding cycle prunes it via
+        // cancelStale instead.
+        loader.onLoadSettled();
+        expect(served).toEqual([URGENT, MIDDLE]);
+    });
+});

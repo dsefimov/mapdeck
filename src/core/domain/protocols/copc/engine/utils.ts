@@ -9,7 +9,7 @@ import type { CachedNode } from "../types";
 const CACHE_UNSUPPORTED_MARKER = "ERR_CACHE_OPERATION_NOT_SUPPORTED";
 
 const DEFAULT_BASE_DELAY_MS = 1_000;
-const CACHE_ERROR_BASE_DELAY_MS = 10_000;
+const CACHE_ERROR_BASE_DELAY_MS = 1_000;
 const MAX_RETRY_DELAY_MS = 60_000;
 
 /**
@@ -24,8 +24,10 @@ export function computeRetryDelay(
     retryCount: number,
 ): number {
     // Browsers report an unsupported cache operation only through this text
-    // — there is no error code to check. Retrying such failures sooner than
-    // the cache backoff reliably hits the same wall.
+    // — there is no error code to check. Range requests are sent no-store,
+    // which removes the failure at the source; the marker is kept only so a
+    // residual cache refusal somewhere retries at the normal pace instead of
+    // parking the node for ten-second multiples.
     const isCacheError = errorMessage.includes(
         CACHE_UNSUPPORTED_MARKER,
     );

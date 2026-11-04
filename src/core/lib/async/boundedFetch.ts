@@ -35,6 +35,13 @@ export async function boundedFetch(
         /** Caller-owned cancellation (consumer removed, superseded batch...). */
         signal?: AbortSignal | undefined;
         method?: string | undefined;
+        /**
+         * Cache mode forwarded to fetch. Range requests want "no-store":
+         * each range is unique bytes, so caching re-uses nothing, and
+         * Chrome's disk cache intermittently fails ranged 206 responses
+         * outright (ERR_CACHE_OPERATION_NOT_SUPPORTED).
+         */
+        cache?: RequestCache | undefined;
     } = {},
 ): Promise<Response> {
     const controller = new AbortController();
@@ -45,6 +52,7 @@ export async function boundedFetch(
         return await fetch(url, {
             ...(init.headers !== undefined ? { headers: init.headers } : {}),
             ...(init.method !== undefined ? { method: init.method } : {}),
+            ...(init.cache !== undefined ? { cache: init.cache } : {}),
             signal: controller.signal,
         });
     } catch (error) {

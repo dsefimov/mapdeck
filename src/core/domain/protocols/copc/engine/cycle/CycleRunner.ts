@@ -12,13 +12,25 @@ export interface CycleInput {
  * FSM driver for request-cycle execution.
  * Collapses intermediate inputs: if a cycle is already running,
  * the latest pending input runs exactly once after it completes.
+ *
+ * A running cycle is also *superseded*: a new input aborts the current
+ * cycle's signal, whose only effect is ending its batch-drain wait early —
+ * loads keep running and the replacement cycle's `cancelStale` prunes them.
+ * Without the supersede, a camera change during a large batch waits for the
+ * whole batch to settle before the new view is even planned.
  */
 export class CycleRunner {
     private _state: LoopState = LoopState.Idle;
     private _pending: CycleInput | null = null;
-    private readonly _runCycle: (input: CycleInput) => Promise<void>;
+    private _currentAbort: AbortController | null = null;
+    private readonly _runCycle: (
+        input: CycleInput,
+        signal: AbortSignal,
+    ) => Promise<void>;
 
-    constructor(runCycle: (input: CycleInput) => Promise<void>) {
+    constructor(
+        runCycle: (input: CycleInput, signal: AbortSignal) => Promise<void>,
+    ) {
         this._runCycle = runCycle;
     }
 
@@ -28,6 +40,7 @@ export class CycleRunner {
             void this._runNext();
         } else {
             this._state = LoopState.Dirty;
+            this._currentAbort?.abort();
         }
     }
 
@@ -39,11 +52,17 @@ export class CycleRunner {
         this._state = LoopState.Running;
         const input = this._pending;
         this._pending = null;
+        const abort = new AbortController();
+        this._currentAbort = abort;
 
         try {
-            await this._runCycle(input);
+            await this._runCycle(input, abort.signal);
         } catch (error) {
             logger.error("CycleRunner: cycle failed:", error);
+        } finally {
+            if (this._currentAbort === abort) {
+                this._currentAbort = null;
+            }
         }
 
         // Re-read — _state may have been mutated by request() during the await.

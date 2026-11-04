@@ -212,8 +212,16 @@ export class NodeLoader {
      *
      * `onProgress` fires after each load settles while draining — the
      * progressive-render hook; it is cleared once the drain resolves.
+     *
+     * `signal` ends the wait early without touching the loads: a superseding
+     * cycle aborts the drain, and its own `cancelStale` prunes whatever the
+     * old batch left in flight. Loads still running keep their slots and
+     * settle normally into the cache.
      */
-    async drain(onProgress?: () => void): Promise<void> {
+    async drain(
+        onProgress?: () => void,
+        signal?: AbortSignal,
+    ): Promise<void> {
         this.requeueExpiredErrors();
         this.startPending();
 
@@ -224,8 +232,24 @@ export class NodeLoader {
         return new Promise<void>((resolve) => {
             this._drainResolve = resolve;
             this._onDrainProgress = onProgress ?? null;
+            if (signal) {
+                signal.addEventListener(
+                    "abort",
+                    () => this._resolveDrain(),
+                    { once: true },
+                );
+            }
             this._signalDrainCheck();
         });
+    }
+
+    /** Release the pending drain, if any — resolved by completion or abort. */
+    private _resolveDrain(): void {
+        const resolve = this._drainResolve;
+        if (!resolve) return;
+        this._drainResolve = null;
+        this._onDrainProgress = null;
+        resolve();
     }
 
     private _dispatch(node: CachedNode): void {
@@ -240,10 +264,7 @@ export class NodeLoader {
     private _signalDrainCheck(): void {
         if (!this._drainResolve) return;
         if (this._activeRequests === 0 && this._queue.size === 0) {
-            const resolve = this._drainResolve;
-            this._drainResolve = null;
-            this._onDrainProgress = null;
-            resolve();
+            this._resolveDrain();
         }
     }
 }

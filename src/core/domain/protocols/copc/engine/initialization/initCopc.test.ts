@@ -254,7 +254,7 @@ describe("openCopcSource", () => {
         copcMock.createdFrom = [];
     });
 
-    it("opens a URL source and resolves it onward unchanged", async () => {
+    it("opens a URL source: create gets our range getter, the URL resolves onward", async () => {
         givenCopc(copcStub());
 
         const { copc, resolvedSource } = await openCopcSource(
@@ -262,8 +262,12 @@ describe("openCopcSource", () => {
         );
 
         expect(copc).toBe(copcMock.stub);
+        // The header read goes through our bounded no-store getter — the
+        // bare URL would make copc.js fetch without a signal or ceiling.
+        expect(typeof copcMock.createdFrom[0]).toBe("function");
+        // Node loads rebuild per-load getters around the URL, so it stays
+        // the resolved source.
         expect(resolvedSource).toBe(SOURCE_URL);
-        expect(copcMock.createdFrom[0]).toBe(resolvedSource);
     });
 
     it("rejects an empty URL outright", async () => {

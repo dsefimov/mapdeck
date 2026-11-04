@@ -50,7 +50,10 @@ import { parseOctreeKey } from "./octree/octreeKey";
 
 import { initCopc } from "./initialization/initCopc";
 import type { CopcInit } from "./initialization/initCopc";
-import { createBoundedGetter } from "./initialization/boundedGetter";
+import {
+    createBoundedGetter,
+    createHttpRangeGetter,
+} from "./initialization/boundedGetter";
 import { CycleRunner } from "./cycle/CycleRunner";
 import { CycleExecutor } from "./cycle/CycleExecutor";
 import type { CycleState } from "./cycle/CycleExecutor";
@@ -157,7 +160,9 @@ export class CopcStreamingLoader {
         };
 
         this._eviction = new TileEvictionManager<CachedNode>();
-        this._cycleRunner = new CycleRunner((input) => this._runCycle(input));
+        this._cycleRunner = new CycleRunner((input, signal) =>
+            this._runCycle(input, signal),
+        );
         this._nodeLoader = new NodeLoader(
             this._nodeCache,
             options.maxConcurrentRequests,
@@ -265,7 +270,15 @@ export class CopcStreamingLoader {
             this._processSubtreeNodes(subtree);
         };
         this._hierarchyTracker = new HierarchyLoadTracker(
-            this._source,
+            // Hierarchy pages have no cancellation channel in copc.js, but
+            // they still go through our getter: no-store keeps the browser's
+            // disk cache from failing the ranged responses, plus a ceiling.
+            typeof this._source === "string"
+                ? createHttpRangeGetter(
+                      this._source,
+                      DEFAULT_RANGE_REQUEST_TIMEOUT_MS,
+                  )
+                : this._source,
             onNodesDiscovered,
         );
 
@@ -484,7 +497,10 @@ export class CopcStreamingLoader {
     /**
      * A single load cycle: delegates to CycleExecutor.
      */
-    private async _runCycle(input: CycleInput): Promise<void> {
+    private async _runCycle(
+        input: CycleInput,
+        supersedeSignal: AbortSignal,
+    ): Promise<void> {
         if (
             !this._isInitialized ||
             !this._rootHierarchyPage ||
@@ -495,8 +511,10 @@ export class CopcStreamingLoader {
         if (!this._geometricErrorByDepth) return;
         if (!this._hierarchyTracker) return;
 
-        await this._cycleExecutor.run(input, (retryInput) =>
-            this._requestCycle(retryInput),
+        await this._cycleExecutor.run(
+            input,
+            (retryInput) => this._requestCycle(retryInput),
+            supersedeSignal,
         );
     }
 

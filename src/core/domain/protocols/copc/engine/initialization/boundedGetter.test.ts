@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Getter } from "copc";
-import { createBoundedGetter } from "./boundedGetter";
+import {
+    createBoundedGetter,
+    createHttpRangeGetter,
+} from "./boundedGetter";
 
 const TIMEOUT_MS = 30_000;
 const URL = "https://example.com/cloud.copc.laz";
@@ -52,10 +55,13 @@ describe("createBoundedGetter over an HTTP source", () => {
 
         const [calledUrl, init] = fetchMock.mock.calls[0] as [
             string,
-            { headers: Record<string, string> },
+            { headers: Record<string, string>; cache?: RequestCache },
         ];
         expect(calledUrl).toBe(URL);
         expect(init.headers.Range).toBe("bytes=0-99");
+        // Range bytes are unique — the disk cache re-uses nothing, and a
+        // cached 206 can fail outright in Chrome. Never store ranges.
+        expect(init.cache).toBe("no-store");
     });
 
     it("returns the response body as bytes", async () => {
@@ -111,5 +117,52 @@ describe("createBoundedGetter over a buffer source", () => {
         expect(createBoundedGetter(source, new AbortController().signal, 1)).toBe(
             source,
         );
+    });
+});
+
+describe("createHttpRangeGetter", () => {
+    const fetchMock = vi.fn();
+
+    beforeEach(() => {
+        vi.stubGlobal("fetch", fetchMock);
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        fetchMock.mockReset();
+    });
+
+    it("sends the range, no-store and no caller signal", async () => {
+        fetchMock.mockImplementation(bodyFetch(new Uint8Array([1, 2, 3])));
+
+        await createHttpRangeGetter(URL, TIMEOUT_MS)(0, 100);
+
+        const [calledUrl, init] = fetchMock.mock.calls[0] as [
+            string,
+            {
+                headers: Record<string, string>;
+                cache?: RequestCache;
+                signal?: AbortSignal;
+            },
+        ];
+        expect(calledUrl).toBe(URL);
+        expect(init.headers.Range).toBe("bytes=0-99");
+        expect(init.cache).toBe("no-store");
+        // No per-load channel for the header/hierarchy reads: the ceiling is
+        // the only bound, and the getter must not fabricate a signal.
+        expect(init.signal).toBeDefined();
+    });
+
+    it("rejects with a timeout error when the server hangs", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementation(hangingFetch());
+
+        const loaded = expect(
+            createHttpRangeGetter(URL, TIMEOUT_MS)(0, 10),
+        ).rejects.toThrow(/timed out/);
+
+        vi.advanceTimersByTime(TIMEOUT_MS + 1);
+        await loaded;
+        vi.useRealTimers();
     });
 });

@@ -9,6 +9,8 @@ import { resolveUrl, createBufferGetter } from "./resolveSource";
 import { clampLatLng } from "../geometry/wgs84";
 import { extractProjcsFromWkt } from "../geometry/crs";
 import { metersPerDegreeAt } from "../geometry/geoMath";
+import { DEFAULT_RANGE_REQUEST_TIMEOUT_MS } from "../streamingConfig";
+import { createHttpRangeGetter } from "./boundedGetter";
 
 /**
  * Result of COPC initialization — everything needed for streaming operation.
@@ -39,10 +41,16 @@ export async function openCopcSource(
         if (!url) throw new Error("CopcStreamingLoader: Source URL is empty");
         let copc: CopcType;
         try {
-            copc = await Copc.create(url);
+            // The header read goes through our getter — copc.js's own would
+            // fetch without a signal, a timeout, or no-store.
+            copc = await Copc.create(
+                createHttpRangeGetter(url, DEFAULT_RANGE_REQUEST_TIMEOUT_MS),
+            );
         } catch (error: unknown) {
             throw resolveUrlError(error);
         }
+        // resolvedSource stays the URL: node loads rebuild per-load getters
+        // with their own cancellation around it.
         return { copc, resolvedSource: url };
     }
 
