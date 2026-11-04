@@ -126,6 +126,7 @@ interface CycleHarness {
     nodeCache: Map<string, CachedNode>;
     enqueueBatch: ReturnType<typeof vi.fn>;
     evictToBudget: ReturnType<typeof vi.fn>;
+    traversalRun: ReturnType<typeof vi.fn>;
 }
 
 /**
@@ -198,6 +199,7 @@ function createCycleHarness(): CycleHarness {
         nodeCache,
         enqueueBatch,
         evictToBudget,
+        traversalRun: services.traversal.run as ReturnType<typeof vi.fn>,
     };
 }
 
@@ -366,5 +368,63 @@ describe("CycleExecutor.refreshRender", () => {
         executor.refreshRender();
 
         expect(state.onPointsLoaded).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe("CycleExecutor.run — lazy hierarchy convergence", () => {
+    const INPUT = {
+        cameraSnapshot: createCamera(),
+        viewportBounds: [10, 10, 11, 11] as [number, number, number, number],
+    };
+
+    it("requests a follow-up cycle when the traversal fetched hierarchy pages", async () => {
+        const harness = createCycleHarness();
+        harness.traversalRun.mockResolvedValue({
+            candidates: [],
+            fallbacks: new Map(),
+            pendingHierarchyExpansions: ["1-0-0-0"],
+            priorityBounds: {},
+            expandedPages: 3,
+        });
+        const requestRetry = vi.fn();
+
+        await harness.executor.run(INPUT, requestRetry);
+
+        expect(requestRetry).toHaveBeenCalledTimes(1);
+        expect(requestRetry).toHaveBeenCalledWith(INPUT);
+    });
+
+    it("does not retry when discovery made no progress", async () => {
+        const harness = createCycleHarness();
+        harness.traversalRun.mockResolvedValue({
+            candidates: [],
+            fallbacks: new Map(),
+            pendingHierarchyExpansions: ["1-0-0-0"],
+            priorityBounds: {},
+            expandedPages: 0,
+        });
+        const requestRetry = vi.fn();
+
+        await harness.executor.run(INPUT, requestRetry);
+
+        expect(requestRetry).not.toHaveBeenCalled();
+    });
+
+    it("does not retry a superseded cycle — the newer input brings its own", async () => {
+        const harness = createCycleHarness();
+        harness.traversalRun.mockResolvedValue({
+            candidates: [],
+            fallbacks: new Map(),
+            pendingHierarchyExpansions: ["1-0-0-0"],
+            priorityBounds: {},
+            expandedPages: 3,
+        });
+        const requestRetry = vi.fn();
+        const aborted = new AbortController();
+        aborted.abort();
+
+        await harness.executor.run(INPUT, requestRetry, aborted.signal);
+
+        expect(requestRetry).not.toHaveBeenCalled();
     });
 });

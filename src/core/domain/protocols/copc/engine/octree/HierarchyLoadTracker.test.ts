@@ -67,14 +67,18 @@ describe("HierarchyLoadTracker", () => {
         expect(load).toHaveBeenCalledTimes(1);
     });
 
-    it("descends into the sub-pages a page points at", async () => {
+    it("loads exactly one page — descending is the caller's decision", async () => {
         load.mockResolvedValueOnce(
             subtree([FIRST_NODE], { [FIRST_NODE]: CHILD_PAGE }),
         ).mockResolvedValueOnce(subtree([SECOND_NODE]));
         const { instance, discovered } = tracker();
 
         await instance.ensureLoaded(ROOT_KEY, ROOT_PAGE);
+        expect(load).toHaveBeenCalledTimes(1);
+        expect(discovered).toEqual([[FIRST_NODE]]);
 
+        // The split pointer is recorded — the next expansion fetches it.
+        await instance.ensureLoaded(FIRST_NODE, instance.pageByKey.get(FIRST_NODE)!);
         expect(load).toHaveBeenCalledTimes(2);
         expect(discovered).toEqual([[FIRST_NODE], [SECOND_NODE]]);
     });
@@ -121,16 +125,28 @@ describe("HierarchyLoadTracker", () => {
         expect(discovered).toEqual([[FIRST_NODE]]);
     });
 
-    it("leaves a persistently failing root unloaded, so the next cycle can try again", async () => {
+    it("skips a persistently failing page once, and counts it as loaded", async () => {
+        load.mockRejectedValue(new Error("network"));
+        const { instance } = tracker();
+
+        await expect(instance.ensureLoaded(ROOT_KEY, ROOT_PAGE)).resolves.toBeUndefined();
+        // One attempt plus the built-in retry, then the branch is skipped.
+        expect(load).toHaveBeenCalledTimes(2);
+        await instance.ensureLoaded(ROOT_KEY, ROOT_PAGE);
+        expect(load).toHaveBeenCalledTimes(2);
+    });
+
+    it("propagates a double failure when the caller marks the page fatal", async () => {
         load.mockRejectedValue(new Error("network"));
         const { instance } = tracker();
 
         await expect(
-            instance.ensureLoaded(ROOT_KEY, ROOT_PAGE),
+            instance.ensureLoaded(ROOT_KEY, ROOT_PAGE, { fatal: true }),
         ).rejects.toThrow("network");
-        await expect(
-            instance.ensureLoaded(ROOT_KEY, ROOT_PAGE),
-        ).rejects.toThrow("network");
+        // The failed fatal key is not marked loaded — the next cycle retries.
+        load.mockResolvedValueOnce(subtree([FIRST_NODE]));
+        await instance.ensureLoaded(ROOT_KEY, ROOT_PAGE, { fatal: true });
+        expect(load).toHaveBeenCalledTimes(3);
     });
 
     it("fetches only the keys it has not already loaded", async () => {

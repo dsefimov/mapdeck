@@ -1,12 +1,18 @@
 /**
- * Idempotent hierarchy loading for COPC octree.
+ * Idempotent, lazy hierarchy loading for COPC octree.
  *
- * Guarantees that each hierarchy page is processed exactly once, even under
- * concurrent or overlapping requests. Uses two independent guard layers:
+ * Each `ensureLoaded` call fetches exactly ONE hierarchy page — never its
+ * descendants. A page's split pointers land in `pageByKey`, and the caller
+ * decides which subtrees to expand next (`TraversalOrchestrator` caps that
+ * pace per cycle), so the first points render after the root page instead
+ * of after a full-tree walk.
+ *
+ * Two independent guard layers keep every page processed exactly once, even
+ * under concurrent or overlapping requests:
  *
  * 1. **Top-level key** — concurrent `ensureLoaded(key)` calls share one in-flight
  *    Promise. Second caller awaits the same result instead of initiating a
- *    duplicate traversal.
+ *    duplicate fetch.
  *
  * 2. **Per-node key** (`_registeredNodeKeys`) — even if two different top-level
  *    expansions load overlapping hierarchy pages (common in octrees where sibling
@@ -21,8 +27,13 @@ import { logger } from "@core/lib/logger";
 /** Callback invoked when new nodes are discovered. Receives only the fresh (not-yet-registered) nodes. */
 export type OnNodesDiscovered = (subtree: Hierarchy.Subtree) => void;
 
+/** `fatal: true` propagates a double-failed fetch — the root page must throw. */
+export interface EnsureLoadedOptions {
+    fatal?: boolean;
+}
+
 export class HierarchyLoadTracker {
-    /** Top-level keys whose hierarchy has been fully loaded. */
+    /** Top-level keys whose page has been loaded. */
     private _loadedKeys = new Set<string>();
     /** In-flight Promises by top-level key — concurrent calls share the same Promise. */
     private _inFlight = new Map<string, Promise<void>>();
@@ -42,10 +53,16 @@ export class HierarchyLoadTracker {
     ) {}
 
     /**
-     * Load the hierarchy for a top-level key. Idempotent: subsequent calls
-     * with the same key return the already-resolved (or in-flight) Promise.
+     * Load the hierarchy page for a top-level key — one page, no descent.
+     * Idempotent: subsequent calls with the same key return the already
+     * resolved (or in-flight) Promise. Without `fatal`, a page that fails
+     * twice is skipped with a warning and still counts as loaded.
      */
-    async ensureLoaded(key: string, rootPage: Hierarchy.Page): Promise<void> {
+    async ensureLoaded(
+        key: string,
+        page: Hierarchy.Page,
+        opts: EnsureLoadedOptions = {},
+    ): Promise<void> {
         if (this._loadedKeys.has(key)) return;
 
         const existing = this._inFlight.get(key);
@@ -55,18 +72,23 @@ export class HierarchyLoadTracker {
             return;
         }
 
-        const promise = this._loadRecursive(rootPage, true).finally(() => {
-            this._inFlight.delete(key);
-        });
+        const promise = this._loadPage(page, opts.fatal === true)
+            .then((subtree) => {
+                if (subtree) this._registerNodesOnce(subtree);
+            })
+            .finally(() => {
+                this._inFlight.delete(key);
+            });
         this._inFlight.set(key, promise);
         await promise;
         this._loadedKeys.add(key);
     }
 
     /**
-     * Load hierarchy for multiple top-level keys. Each key is independently
-     * idempotent. Returns the number of keys that were NOT previously loaded
-     * (i.e., actually fetched this call).
+     * Load hierarchy pages for multiple top-level keys — one page each,
+     * independently idempotent. Returns the number of keys that were NOT
+     * previously loaded (i.e., actually fetched this call): zero means no
+     * progress is possible and the caller should stop re-running.
      */
     async ensureLoadedMany(
         keys: string[],
@@ -78,7 +100,9 @@ export class HierarchyLoadTracker {
         if (unloaded.length === 0) return 0;
 
         await Promise.all(
-            unloaded.map((key) => this.ensureLoaded(key, rootPages.get(key)!)),
+            unloaded.map((key) =>
+                this.ensureLoaded(key, rootPages.get(key)!),
+            ),
         );
         return unloaded.length;
     }
@@ -91,35 +115,21 @@ export class HierarchyLoadTracker {
         this.pageByKey.clear();
     }
 
-    private async _loadRecursive(
-        page: Hierarchy.Page,
-        isRoot: boolean,
-    ): Promise<void> {
-        const subtree = await this._loadPage(page, isRoot);
-        if (!subtree) return;
-        this._registerNodesOnce(subtree);
-
-        const childPages = Object.values(subtree.pages).filter(
-            Boolean,
-        ) as Hierarchy.Page[];
-        await this._loadChildren(childPages);
-    }
-
     /**
-     * One page fetch with a single retry. The root page still throws —
-     * nothing works without it — but a deep page that fails twice is
-     * skipped with a warning: one dead branch must not cap the discovery
+     * One page fetch with a single retry. A fatal page (the root) still
+     * throws — nothing works without it — but a deep page that fails twice
+     * is skipped with a warning: one dead branch must not cap the discovery
      * depth for the rest of the tree forever.
      */
     private async _loadPage(
         page: Hierarchy.Page,
-        isRoot: boolean,
+        fatal: boolean,
     ): Promise<Hierarchy.Subtree | null> {
         for (let attempt = 0; attempt < 2; attempt++) {
             try {
                 return await Hierarchy.load(this._source, page);
             } catch (error) {
-                if (isRoot && attempt === 1) throw error;
+                if (fatal && attempt === 1) throw error;
                 if (attempt === 1) {
                     logger.warn(
                         `Hierarchy page load failed twice, skipping branch: ` +
@@ -130,18 +140,6 @@ export class HierarchyLoadTracker {
             }
         }
         return null;
-    }
-
-    /** Breadth-capped recursion — one page can fan out into dozens. */
-    private async _loadChildren(pages: Hierarchy.Page[]): Promise<void> {
-        const WIDTH = 8;
-        for (let i = 0; i < pages.length; i += WIDTH) {
-            await Promise.all(
-                pages
-                    .slice(i, i + WIDTH)
-                    .map((p) => this._loadRecursive(p, false)),
-            );
-        }
     }
 
     /**

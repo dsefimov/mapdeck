@@ -134,6 +134,18 @@ export class CycleExecutor {
 
         this._updateRenderAndNotify();
 
+        // A superseded cycle must not queue its own retry: the superseding
+        // input already carries a newer camera.
+        if (supersedeSignal?.aborted) return;
+
+        // Lazy discovery: pages fetched for expansions mean deeper nodes may
+        // now be reachable — one more cycle with the same camera converges
+        // the tree without waiting for user movement.
+        if (traversalResult.expandedPages > 0) {
+            requestRetry(input);
+            return;
+        }
+
         if (
             shouldRetryAfterTruncation(
                 finalToLoad.length,
@@ -168,9 +180,13 @@ export class CycleExecutor {
     }
 
     private async _prepareCycle(): Promise<void> {
+        // One page, not the whole tree: the root page carries the first
+        // levels, deeper splits expand lazily per traversal cycle. A failed
+        // root page is fatal — nothing downstream can work without it.
         await this._services.hierarchyTracker.ensureLoaded(
             "0-0-0-0",
             this._services.rootHierarchyPage,
+            { fatal: true },
         );
     }
 

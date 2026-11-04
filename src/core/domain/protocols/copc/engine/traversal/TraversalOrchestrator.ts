@@ -13,6 +13,12 @@ const MAX_HIERARCHY_EXPANSIONS = 32;
 /** Result of one octree traversal — the return of {@link traverseOctree}. */
 export type TraversalResult = ReturnType<typeof traverseOctree>;
 
+/** Traversal result plus how many hierarchy pages this run had to fetch. */
+export type OrchestratedTraversal = TraversalResult & {
+    /** Pages actually fetched for pending expansions — zero means discovery is done. */
+    expandedPages: number;
+};
+
 /** Dependencies needed by TraversalOrchestrator. */
 export interface TraversalDeps {
     nodeCache: Map<string, CachedNode>;
@@ -50,8 +56,9 @@ export class TraversalOrchestrator {
         });
     }
 
-    async run(input: TraversalInput): Promise<TraversalResult> {
-        let result = this.runTraversal(input);
+    async run(input: TraversalInput): Promise<OrchestratedTraversal> {
+        let result: TraversalResult = this.runTraversal(input);
+        let expandedPages = 0;
 
         if (result.pendingHierarchyExpansions.length > 0) {
             const expansions = result.pendingHierarchyExpansions.slice(
@@ -70,12 +77,13 @@ export class TraversalOrchestrator {
                 expansions.filter((k) => rootPages.has(k)),
                 rootPages,
             );
+            expandedPages = loaded;
 
             if (loaded > 0 || this._deps.nodeCache.size > cacheSizeBefore) {
                 result = this.runTraversal(input);
             }
         }
 
-        return result;
+        return { ...result, expandedPages };
     }
 }
