@@ -4,27 +4,9 @@
  * in, RGBA Uint8 buffers out. No state, no side effects.
  */
 
-/** LAS classification code → RGB palette; unknown codes fall back to gray. */
-const CLASSIFICATION_COLORS: Record<number, [number, number, number]> = {
-    0: [128, 128, 128],
-    1: [128, 128, 128],
-    2: [165, 113, 78],
-    3: [144, 238, 144],
-    4: [34, 139, 34],
-    5: [0, 100, 0],
-    6: [255, 165, 0],
-    7: [255, 0, 0],
-    8: [128, 128, 128],
-    9: [0, 0, 255],
-    10: [139, 90, 43],
-    11: [128, 128, 128],
-    13: [255, 255, 0],
-    14: [255, 200, 0],
-    15: [200, 200, 0],
-    16: [100, 100, 100],
-    17: [0, 128, 255],
-    18: [255, 0, 255],
-};
+// Deep import: this module is bundled into the inline decode worker, so
+// it must not pull the whole contracts barrel into the worker blob.
+import { classificationColor } from "@core/contracts/domain/point-cloud";
 
 /** Bounds tuple layout used by the streaming engine. */
 export type GlobalBounds =
@@ -117,9 +99,7 @@ export function deriveClassificationColors(
     const colors = new Uint8Array(n * 4);
     for (let i = 0; i < n; i++) {
         const off = i * 4;
-        const rgb = CLASSIFICATION_COLORS[classifications[i]!] ?? [
-            128, 128, 128,
-        ];
+        const rgb = classificationColor(classifications[i]!);
         colors[off] = rgb[0];
         colors[off + 1] = rgb[1];
         colors[off + 2] = rgb[2];

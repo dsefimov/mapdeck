@@ -22,6 +22,24 @@ export function setColorScheme(
 }
 
 /**
+ * Immutable update: sets the hidden point classification codes in
+ * metadata. Codes are deduplicated and sorted so that equal sets always
+ * produce structurally equal styles.
+ */
+export function setHiddenClassifications(
+    style: LayerStyle,
+    codes: readonly number[],
+): LayerStyle {
+    return {
+        ...style,
+        metadata: {
+            ...style.metadata,
+            hiddenClassifications: [...new Set(codes)].sort((a, b) => a - b),
+        },
+    };
+}
+
+/**
  * Immutable update: sets one opacity across every vector paint channel —
  * fill, line and circle — so a style change never leaves the channels
  * disagreeing. Other paint properties pass through untouched.

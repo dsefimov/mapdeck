@@ -3,6 +3,7 @@ import {
     setRasterOpacity,
     setPointSize,
     setColorScheme,
+    setHiddenClassifications,
     setUniformVectorOpacity,
 } from "./styleMutators";
 import { layerStyle } from "./__testFactories";
@@ -102,6 +103,47 @@ describe("setColorScheme", () => {
         const style = layerStyle({ metadata: { colorScheme: "viridis" } });
         setColorScheme(style, "plasma");
         expect(style.metadata).toEqual({ colorScheme: "viridis" });
+    });
+});
+
+describe("setHiddenClassifications", () => {
+    it("sets hiddenClassifications in metadata on a style with no metadata", () => {
+        const style = layerStyle();
+        const result = setHiddenClassifications(style, [2, 6]);
+        expect(result.metadata).toEqual({ hiddenClassifications: [2, 6] });
+    });
+
+    it("overwrites existing hiddenClassifications", () => {
+        const style = layerStyle({
+            metadata: { hiddenClassifications: [2] },
+        });
+        const result = setHiddenClassifications(style, [6]);
+        expect(result.metadata).toEqual({ hiddenClassifications: [6] });
+    });
+
+    it("deduplicates and sorts codes so equal sets compare structurally equal", () => {
+        const style = layerStyle();
+        const a = setHiddenClassifications(style, [6, 2, 6]);
+        const b = setHiddenClassifications(style, [2, 6]);
+        expect(a.metadata).toEqual({ hiddenClassifications: [2, 6] });
+        expect(a.metadata).toEqual(b.metadata);
+    });
+
+    it("preserves other metadata fields", () => {
+        const style = layerStyle({ metadata: { colorScheme: "rgb" } });
+        const result = setHiddenClassifications(style, []);
+        expect(result.metadata).toEqual({
+            colorScheme: "rgb",
+            hiddenClassifications: [],
+        });
+    });
+
+    it(NO_MUTATION, () => {
+        const style = layerStyle({
+            metadata: { hiddenClassifications: [2] },
+        });
+        setHiddenClassifications(style, [6]);
+        expect(style.metadata).toEqual({ hiddenClassifications: [2] });
     });
 });
 

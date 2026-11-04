@@ -26,6 +26,7 @@ import { CopcStreamingLoader } from "../engine/CopcStreamingLoader";
 import { ViewportManager } from "../engine/ViewportManager";
 import { createPointCloudLayer } from "./PointCloudLayerFactory";
 import { styleNumber } from "../../logic/styleValues";
+import { resolveHiddenClassifications } from "../logic/classificationFilter";
 
 /** Deck layer type through the port — the protocol names no deck import. */
 type DeckLayer = Parameters<MapContext["overlayManager"]["addLayer"]>[1];
@@ -156,6 +157,15 @@ export class PointCloudAdapter
                 loader.switchScheme(initialScheme);
             }
 
+            // Same convergence for a pre-hidden class set: it must be in
+            // place before the first frame, not only after a config change.
+            const initialHidden = toHiddenSet(
+                state.config.hiddenClassifications,
+            );
+            if (initialHidden.size > 0) {
+                loader.setHiddenClassifications(initialHidden);
+            }
+
             loader.setOnPointsLoaded((frame: PointCloudFrame) => {
                 state.frame = frame;
                 this._updateDeckLayer(layerId, overlayManager);
@@ -250,8 +260,7 @@ export class PointCloudAdapter
         "opacity",
         "intensityMin",
         "intensityMax",
-        "classificationFilter",
-        "filterByClassification",
+        "hiddenClassifications",
     ]);
 
     updateConfig(renderUnit: RenderUnit, ctx: MapContext): void {
@@ -267,27 +276,7 @@ export class PointCloudAdapter
         state.config = config;
 
         if (this._canUpdateInPlace(prevConfig, config)) {
-            if (prevConfig.colorScheme !== config.colorScheme) {
-                state.loader.switchScheme(
-                    (config.colorScheme as ColorScheme) ?? ColorScheme.RGB,
-                );
-            }
-            // In-place update instead of destroy+create: keeps in-flight
-            // loads alive and avoids the abort cascade. Before the first
-            // points arrive there is no deck layer to update — state.config
-            // is already stored, so the next data push builds with it.
-            if (!state.pushedBase && !state.pushedIncoming) return;
-
-            // Visual-only props: patch the layers in place — the data
-            // objects stay untouched, so deck keeps its GPU buffers.
-            try {
-                this._applyVisualProps(layerId, config, ctx);
-            } catch (error) {
-                logger.error(
-                    `PointCloudAdapter: failed to apply visual update for layer "${layerId}":`,
-                    error,
-                );
-            }
+            this._updateInPlace(renderUnit, state, prevConfig, ctx);
         } else {
             const wasHidden = state.visible === false;
             this.removeFromMap(layerId, ctx);
@@ -296,6 +285,52 @@ export class PointCloudAdapter
                 const state = this._layers.get(layerId);
                 if (state) state.visible = false;
             }
+        }
+    }
+
+    /**
+     * In-place update instead of destroy+create: keeps in-flight loads
+     * alive and avoids the abort cascade. Before the first points arrive
+     * there is no deck layer to update — state.config is already stored,
+     * so the next data push builds with it.
+     */
+    private _updateInPlace(
+        renderUnit: RenderUnit,
+        state: PointCloudLayerState,
+        prevConfig: Record<string, unknown>,
+        ctx: MapContext,
+    ): void {
+        const { id: layerId } = renderUnit;
+        const { config } = renderUnit.descriptor;
+
+        if (prevConfig.colorScheme !== config.colorScheme) {
+            state.loader.switchScheme(
+                (config.colorScheme as ColorScheme) ?? ColorScheme.RGB,
+            );
+        }
+        if (
+            !comparer.structural(
+                prevConfig.hiddenClassifications,
+                config.hiddenClassifications,
+            )
+        ) {
+            state.loader.setHiddenClassifications(
+                toHiddenSet(config.hiddenClassifications),
+            );
+        }
+
+        // Before the first points arrive there is no deck layer to patch.
+        if (!state.pushedBase && !state.pushedIncoming) return;
+
+        // Visual-only props: patch the layers in place — the data
+        // objects stay untouched, so deck keeps its GPU buffers.
+        try {
+            this._applyVisualProps(layerId, config, ctx);
+        } catch (error) {
+            logger.error(
+                `PointCloudAdapter: failed to apply visual update for layer "${layerId}":`,
+                error,
+            );
         }
     }
 
@@ -496,4 +531,12 @@ export function absolutizeWasmUrl(url: string, base?: string): string {
     } catch {
         return url;
     }
+}
+
+/**
+ * Config value → hidden-code set for the loader. Validation runs again at
+ * this crossing: the config object arrives as an untyped record.
+ */
+function toHiddenSet(value: unknown): ReadonlySet<number> {
+    return new Set(resolveHiddenClassifications(value));
 }

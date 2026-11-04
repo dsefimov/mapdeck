@@ -16,6 +16,7 @@ export {
     setRasterOpacity,
     setPointSize,
     setColorScheme,
+    setHiddenClassifications,
     setUniformVectorOpacity,
 } from "./logic/structure/styleMutators";
 export { reconcileTree } from "./logic/operations/reconcileTree";

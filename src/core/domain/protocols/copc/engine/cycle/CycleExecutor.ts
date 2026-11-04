@@ -59,6 +59,11 @@ export interface CycleState {
     maxDepthInHierarchy: number;
     effectiveBaseline: EffectiveBaseline;
     activeScheme: ColorScheme;
+    /**
+     * Classification codes excluded from packing. The set's identity is the
+     * render's staleness input — it is replaced only when the codes change.
+     */
+    hiddenClassifications: ReadonlySet<number>;
     onPointsLoaded: ((frame: PointCloudFrame) => void) | null;
 }
 
@@ -281,22 +286,24 @@ export class CycleExecutor {
         visibleKeys: string[],
         commit: boolean,
     ): PointCloudFrame | null {
-        const meta = {
-            coordinateOrigin: this._services.coordinateOrigin,
-            bounds: this._services.bounds,
+        const ctx = {
+            scheme: this._state.activeScheme,
+            meta: {
+                coordinateOrigin: this._services.coordinateOrigin,
+                bounds: this._services.bounds,
+            },
+            hidden: this._state.hiddenClassifications,
         };
         return commit
             ? this._services.renderPool.commit(
                   visibleKeys,
                   this._services.nodeCache,
-                  this._state.activeScheme,
-                  meta,
+                  ctx,
               )
             : this._services.renderPool.build(
                   visibleKeys,
                   this._services.nodeCache,
-                  this._state.activeScheme,
-                  meta,
+                  ctx,
               );
     }
 

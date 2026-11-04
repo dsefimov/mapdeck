@@ -2,6 +2,7 @@ import type { StoreRegistry } from "@core/store-registry";
 import { registerRasterOpacityTool } from "./raster-opacity/components/Tool";
 import { registerPointSizeTool } from "./point-size-slider/components/Tool";
 import { registerPointColorSchemeTool } from "./point-color-scheme/components/Tool";
+import { registerPointClassificationFilterTool } from "./point-classification-filter/components/Tool";
 import { registerViewAttributeTableTool } from "./view-attribute-table/components/Tool";
 import { registerVectorColorPickerTool } from "./vector-color-picker/components/Tool";
 
@@ -14,6 +15,7 @@ export async function registerTools(rootStore: StoreRegistry): Promise<void> {
     registerRasterOpacityTool(rootStore);
     registerPointSizeTool(rootStore);
     registerPointColorSchemeTool(rootStore);
+    registerPointClassificationFilterTool(rootStore);
     registerVectorColorPickerTool(rootStore);
     registerViewAttributeTableTool(rootStore);
 }

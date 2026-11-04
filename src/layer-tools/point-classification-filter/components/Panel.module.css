@@ -1,0 +1,42 @@
+/*
+ * Local layout per the tool-tokens ownership rule: the scrollable class
+ * list and the read-only swatch have a single consumer — this tool. Theme
+ * tokens cover every color and spacing; the scroll cap has no token and
+ * follows the select panel's rem convention (font-size aware).
+ */
+.list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    /* A full LAS table runs long — the menu must not grow with it. */
+    max-height: 15rem;
+    overflow-y: auto;
+}
+
+.row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+}
+
+.rowLabel {
+    /* The label stretches so the checkbox hugs the far edge. */
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.swatch {
+    flex: none;
+    width: var(--space-12);
+    height: var(--space-12);
+    border-radius: var(--radius-xs);
+    border: var(--border-sm) solid var(--color-border);
+}
+
+.empty {
+    padding: var(--space-8) 0;
+}

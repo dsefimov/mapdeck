@@ -88,6 +88,7 @@ function createHarness(keys: string[] = [ROOT_KEY]): Harness {
         maxDepthInHierarchy: 0,
         effectiveBaseline: { maxScreenErrorPx: 2, pointBudget: 1_000_000 },
         activeScheme: ColorScheme.RGB,
+        hiddenClassifications: new Set(),
         onPointsLoaded: null,
     };
 
@@ -203,6 +204,7 @@ function createCycleHarness(): CycleHarness {
         maxDepthInHierarchy: 0,
         effectiveBaseline: { maxScreenErrorPx: 2, pointBudget: POINT_BUDGET },
         activeScheme: ColorScheme.RGB,
+        hiddenClassifications: new Set(),
         onPointsLoaded: null,
     };
 
@@ -370,8 +372,7 @@ describe("CycleExecutor.refreshRender", () => {
         expect(renderPool.build).toHaveBeenCalledWith(
             [ROOT_KEY],
             expect.any(Map),
-            ColorScheme.ELEVATION,
-            expect.anything(),
+            expect.objectContaining({ scheme: ColorScheme.ELEVATION }),
         );
         expect(state.onPointsLoaded).toHaveBeenCalledTimes(1);
     });
@@ -440,8 +441,7 @@ describe("CycleExecutor.refreshRender", () => {
         expect(renderPool.build).toHaveBeenLastCalledWith(
             [ROOT_KEY],
             expect.any(Map),
-            ColorScheme.ELEVATION,
-            expect.anything(),
+            expect.objectContaining({ scheme: ColorScheme.ELEVATION }),
         );
     });
 

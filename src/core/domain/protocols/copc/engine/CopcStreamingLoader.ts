@@ -159,6 +159,7 @@ export class CopcStreamingLoader {
                 pointBudget: DEFAULT_POINT_BUDGET,
             },
             activeScheme: ColorScheme.RGB,
+            hiddenClassifications: new Set(),
             onPointsLoaded: null,
         };
 
@@ -564,6 +565,19 @@ export class CopcStreamingLoader {
     }
 
     /**
+     * Swaps the hidden-classification set and forces a recommit: hidden
+     * classes leave the packed render bytes, so picking and measures lose
+     * them along with the renderer. Colors are unaffected — no recolor
+     * pass is needed. Same codes are a no-op (the set's identity is the
+     * render's staleness input and must not churn).
+     */
+    setHiddenClassifications(codes: ReadonlySet<number>): void {
+        if (sameCodeSet(this._cycleState.hiddenClassifications, codes)) return;
+        this._cycleState.hiddenClassifications = codes;
+        this._cycleExecutor?.refreshRender(true);
+    }
+
+    /**
      * Flips the active scheme and derives missing buffers on demand: visible
      * nodes recolor first, then a single frame is pushed; the rest of the
      * cache fills in the background. Nodes already holding the target buffer
@@ -668,4 +682,17 @@ function buildCachedNode(
         bounds: nodeBounds.bounds,
         boundsWgs84: nodeBounds.boundsWgs84,
     };
+}
+
+/**
+ * Content equality for classification-code sets (≤ 256 codes, so the
+ * pairwise walk is trivial): guards the hidden-set identity — the render's
+ * staleness input — from churning on same-content replacements.
+ */
+function sameCodeSet(a: ReadonlySet<number>, b: ReadonlySet<number>): boolean {
+    if (a.size !== b.size) return false;
+    for (const code of a) {
+        if (!b.has(code)) return false;
+    }
+    return true;
 }

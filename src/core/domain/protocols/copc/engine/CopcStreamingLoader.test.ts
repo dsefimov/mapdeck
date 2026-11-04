@@ -188,6 +188,52 @@ describe("CopcStreamingLoader.switchScheme before initialization", () => {
     });
 });
 
+describe("CopcStreamingLoader.setHiddenClassifications", () => {
+    it("records the set before initialization without touching the executor", () => {
+        const loader = new CopcStreamingLoader(
+            SOURCE_URL,
+            { maxConcurrentRequests: 4, maxOctreeDepth: 20 },
+            WASM_URL,
+        );
+
+        loader.setHiddenClassifications(new Set([6]));
+
+        expect(
+            internals(loader)["_cycleState"].hiddenClassifications.has(6),
+        ).toBe(true);
+    });
+
+    it("swaps the set and forces a recommit", async () => {
+        const loader = await makeInitializedLoader();
+        const executor = internals(loader)["_cycleExecutor"]!;
+        const refresh = vi.spyOn(executor, "refreshRender");
+
+        loader.setHiddenClassifications(new Set([2, 6]));
+
+        expect(
+            internals(loader)["_cycleState"].hiddenClassifications,
+        ).toEqual(new Set([2, 6]));
+        expect(refresh).toHaveBeenCalledWith(true);
+    });
+
+    it("keeps the set instance for same codes — identity is the render's staleness input", async () => {
+        const loader = await makeInitializedLoader();
+        const state = internals(loader)["_cycleState"];
+        const executor = internals(loader)["_cycleExecutor"]!;
+        const refresh = vi.spyOn(executor, "refreshRender");
+
+        loader.setHiddenClassifications(new Set([2]));
+        const committed = state.hiddenClassifications;
+        expect(refresh).toHaveBeenCalledTimes(1);
+
+        loader.setHiddenClassifications(new Set([2]));
+
+        expect(state.hiddenClassifications).toBe(committed);
+        // Same content — no second forced recommit.
+        expect(refresh).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe("CopcStreamingLoader.initialize", () => {
     it("resolves the cloud metadata once the init pipeline settles", async () => {
         const loader = new CopcStreamingLoader(

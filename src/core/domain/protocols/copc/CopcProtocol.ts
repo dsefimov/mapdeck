@@ -9,6 +9,7 @@ import { resolveStyle } from "../logic/resolveStyle";
 import { styleNumber } from "../logic/styleValues";
 import { COPC_PROTOCOL_ID } from "./types";
 import { resolveColorScheme } from "./logic/colorScheme";
+import { resolveHiddenClassifications } from "./logic/classificationFilter";
 import { PointCloudAdapter } from "./adapter";
 
 /** Render config for a COPC layer — style-derived, consumed by the point-cloud adapter. */
@@ -18,6 +19,8 @@ type CopcConfig = {
     pointSize?: number;
     colorScheme?: ColorScheme;
     opacity?: number;
+    /** LAS classification codes excluded from rendering and picking. */
+    hiddenClassifications?: number[];
 };
 
 /** Protocol for COPC point clouds: translates a layer style into a {@link CopcConfig}. */
@@ -58,6 +61,9 @@ export class CopcProtocol implements Protocol<CopcConfig> {
                 opacity: styleNumber(
                     mergedStyle.paint?.["circle-opacity"],
                     1.0,
+                ),
+                hiddenClassifications: resolveHiddenClassifications(
+                    mergedStyle.metadata?.hiddenClassifications,
                 ),
             },
         };

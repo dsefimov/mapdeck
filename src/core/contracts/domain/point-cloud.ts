@@ -65,6 +65,35 @@ export enum ColorScheme {
     CLASSIFICATION = "classification",
 }
 
+/** LAS classification code → display color; unknown codes fall back to gray. */
+const CLASSIFICATION_COLORS: Record<number, [number, number, number]> = {
+    0: [128, 128, 128],
+    1: [128, 128, 128],
+    2: [165, 113, 78],
+    3: [144, 238, 144],
+    4: [34, 139, 34],
+    5: [0, 100, 0],
+    6: [255, 165, 0],
+    7: [255, 0, 0],
+    8: [128, 128, 128],
+    9: [0, 0, 255],
+    10: [139, 90, 43],
+    11: [128, 128, 128],
+    13: [255, 255, 0],
+    14: [255, 200, 0],
+    15: [200, 200, 0],
+    16: [100, 100, 100],
+    17: [0, 128, 255],
+    18: [255, 0, 255],
+};
+
+/** Display color of a LAS classification code — gray for unknown codes. */
+export function classificationColor(
+    code: number,
+): readonly [number, number, number] {
+    return CLASSIFICATION_COLORS[code] ?? [128, 128, 128];
+}
+
 /**
  * One render frame of a streaming cloud: a committed base plus the nodes
  * streamed since that commit. The base object keeps its reference between
