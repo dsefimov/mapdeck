@@ -31,6 +31,7 @@ import {
     DEFAULT_MAX_SCREEN_ERROR_PX,
     DEFAULT_RANGE_REQUEST_TIMEOUT_MS,
     DEFAULT_WORKER_REQUEST_TIMEOUT_MS,
+    DEFAULT_DECODED_CACHE_BYTES,
 } from "./streamingConfig";
 import type { EffectiveBaseline } from "./streamingConfig";
 import { HierarchyLoadTracker } from "./octree/HierarchyLoadTracker";
@@ -39,6 +40,7 @@ import { octreeCellBounds } from "./octree/cellBounds";
 import type { CameraSnapshot } from "./geometry";
 
 import { TileEvictionManager } from "./eviction/TileEvictionManager";
+import { DecodedNodeCache } from "./eviction/DecodedNodeCache";
 import {
     type NodeBBoxEntry,
     toNodeBBoxEntry,
@@ -126,6 +128,8 @@ export class CopcStreamingLoader {
     private _priorityStates = new WeakMap<CachedNode, PriorityState>();
 
     private _eviction: TileEvictionManager<CachedNode>;
+    /** Evicted nodes land here instead of being dropped — see C.2. */
+    private readonly _decodedCache: DecodedNodeCache;
 
     /** Derives lazily-requested scheme buffers for loaded nodes. */
     private _colorizer: SchemeColorizer | null = null;
@@ -158,7 +162,12 @@ export class CopcStreamingLoader {
             onPointsLoaded: null,
         };
 
-        this._eviction = new TileEvictionManager<CachedNode>();
+        this._decodedCache = new DecodedNodeCache(
+            options.decodedCacheBytes ?? DEFAULT_DECODED_CACHE_BYTES,
+        );
+        this._eviction = new TileEvictionManager<CachedNode>((node) =>
+            this._decodedCache.salvage(node),
+        );
         this._cycleRunner = new CycleRunner((input, signal) =>
             this._runCycle(input, signal),
         );
@@ -373,6 +382,32 @@ export class CopcStreamingLoader {
             const copc = this._copc;
             if (!copc) return;
 
+            // A salvaged payload skips the network and the decode alike —
+            // the zoom swing that evicted this node paid for them already.
+            const salvaged = this._decodedCache.take(
+                node.key,
+                node.pointCount,
+            );
+            if (salvaged) {
+                if (node.state !== "loading") return;
+                node.positions = salvaged.positions;
+                node.colorsRgb = salvaged.colorsRgb;
+                node.intensities = salvaged.intensities;
+                node.classifications = salvaged.classifications;
+                if (salvaged.colorsElevation) {
+                    node.colorsElevation = salvaged.colorsElevation;
+                }
+                if (salvaged.colorsIntensity) {
+                    node.colorsIntensity = salvaged.colorsIntensity;
+                }
+                if (salvaged.colorsClassification) {
+                    node.colorsClassification =
+                        salvaged.colorsClassification;
+                }
+                this._settleLoadedNode(node);
+                return;
+            }
+
             // The main thread only fetches the node's compressed bytes —
             // decode, extraction, reprojection and colors all run in the
             // worker job. This is the same single range request
@@ -400,16 +435,21 @@ export class CopcStreamingLoader {
                 return;
             }
 
-            node.state = "loaded";
-            clearRetryState(node);
-            this._cycleState.totalLoadedNodes++;
-            this._eviction.touch(node);
-            this._recolorToActiveScheme(node);
+            this._settleLoadedNode(node);
         } catch (error) {
             this._handleLoadError(node, error);
         } finally {
             this._nodeLoader.onLoadSettled();
         }
+    }
+
+    /** The post-load tail shared by fresh loads and cache restores. */
+    private _settleLoadedNode(node: CachedNode): void {
+        node.state = "loaded";
+        clearRetryState(node);
+        this._cycleState.totalLoadedNodes++;
+        this._eviction.touch(node);
+        this._recolorToActiveScheme(node);
     }
 
     /**
@@ -613,6 +653,7 @@ export class CopcStreamingLoader {
         }
         this._nodeCache.clear();
         this._hierarchyTracker?.clear();
+        this._decodedCache.clear();
     }
 }
 

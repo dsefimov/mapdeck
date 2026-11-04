@@ -25,6 +25,13 @@ export const DEFAULT_WORKER_REQUEST_TIMEOUT_MS = 20_000;
  */
 export const DEFAULT_MAX_OCTREE_DEPTH = 20;
 
+/**
+ * Default byte budget of the decoded-node LRU (`decodedCacheBytes`).
+ * 256 MiB ≈ one extra full view of a large cloud — enough to ride out a
+ * zoom swing without a refetch.
+ */
+export const DEFAULT_DECODED_CACHE_BYTES = 256 * 1024 * 1024;
+
 /** Runtime-adjustable baseline for SSE-based LOD (maxScreenErrorPx, pointBudget). */
 export interface EffectiveBaseline {
     pointBudget: number;

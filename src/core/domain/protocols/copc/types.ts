@@ -31,6 +31,13 @@ export interface StreamingLoaderOptions {
      * Lower = more aggressive eviction, less re-loading thrash.
      */
     evictionThresholdRatio?: number;
+
+    /**
+     * Byte budget of the decoded-node LRU: evicted nodes land there instead
+     * of being dropped, so a revisit restores them without a refetch.
+     * 0 disables the cache. Default: 256 MiB.
+     */
+    decodedCacheBytes?: number;
 }
 
 /**

@@ -168,3 +168,67 @@ describe("CopcStreamingLoader._loadNode settle races", () => {
         expect(node.retryAt).toBeGreaterThan(0);
     });
 });
+
+describe("CopcStreamingLoader decoded-node LRU", () => {
+    type LoaderWithEviction = {
+        _eviction: {
+            touch: (n: CachedNode) => void;
+            markStartOfRenderFrame: () => void;
+            evictToBudget: (ctx: {
+                totalPoints: number;
+                targetBudget: number;
+                currentFrame: number;
+                nodeCache: ReadonlyMap<string, CachedNode>;
+                errorKeys: Set<string>;
+            }) => { freedPoints: number; evictedCount: number };
+        };
+        _nodeCache: Map<string, CachedNode>;
+        _nodeLoader: { errorKeys: Set<string> };
+    };
+
+    beforeEach(() => {
+        extractMock.mockReset();
+    });
+
+    it("restores an evicted node without a refetch or a decode", async () => {
+        const loader = await makeInitializedLoader();
+        const internals = loader as unknown as LoaderWithEviction;
+
+        const node = makeNode(100);
+        const buffers = new Float32Array(300);
+        extractMock.mockImplementation(async (target) => {
+            target.positions = buffers;
+            target.colorsRgb = new Uint8Array(400);
+            target.intensities = new Float32Array(100);
+            target.classifications = new Uint8Array(100);
+        });
+        await callLoadNode(loader, node);
+        // Bracket access keeps the eslint dangling-underscore rule quiet.
+        const nodeCache = internals["_nodeCache"];
+        const eviction = internals["_eviction"];
+        nodeCache.set(node.key, node);
+        eviction.touch(node);
+        // Stale lastSeenAt + a fresh frame: no hysteresis protection.
+        node.lastSeenAt = 0;
+
+        const evicted = eviction.evictToBudget({
+            totalPoints: 100,
+            targetBudget: 0,
+            currentFrame: 10,
+            nodeCache,
+            errorKeys: internals["_nodeLoader"].errorKeys,
+        });
+        expect(evicted.evictedCount).toBe(1);
+        expect(node.state).toBe("pending");
+        expect(node.positions).toBeUndefined();
+
+        // The zoom swings back — the reload must come from the cache:
+        // no fetch through the source getter, no decode through the pool.
+        extractMock.mockClear();
+        await callLoadNode(loader, node);
+
+        expect(node.state).toBe("loaded");
+        expect(node.positions).toBe(buffers);
+        expect(extractMock).not.toHaveBeenCalled();
+    });
+});

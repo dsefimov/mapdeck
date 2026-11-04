@@ -43,6 +43,12 @@ export class TileEvictionManager<T extends CachedNode> {
     private _frameBoundary: EvictionNode<T> | null = null;
     private readonly _nodeMap = new Map<T, EvictionNode<T>>();
 
+    /**
+     * @param onEvict - Invoked with a tile right before its data is
+     * cleared — the hook a decoded-node cache uses to salvage the buffers.
+     */
+    constructor(private readonly _onEvict?: (tile: T) => void) {}
+
     /** Move tile to head (or insert if not present). */
     touch(tile: T): void {
         const existing = this._nodeMap.get(tile);
@@ -101,6 +107,7 @@ evictToBudget(ctx: EvictionContext): EvictionResult {
                 continue;
             }
 
+            this._onEvict?.(tile);
             freed += clearTileData(tile, ctx.errorKeys);
             count++;
             this._removeNode(node);
