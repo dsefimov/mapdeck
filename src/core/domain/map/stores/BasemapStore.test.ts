@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { observable, runInAction } from "mobx";
+import type maplibregl from "maplibre-gl";
 
 import { BasemapStore } from "./BasemapStore";
 import type { BaseMapConfig } from "@core/contracts";
@@ -28,7 +30,15 @@ const CONFIG_B: BaseMapConfig = {
     },
 };
 
-function storeStub(): StoreRegistry {
+/**
+ * Root-store stub. The current map rides an observable box so reactions
+ * tracking `getMap()` re-fire when a test attaches a new map; pass `null`
+ * to simulate the window before the map component mounts.
+ */
+function storeStub(
+    initialMap: maplibregl.Map | null = {} as maplibregl.Map,
+): StoreRegistry {
+    const currentMap = observable.box<maplibregl.Map | null>(initialMap);
     return {
         settingsStore: {
             getStringSetting: vi.fn((): string | undefined => undefined),
@@ -36,6 +46,10 @@ function storeStub(): StoreRegistry {
             updateSettingOptions: vi.fn(),
         },
         mapStore: {
+            getMap: vi.fn(() => currentMap.get()),
+            setMap: vi.fn((map: maplibregl.Map | null) =>
+                runInAction(() => currentMap.set(map)),
+            ),
             removeOwnedLayers: vi.fn(),
             applyStyleFragment: vi.fn(),
         },
@@ -401,6 +415,109 @@ describe("BasemapStore — initial basemap selection", () => {
             "basemap_",
             expect.any(Set),
         );
+    });
+});
+
+describe("BasemapStore — map-attach sync", () => {
+    it("defers the initial apply until the sync finds a map", async () => {
+        stubFetch({ "a.example": { ok: true } });
+        const rootStore = storeStub(null);
+        (rootStore.settingsStore.getStringSetting as ReturnType<typeof vi.fn>)
+            .mockReturnValue("bm-a");
+        const store = await makeStore(rootStore);
+
+        // The probes pick the winner while no map is attached — the style
+        // must not be lost and no fragment may be issued either.
+        await store.findAndApplyInitialBasemap();
+        expect(rootStore.mapStore.applyStyleFragment).not.toHaveBeenCalled();
+
+        // The map mounts, then the sync starts on its load — the deferred
+        // basemap applies without a second init.
+        rootStore.mapStore.setMap({} as maplibregl.Map);
+        store.startSync();
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledTimes(1);
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledWith(
+            CONFIG_A.style,
+            "basemap_",
+            expect.any(Set),
+        );
+        store.stopSync();
+    });
+
+    it("applies the active basemap when the map attaches after startSync", async () => {
+        stubFetch({ "a.example": { ok: true } });
+        const rootStore = storeStub(null);
+        (rootStore.settingsStore.getStringSetting as ReturnType<typeof vi.fn>)
+            .mockReturnValue("bm-a");
+        const store = await makeStore(rootStore);
+
+        store.startSync();
+        expect(rootStore.mapStore.applyStyleFragment).not.toHaveBeenCalled();
+
+        rootStore.mapStore.setMap({} as maplibregl.Map);
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledTimes(1);
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledWith(
+            CONFIG_A.style,
+            "basemap_",
+            expect.any(Set),
+        );
+        store.stopSync();
+    });
+
+    it("keeps a single apply when the map already carries the style", async () => {
+        stubFetch({ "a.example": { ok: true } });
+        const rootStore = storeStub();
+        (rootStore.settingsStore.getStringSetting as ReturnType<typeof vi.fn>)
+            .mockReturnValue("bm-a");
+        const store = await makeStore(rootStore);
+
+        await store.findAndApplyInitialBasemap();
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledTimes(1);
+
+        store.startSync();
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledTimes(1);
+        store.stopSync();
+    });
+
+    it("applies the basemap whose config registers after the map is attached", async () => {
+        stubFetch({ "a.example": { ok: true } });
+        const rootStore = storeStub();
+        (rootStore.settingsStore.getStringSetting as ReturnType<typeof vi.fn>)
+            .mockReturnValue("bm-a");
+        const store = new BasemapStore(rootStore);
+
+        // Map already attached, sync started, but nothing to apply yet —
+        // the async registration has not landed.
+        store.startSync();
+        expect(rootStore.mapStore.applyStyleFragment).not.toHaveBeenCalled();
+
+        // Registration lands: the active basemap resolves and applies.
+        await store.registerConfigs([CONFIG_A, CONFIG_B]);
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledTimes(1);
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledWith(
+            CONFIG_A.style,
+            "basemap_",
+            expect.any(Set),
+        );
+        store.stopSync();
+    });
+
+    it("re-applies the style on a remounted map", async () => {
+        stubFetch({ "a.example": { ok: true } });
+        const rootStore = storeStub();
+        (rootStore.settingsStore.getStringSetting as ReturnType<typeof vi.fn>)
+            .mockReturnValue("bm-a");
+        const store = await makeStore(rootStore);
+
+        // First mount: the initial apply, then sync that has nothing to do.
+        await store.findAndApplyInitialBasemap();
+        store.startSync();
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledTimes(1);
+
+        // Remount: the new map must get the style again.
+        rootStore.mapStore.setMap({} as maplibregl.Map);
+        expect(rootStore.mapStore.applyStyleFragment).toHaveBeenCalledTimes(2);
+        store.stopSync();
     });
 });
 

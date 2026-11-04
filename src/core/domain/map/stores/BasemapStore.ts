@@ -5,6 +5,7 @@ import {
     runInAction,
     type IReactionDisposer,
 } from "mobx";
+import type maplibregl from "maplibre-gl";
 import type { RegisterOptions } from "@core/lib/registry";
 import { applyRegistration } from "@core/lib/registry";
 import type { StoreRegistry } from "@core/store-registry";
@@ -40,17 +41,33 @@ export class BasemapStore implements BasemapRegistrationPort {
     private _ownedIds: Set<string> = new Set();
     /** Last successfully applied config — the rollback target of a failed switch. */
     private _lastApplied: BaseMapConfig | undefined;
+    /**
+     * The map instance the current style was applied to — the map-attach
+     * sync compares identities, so a remount re-applies on the new map.
+     * A ref: the maplibre instance is external state, only identity is
+     * observable.
+     */
+    private _lastAppliedMap: maplibregl.Map | undefined;
     private _syncDisposer: IReactionDisposer | null = null;
+    private _mapSyncDisposer: IReactionDisposer | null = null;
+    private _activeBasemapSyncDisposer: IReactionDisposer | null = null;
     private _initInProgress = false;
     /** Default the setting was last synced to — the repair's own memory. */
     private _lastSyncedDefault: string | undefined;
 
     constructor(readonly rootStore: StoreRegistry) {
-        makeAutoObservable<this, "healthStatuses" | "_configs">(this, {
-            rootStore: false,
-            healthStatuses: false,
-            _configs: false,
-        });
+        makeAutoObservable<
+            this,
+            "healthStatuses" | "_configs" | "_lastAppliedMap"
+        >(
+            this,
+            {
+                rootStore: false,
+                healthStatuses: false,
+                _configs: false,
+                _lastAppliedMap: observable.ref,
+            },
+        );
     }
 
     /**
@@ -176,6 +193,17 @@ export class BasemapStore implements BasemapRegistrationPort {
             return;
         }
 
+        // applyStyleFragment drops fragments while no map is attached —
+        // applying now would silently lose the style while the bookkeeping
+        // still records a success. Defer to the map-attach sync instead.
+        const map = this.rootStore.mapStore.getMap();
+        if (!map) {
+            logger.warn(
+                `BasemapStore.applyBasemap: no map attached yet, "${basemap.id}" waits for the map-attach sync`,
+            );
+            return;
+        }
+
         const previous = this._lastApplied;
         const newOwnedIds = new Set<string>();
         try {
@@ -187,6 +215,7 @@ export class BasemapStore implements BasemapRegistrationPort {
             );
             this._ownedIds = newOwnedIds;
             this._lastApplied = basemap;
+            this._lastAppliedMap = map;
         } catch (error) {
             logger.error(
                 `BasemapStore.applyBasemap: failed to apply "${basemap.id}"`,
@@ -266,7 +295,12 @@ export class BasemapStore implements BasemapRegistrationPort {
         }
     }
 
-    /** Start reactive sync: when the basemap setting changes, apply the new basemap. */
+    /**
+     * Start reactive sync: when the basemap setting changes, apply the new
+     * basemap; when a map attaches (first attach or remount) or the active
+     * basemap appears while a bare map is attached, catch the style up via
+     * `_applyActiveToAttachedMap`.
+     */
     startSync(): void {
         this.stopSync();
 
@@ -282,12 +316,44 @@ export class BasemapStore implements BasemapRegistrationPort {
             },
             { name: "basemap-setting-sync" },
         );
+
+        this._mapSyncDisposer = reaction(
+            () => this.rootStore.mapStore.getMap(),
+            () => this._applyActiveToAttachedMap(),
+            { name: "basemap-map-attach-sync", fireImmediately: true },
+        );
+
+        this._activeBasemapSyncDisposer = reaction(
+            () => this.activeBasemap?.id ?? null,
+            () => this._applyActiveToAttachedMap(),
+            { name: "basemap-availability-sync", fireImmediately: true },
+        );
     }
 
-    /** Stop the reactive sync reaction. */
+    /**
+     * Catch-up apply: when an unstyled map is attached and the active
+     * basemap is resolved, put the style on it. Both init orderings lose
+     * races — the initial apply can run before the map mounts
+     * (applyStyleFragment drops the fragment) and before the async config
+     * registration lands (nothing to apply) — the map-attach and
+     * availability reactions both land here.
+     */
+    private _applyActiveToAttachedMap(): void {
+        if (this._initInProgress) return;
+        const map = this.rootStore.mapStore.getMap();
+        if (!map || this._lastAppliedMap === map) return;
+        const basemap = this.activeBasemap;
+        if (basemap) this.applyBasemap(basemap);
+    }
+
+    /** Stop the reactive sync reactions. */
     stopSync(): void {
         this._syncDisposer?.();
         this._syncDisposer = null;
+        this._mapSyncDisposer?.();
+        this._mapSyncDisposer = null;
+        this._activeBasemapSyncDisposer?.();
+        this._activeBasemapSyncDisposer = null;
     }
 
     /** Clean up reaction, clear statuses, and clear owned layer tracking. */
@@ -296,6 +362,7 @@ export class BasemapStore implements BasemapRegistrationPort {
         this.healthStatuses.clear();
         this._ownedIds.clear();
         this._lastApplied = undefined;
+        this._lastAppliedMap = undefined;
         this._lastSyncedDefault = undefined;
         this._configs.clear();
     }
