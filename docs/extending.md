@@ -1,48 +1,61 @@
 # Extending mapdeck
 
-A practical guide for extension modules — the code a host application
-adds on top of the embedded library. The decision records behind these
-surfaces live in `docs/adr/`; this page is the how-to.
+A practical guide for extension modules — the code a host application adds on top
+of the embedded library. The decision records live in `docs/adr/`; the full contract
+reference (every context member, registration policy, type inventory) is
+[docs/api/extensions.md](api/extensions.md); this page is the how-to.
 
 ## Package entry points
 
 | Entry | What it is for |
 |---|---|
 | `mapdeck` | `createMapdeck(options)`, `MapdeckRoot`, module/extension types, `createToolPanelWidget` |
-| `mapdeck/contracts` | The full contract barrel for deep integrations: ports (`OverlayManager`, `MapContext`), registration surfaces, asset-mapping types, point-cloud picking |
-| `mapdeck/ui` | The design-system surface for panels: primitives, inputs, `ToolPanel`/`SegmentsList`/`DataTable`/`ColorPicker`, interaction hooks, theme helpers |
-| `mapdeck/utils` | Pure helpers: geo formatters |
-| `mapdeck/styles.css` | The token chain — one file styles built-ins and extensions alike |
+| `mapdeck/contracts` | the full contract barrel: ports (`OverlayManager`, `MapContext`), registration surfaces, asset-mapping types, point-cloud picking |
+| `mapdeck/ui` | the panel-building surface: primitives, inputs, `ToolPanel`/`SegmentsList`/`DataTable`/`ColorPicker`, interaction hooks, theme helpers |
+| `mapdeck/utils` | pure helpers: geo formatters |
+| `mapdeck/styles.css` | the stylesheet with the design tokens — one file styles built-ins and extensions alike |
 
-## Module anatomy
+## Source adapters and protocols
 
-A module is a plain object implementing `Module`: `id`, `name`, and
-`register(context)`. Pass modules to `createMapdeck({ modules: [...] })`;
-they run after the built-in set, in array order, so a later module may
-override a built-in registration with `{ override: true }`.
+Two different jobs, often confused:
 
-`context` (`ModuleContext`) exposes the runtime slice (state store, locale,
-read-only registries) and every registration interface. Use the APIs it exposes —
-internal stores are not part of the public API. If an interface you need is
-missing, request one (ADR-0004).
+- a **source adapter** discovers a source's content (a STAC catalog) and builds the
+  layer tree: groups, layers, bindings, capabilities;
+- a **protocol** defines how one node's data is requested and rendered (raster
+  tiles, GeoJSON, a point cloud).
 
-## A map tool with a panel
+A module may register either or both. The built-in STAC adapter and the eight
+built-in protocols are described in [docs/api/protocols.md](api/protocols.md).
 
-Three explicit steps (locale, tool, panel widget) — the same steps the
-built-in `registerMapTools` takes:
+## End-to-end walkthrough
 
-```ts
+A complete module: a translation namespace, a setting, an interactive map tool with
+its panel — registered, embedded, and cleaned up.
+
+```tsx
+// host/App.tsx
+import ReactDOM from "react-dom/client";
+import { createMapdeck, MapdeckRoot, createToolPanelWidget } from "mapdeck";
 import type { Module, MapTool } from "mapdeck";
-import { createToolPanelWidget } from "mapdeck";
-import { ToolPanel, useEscapeKey } from "mapdeck/ui";
+import type { MapToolComponentProps } from "mapdeck/contracts";
+import { ToolPanel } from "mapdeck/ui";
+import { useState } from "react";
 
+// 1. The tool's panel — a plain component over the tool context.
+function DistancePanel({ context }: MapToolComponentProps) {
+    const [precision, setPrecision] = useState(2);
+    // read settings through context, draw with mapdeck/ui…
+    return <ToolPanel title="Distance">{/* … */}</ToolPanel>;
+}
+
+// 2. The tool and the module that carries it.
 const distanceTool: MapTool = {
     kind: "interactive",
     id: "my-distance",
-    icon: "ruler",            // registry name, or a custom --icon-<name>
-    component: DistancePanel, // receives { context, map, overlayManager, deactivate }
+    icon: "ruler",
+    component: DistancePanel,
     localeTranslations: {
-        en: { "tool.name": "Distance" }, // en is required (ADR-0015); other languages optional
+        en: { "tool.name": "Distance" }, // en is the fallback language; register it
         ru: { "tool.name": "Замер" },
     },
 };
@@ -51,54 +64,98 @@ export const myModule: Module = {
     id: "my-tools",
     name: "My tools",
     register(context) {
-        context.locale.registerTranslations(distanceTool.id, distanceTool.localeTranslations);
+        // 3. Translations under the tool's id (its locale namespace).
+        context.locale.registerTranslations(distanceTool.id, distanceTool.localeTranslations!);
+        // 4. A setting the tool reads at runtime.
+        context.settings.registerSettings("my-distance", "Distance", [
+            { id: "precision", label: "Precision", type: "number", defaultValue: 2, min: 0, max: 6 },
+        ]);
+        // 5. The tool and its panel widget.
         context.mapTools.registerTool(distanceTool);
         context.widgets.registerWidget(createToolPanelWidget(distanceTool));
     },
 };
+
+// 6. Embed with the module; render; dispose when the embed goes away.
+const mapdeck = createMapdeck({
+    modules: [myModule],
+    settingsOverrides: { "layer-tree.data-source-url": "https://example.com/stac/catalog.json" },
+});
+const root = ReactDOM.createRoot(document.getElementById("root")!);
+root.render(<MapdeckRoot mapdeck={mapdeck} />);
+// later: root.unmount(); mapdeck.dispose();
 ```
 
-A panel is a plain React component; `map` is the raw MapLibre instance
-(platform technology), `context` is the runtime slice
-(`ToolRuntimeContext`), `deactivate` closes the panel. Build the UI from
-`mapdeck/ui` — token overrides in the host restyle it together with the
-built-ins. mapdeck does not re-export maplibre or deck.gl: a module that
-needs their classes (`Marker`, geometry helpers) imports its own copy —
-`maplibre-gl@^5`, the range mapdeck itself carries, keeps a module's types
-compatible with the ones in `mapdeck/contracts`.
+`register` may be synchronous or async (bootstrap awaits it). Everything registered
+through the context is released with the instance — there is no module unload hook;
+see [Cleanup and ownership](api/extensions.md#cleanup-and-ownership).
 
-Action tools (`kind: "action"`) carry `execute({ context, map })`
-instead of a component and need no widget registration.
+## A map tool with a panel
+
+The walkthrough above is the complete recipe; the points that matter:
+
+- A panel receives `{ context, map, overlayManager, deactivate }`. `map` is the raw
+  MapLibre instance — the documented platform-technology exception (ADR-0006);
+  `context` is the runtime slice (`ToolRuntimeContext`); `deactivate` closes the
+  panel.
+- Register the panel yourself with `createToolPanelWidget(tool)`; the panel renders
+  only while its tool is active, outside the widget grid.
+- Action tools (`kind: "action"`) carry `execute({ context, map })` instead of a
+  component and need no widget registration.
+- Build the UI from `mapdeck/ui`: a token override in the host restyles it together
+  with the built-ins.
+- **MapLibre types**: `mapdeck/contracts` references `maplibregl.Map` inline but
+  does not re-export it, and the engines are not peers of `mapdeck`. Install
+  `maplibre-gl@^5` as your own (dev) dependency for the types, and at runtime work
+  through the `map` instance the context hands you; a module that instantiates
+  engine classes imports its own engine copy and owns the duplication cost
+  ([api/extensions.md](api/extensions.md#maplibre-and-deckgl-types)).
 
 ## A layer tool
 
-```ts
-context.layerTools.registerTool({
-    id: "my-opacity",
-    // component: (nodeId: string) => ReactNode — the factory receives the
-    // node id; the panel reads the node from the tree by that id
-    component: OpacitySlider,
-});
-context.layerTools.bindToolToProtocol("my-protocol", "renderer", "my-opacity");
+```tsx
+import type { Module } from "mapdeck";
+import type { ReactNode } from "react";
+
+// The panel factory receives the node id and reads the node from the tree by it.
+function OpacitySlider(nodeId: string): ReactNode {
+    // render a control that reads and writes the node's style override
+    return null;
+}
+
+export const layerToolModule: Module = {
+    id: "my-layer-tools",
+    name: "My layer tools",
+    register(context) {
+        context.layerTools.registerTool({
+            id: "my-opacity",
+            component: OpacitySlider,
+        });
+        context.layerTools.bindToolToProtocol("my-protocol", "renderer", "my-opacity");
+    },
+};
 ```
 
-The binding is what makes the tool appear on nodes of that protocol —
-the same link mechanism the built-ins use.
+The binding is what makes the tool available on nodes of that protocol — the same
+link mechanism the built-ins use. The tool still appears only on nodes whose source
+assigned the capability (ADR-0007/0009); a source built on the built-in STAC
+adapter assigns capabilities for registered links automatically.
 
 ## A protocol
 
 A protocol names how a source renders. Register it with its asset-mapping
-declaration — slot fitness (which node slots it serves and how well) and
-matching rules (which assets it claims) arrive with the protocol in one
-call:
+declaration — slot fitness (which node slots it serves and how well) and matching
+rules (which assets it claims) arrive with the protocol in one call:
 
 ```ts
 import type { Module } from "mapdeck";
 import type { LayerAdapter, Protocol, SourceAsset } from "mapdeck/contracts";
 
-/** Protocol-specific config — the C in Protocol<C>. */
+/** Protocol-specific config — the C in Protocol<C>. The index signature lets it
+ * satisfy the registry's Record<string, unknown> config type. */
 interface TerrainConfig {
     readonly opacity: number;
+    [key: string]: unknown;
 }
 
 /** The adapter draws the format on the map — here native MapLibre raster tiles. */
@@ -175,41 +232,68 @@ export const terrainModule: Module = {
 };
 ```
 
-The example is complete — it compiles as shown. In the repository, the
-built-in protocols in `src/core/domain/protocols/` are further reference
-implementations (`createSimpleProtocol` is the flat-descriptor precedent);
-they are repository sources, not part of the npm package.
+Adapters come in two families: native MapLibre layers (as above,
+`nativeLayerOrdering: true`) and overlay layers that draw through
+`ctx.overlayManager` (deck.gl) — the same split the built-ins use
+([api/extensions.md](api/extensions.md#protocol-and-layeradapter)). `ctx.map` in the
+adapter is the MapLibre instance; type it with your own `maplibre-gl@^5`
+dependency, as above.
 
-Assets come from the source adapter (the built-in STAC tree maps item
-assets through the same asset mapper), so a protocol registered this way
-receives nodes with no source-specific import. The lower-level path —
+Assets come from the source adapter (the built-in STAC tree maps item assets
+through the same asset mapper), so a protocol registered this way receives nodes
+with no source-specific import. The lower-level path —
 `context.assetMapping.registerRule(...)` and
-`context.assetMapping.registerSlots(id, slots)` — remains valid when the
-rules or slots register separately from the protocol.
+`context.assetMapping.registerSlots(id, slots)` — remains valid when the rules or
+slots register separately from the protocol.
+
+The code examples on this page are compiled against the published package (a clean
+consumer project installing the packed tarball, strict TypeScript) as part of the
+release checks — they typecheck as shown.
+
+The built-in protocols in `src/core/domain/protocols/` are further reference
+implementations; they are repository source code, not part of the npm package.
 
 ## Settings, locale, basemaps
 
 - `context.settings.registerSettings(ownerId, ownerName, metadata[], opts?)` —
   values initialize to their defaults; a re-declaration follows the owner's
-  explicit-override policy (ADR-0005). Per-deployment *values* travel through the
-  `settingsOverrides` embed option instead.
-- `context.locale.registerTranslations(namespace, { ru: {...} })` — a
-  namespace falls back whole-dict to `en` when the current language has
-  no registration.
-- `context.basemap.registerConfigs([...])` — basemap configs; a built-in
-  may be replaced by id with `{ override: true }`.
+  explicit-override policy (see [api/configuration.md](api/configuration.md)). Per-
+  deployment *values* travel through the `settingsOverrides` embed option.
+- `context.locale.registerTranslations(namespace, { ru: {...} })` — resolution: the
+  current language's dictionary for the namespace, or the whole English dictionary
+  when that language has no registration. There is no per-key merge across
+  languages, so register `en` for every namespace.
+- `context.basemap.registerConfigs([...])` — basemap configs; a built-in may be
+  replaced by id with `{ override: true }`.
 
 ## Icons
 
-Registry names (`isIconName`) render built-in artwork. Any other name
-renders the `--icon-<name>` CSS token — define it on your container
-(e.g. `.mapdeck-root { --icon-terrain: url("terrain.svg"); }`) and the
-toolbar renders it. No registry change needed.
+Registry names (`isIconName`) render built-in artwork. Any other `[\w-]+` name
+renders the `--icon-<name>` CSS token — define it on your container and make sure
+the icon URL is reachable under the host's CSP:
+
+```css
+.mapdeck-root { --icon-terrain: url("terrain.svg"); }
+```
+
+No registry change is needed.
 
 ## Source adapters
 
-A module may register its own `SourceAdapter`
-(`context.sourceAdapterFactory.register`) — including an override of the
-built-in `stac` type — when the data source is not STAC at all. The
-adapter receives `initialize({ url })` from the
-`layer-tree.data-source-url` setting.
+A module registers its own `SourceAdapter`
+(`context.sourceAdapterFactory.register`) when the data source is not STAC at all;
+the full contract (initialization from the `layer-tree.data-source-url` setting,
+root/children fetching, node construction) is in
+[api/extensions.md](api/extensions.md#source-adapters). The built-in `stac` adapter
+can be replaced the same way — register an adapter of type `"stac"` with
+`{ override: true }`; the replacement then owns the whole catalog-to-tree mapping,
+including asset routing and capability assignment.
+
+## Registration order, duplicates, overrides
+
+Built-ins register first, modules in array order, then `settingsOverrides` apply
+and the source fetch runs (ADR-0005). Registries throw on a duplicate id; a
+deliberate replacement passes `{ override: true }` (which surfaces support it, and
+what each override replaces, is tabulated in
+[api/extensions.md](api/extensions.md#contexts)). A `register` that throws fails
+initialization with the error screen; retry rebuilds from empty stores.

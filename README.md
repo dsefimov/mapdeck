@@ -16,10 +16,10 @@ a demo application built on the same public API.
 npm install mapdeck
 ```
 
-React (`^19.0.0`), `mobx` (`^6.15.0`) and `mobx-react-lite` (`^4.1.1`) are peer
-dependencies: the host application must provide them.
-npm 7+ installs them automatically; with other managers, install them alongside.
-All other runtime dependencies are installed automatically.
+`react` (`^19.0.0`), `react-dom` (`^19.0.0`), `mobx` (`^6.15.0`) and
+`mobx-react-lite` (`^4.1.1`) are peer dependencies: the host application must
+provide them. npm 7+ installs them automatically; with other managers, install
+them alongside. All other runtime dependencies are installed automatically.
 
 ## Requirements
 
@@ -27,15 +27,18 @@ All other runtime dependencies are installed automatically.
 - For TypeScript hosts: `moduleResolution: "bundler"` (or an equivalent setting) —
   the shipped declarations use extension-less relative imports.
 - A page with a Content-Security-Policy needs `connect-src` for the data sources and
-  the wasm binary, and `worker-src blob:` for the point-cloud decode worker (the
-  package inlines it as a blob URL).
+  the WebAssembly (WASM) decoder, and `worker-src blob:` for the point-cloud decode
+  worker (the package inlines it as a blob URL).
+
+The full compatibility list — browsers, versions, distribution format — lives in
+[docs/compatibility.md](docs/compatibility.md).
 
 ## Minimal embed
 
 ```tsx
 import ReactDOM from "react-dom/client";
 import { createMapdeck, MapdeckRoot } from "mapdeck";
-import "mapdeck/styles.css"; // mandatory — the component renders unstyled without it
+import "mapdeck/styles.css"; // required — the component renders unstyled without it
 
 const mapdeck = createMapdeck({
     // Catalog URL for the configured source adapter (STAC by default).
@@ -46,33 +49,40 @@ const mapdeck = createMapdeck({
     lazPerfWasmUrl: "/assets/laz-perf.wasm",
 });
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-    <MapdeckRoot mapdeck={mapdeck} />,
-);
+const root = ReactDOM.createRoot(document.getElementById("root")!);
+root.render(<MapdeckRoot mapdeck={mapdeck} />);
+
+// When the embed is removed for good:
+root.unmount();      // React teardown (the map tears down with it)
+mapdeck.dispose();   // releases the instance: adapters, registries, state
 ```
 
-`createMapdeck` is synchronous and self-bootstrapping: bootstrap failures surface
-through the instance's `initError`, and `MapdeckRoot` renders the error screen with
-a retry wired to `restart()`. Deep integration — protocols, extension contexts,
-contracts — goes through the `mapdeck/contracts` subpath; panel building and pure
-helpers through `mapdeck/ui` and `mapdeck/utils`. Building extensions is covered
-in [docs/extending.md](docs/extending.md).
+`createMapdeck` is synchronous; the bootstrap runs in the background, and its
+failures surface through the instance's `initError` — never as an unhandled
+rejection. `MapdeckRoot` renders a loading screen, an error screen with a retry
+(wired to `restart()`), or the workspace. The complete lifecycle — restart
+semantics, disposal, unmounting without disposal, error categories — is documented
+in [docs/api/lifecycle.md](docs/api/lifecycle.md).
+
+Deep integration — protocols, extension contexts, contracts — goes through the
+`mapdeck/contracts` subpath; panel building and pure helpers through `mapdeck/ui`
+and `mapdeck/utils`. Building extensions is covered in
+[docs/extending.md](docs/extending.md).
 
 ## Options
 
-| Option | Default | Purpose |
-|---|---|---|
-| `defaultSourceType` | `"stac"` | which source adapter serves nodes that name none; must be registered |
-| `builtinBasemaps` | `true` | whether the built-in basemap set registers |
-| `lazPerfWasmUrl` | — | URL of the LazPerf wasm binary; point clouds (COPC) only |
-| `language` | `"en"` | initial UI language; other languages are provided by registered dictionaries |
-| `logLevel` | `"warn"` | log threshold |
-| `settingsOverrides` | — | per-deployment setting values, see below |
-| `modules` | `[]` | consumer modules, registered after the built-ins (may override) |
+| Option | Type | Default | Purpose |
+|---|---|---|---|
+| `defaultSourceType` | `string` | `"stac"` | which source adapter serves nodes that name none; must be registered |
+| `builtinBasemaps` | `boolean` | `true` | whether the built-in basemap set registers |
+| `lazPerfWasmUrl` | `string` | `"laz-perf.wasm"` | URL of the LazPerf WASM binary; point clouds (COPC) only |
+| `language` | `string` | runtime default `"en"` | initial UI language; other languages arrive as registered dictionaries |
+| `logLevel` | `"debug" \| "info" \| "warn" \| "error"` | `"warn"` | log threshold |
+| `settingsOverrides` | `Record<string, string \| number \| boolean>` | — | per-deployment setting values, see below |
+| `modules` | `readonly Module[]` | `[]` | consumer modules, registered after the built-ins (may override) |
 
-The returned handle (`MapdeckInstance`) exposes the boot state (`isInitialized`,
-`initError`), `restart()` (a fresh store and bootstrap) and `dispose()` (release
-everything; the instance is unusable after).
+The complete reference — validation, timing, restart behavior, module interaction —
+is [docs/api/configuration.md](docs/api/configuration.md).
 
 ### `settingsOverrides`
 
@@ -90,26 +100,30 @@ whatever the assembled modules declared.
 
 ## Known limitations
 
-- One `MapdeckRoot` per page: the theme root is a page-level singleton.
+- One `MapdeckRoot` per page: the theme root is a page-level singleton — two
+  embedded instances are not supported.
 - The workspace fills the browser viewport (`100vw`/`100vh`); embedding into a
   smaller container overflows it.
-- ESM only; there is no CommonJS entry, and rendering assumes a browser DOM (no SSR).
+- ESM only; there is no CommonJS entry, and rendering assumes a browser DOM
+  (no SSR).
 - Point clouds are expected in a metric CRS; foot-based files render with
-  over-resolved detail.
-- `createMapdeck` configures MobX strictness for the whole page (ADR-0001 lists
-  the options).
+  over-resolved detail (see [docs/api/protocols.md](docs/api/protocols.md#copc-point-clouds)).
+- `createMapdeck` configures MobX strictness for every MobX store on the page, not
+  only its own (ADR-0001).
 
 ## Serving the point-cloud decoder
 
-COPC streaming needs the LazPerf wasm binary. The package exports it as
+COPC streaming needs the LazPerf WASM binary. The package exports it as
 `mapdeck/laz-perf.wasm` — a copy of the library's `laz-perf` dependency, so its
 version is locked to the installed package, never chosen by the host. Serve that
 file over HTTP from anywhere (a static directory, a CDN) and point
 `lazPerfWasmUrl` at the URL; it is fetched at runtime, never bundler-imported.
+Without the option, the decoder is fetched from `<page-base>/laz-perf.wasm`.
 
 The COPC file itself is read with HTTP range requests: the server must answer them
-(partial content), and a file on another origin needs CORS headers. The wasm fetch
-and the decode worker are covered by the CSP notes in Requirements.
+(partial content), and a file on another origin needs CORS headers. The full COPC
+requirements are in [docs/api/protocols.md](docs/api/protocols.md#copc-point-clouds);
+the wasm fetch and the decode worker are covered by the CSP notes in Requirements.
 
 ## What it can do
 
@@ -120,10 +134,13 @@ and the decode worker are covered by the CSP notes in Requirements.
 - **Layer tree.** Hierarchical layers with search, visibility cascades, per-layer
   styling — opacity, point size, point and vector color schemes — and zoom to a
   layer's extent.
-- **Data.** Attribute tables per layer, feature inspection by map click, WMS
-  GetFeatureInfo queries.
-- **Protocols.** WMS, XYZ, COG, COPC, vector tiles (PMTiles), tiled GeoJSON, WFS and
-  OGC API Features are built in; STAC catalogs work as a data source.
+- **Data.** Attribute tables per layer (WFS, OGC API Features), feature inspection
+  by map click (WMS GetFeatureInfo, vector tiles, GeoJSON overlays, point-cloud
+  picking).
+- **Protocols.** WMS, XYZ, vector tiles (including PMTiles URLs), tiled GeoJSON,
+  WFS, OGC API Features and streamed COPC point clouds are built in; STAC catalogs
+  work as a data source. Per-protocol requirements and capabilities:
+  [docs/api/protocols.md](docs/api/protocols.md).
 - **Extensions.** Widgets live in a windowed grid workspace whose layout survives
   close; domain functionality is delivered as modules (the STAC integration is the
   built-in example).
@@ -141,32 +158,35 @@ rendering, copc.js and laz-perf for point-cloud streaming, Turf for geo math.
 
 ## Documentation
 
-- [AGENTS.md](AGENTS.md) — repository organization, rules and workflow, for
-  contributors and AI agents
 - [docs/architecture.md](docs/architecture.md) — system overview
+- [docs/extending.md](docs/extending.md) — building modules, tools and protocols
+- [docs/api/](docs/api/) — public references: configuration, lifecycle, protocols,
+  extension contracts
+- [docs/compatibility.md](docs/compatibility.md) — supported environments and
+  known limitations
 - [docs/glossary.md](docs/glossary.md) — domain terms
 - [docs/adr/](docs/adr/) — architecture decisions and their rationale
-- [docs/extending.md](docs/extending.md) — building modules, tools and protocols
+- [AGENTS.md](AGENTS.md) — repository rules and workflow, for contributors and AI
+  agents
 - [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guidelines
 
 ## Versioning
 
 Mapdeck follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-The public surface is what the package exports map exposes: the root entry,
-`mapdeck/contracts`, `mapdeck/ui`, `mapdeck/utils`, `mapdeck/styles.css` and
-`mapdeck/laz-perf.wasm`. Changes to these entries — types, behavior or
-removal — follow semver: a breaking change bumps the major version, an
-additive change bumps the minor. Everything the exports map does not expose
-(`src/core/**` internals, the demo application) may change in any release.
+The public surface is what the package exports map exposes as importable entries:
+the root entry, `mapdeck/contracts`, `mapdeck/ui`, `mapdeck/utils`,
+`mapdeck/styles.css` and `mapdeck/laz-perf.wasm` (plus `mapdeck/package.json`
+metadata). Changes to these entries — types, behavior or removal — follow semver: a
+breaking change bumps the major version, an additive change bumps the minor.
+Everything the exports map does not expose (`src/core/**` internals, the demo
+application) may change in any release.
 
-Two members of the public surface follow special rules.
-`MapdeckInstance.store` is unstable: it exists because `MapdeckRoot` renders
-from the registry, its type is the internal store registry, and it may change
-in any release — treat it as internal and do not read it from embedder code.
-And `mapdeck/contracts` carries the rendering engines' types — `maplibregl.Map`
-in the tool contexts, deck.gl types in the overlay port: those follow the
-engine versions the manifest carries, so a maplibre or deck.gl major can
-require a mapdeck major.
+Two boundary notes. `mapdeck/contracts` references the rendering engines' types —
+`maplibregl.Map` in the tool contexts, deck.gl types in the overlay port — without
+re-exporting them: those follow the engine versions the manifest carries, so a
+MapLibre or deck.gl major can require a mapdeck major. And `MapdeckInstance.store`
+is an internal implementation detail that exists for `MapdeckRoot`; embedder code
+must not read it.
 
 ## License
 

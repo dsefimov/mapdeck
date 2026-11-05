@@ -1,4 +1,4 @@
-# ADR-0017: Public helper subpaths — `mapdeck/ui` and `mapdeck/utils`
+# ADR-0017: Public helper subpaths
 
 Status: Accepted · Date: 2026-10-13
 
@@ -12,34 +12,31 @@ string validated by the kit's `isIconName`, which therefore has to be exported t
 
 ## Decision
 
-Two new package entry points, each a thin barrel in `src/app/` (the
-`app/contracts.ts` precedent) with its own lib-build entry:
+Two package entry points, each a thin barrel in `src/app/` (the `app/contracts.ts`
+precedent) with its own lib-build entry:
 
-- **`mapdeck/ui`** — the panel-building surface: primitives (buttons,
-  inputs, `Icon`, `Text`, `Field`, `Spinner`), panel composites
-  (`ToolPanel`, `SegmentsList`, `DataTable`, `ColorPicker`,
-  `SummarySection`), interaction hooks (`useClickOutside`, `useEscapeKey`,
-  `useMenuKeyboard`, …), and the theme helpers (`getThemeColor`,
-  `DEFAULT_ACCENT_CSS`, `useMeasureColors`, …). One CSS chain: everything
-  styles through the existing `mapdeck/styles.css` tokens — there is no
-  separate `ui.css`.
-- **`mapdeck/utils`** — pure helpers, no React, no stores: the geo
-  formatters (`formatDistance`, `formatArea`, `formatVolume`,
-  `convertPointToDegrees`). Point-cloud picking helpers already travel
-  through `mapdeck/contracts` and stay there.
+- **`mapdeck/ui`** — the panel-building surface: primitives (buttons, inputs, `Icon`,
+  `Text`, `Field`, `Spinner`), panel composites (`ToolPanel`, `SegmentsList`,
+  `DataTable`, `ColorPicker`, `SummarySection`), interaction hooks (`useClickOutside`,
+  `useEscapeKey`, `useMenuKeyboard`, …), and the theme helpers (`getThemeColor`,
+  `DEFAULT_ACCENT_CSS`, `useMeasureColors`, …). Everything styles through the
+  `mapdeck/styles.css` tokens; there is no separate `ui.css`.
+- **`mapdeck/utils`** — pure helpers, no React, no stores: the geo formatters
+  (`formatDistance`, `formatArea`, `formatVolume`, `convertPointToDegrees`).
+  Point-cloud picking helpers travel through `mapdeck/contracts` and stay there.
 
-The composition of `mapdeck/ui` is a stability contract, guarded by a unit
-test: application chrome — the widget grid (`WidgetGrid`, `WidgetShell`,
-store-driven, the kit's only MobX coupling) and boot screens
-(`ErrorScreen`, `LoadingScreen`, `ErrorBoundary`) — stays internal; those
-render inside the library's own root component and are not a consumer's
-surface.
+The composition of `mapdeck/ui` is a stability contract, guarded by a unit test:
+application chrome — the widget grid (`WidgetGrid`, `WidgetShell`, store-driven, the
+kit's only MobX coupling) and boot screens (`ErrorScreen`, `LoadingScreen`,
+`ErrorBoundary`) — stays internal; those render inside the library's own root component
+and are not a consumer surface. The export inventory is documented in
+[docs/api/extensions.md](../api/extensions.md).
 
 ## Consequences
 
-- Consumer panels share the design system instead of duplicating it; a
-  token override in the host restyles built-in and extension panels alike.
-- Adding a name to the barrels is a public API change and requires a dated
-  note here; removing one is a breaking change.
+- Consumer panels share the design system instead of duplicating it; a token override
+  in the host restyles built-in and extension panels alike.
+- The subpaths follow the package's SemVer policy (ADR-0019): adding a name to the
+  barrels is a minor change and requires a dated note here; removing one is breaking.
 - The subpath cannot grow store-driven components: the grid stays the only
   MobX-coupled kit piece and stays out.

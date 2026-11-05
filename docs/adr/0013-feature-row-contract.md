@@ -1,4 +1,4 @@
-# ADR-0013: FeatureRow — typed reserved row keys
+# ADR-0013: FeatureRow contract
 
 Status: Accepted · Date: 2026-09-22
 
@@ -11,21 +11,20 @@ maps would leave the reserved-key rule to comments and an eslint allowlist.
 
 ## Decision
 
-`contracts/domain/attribute.ts` declares `FeatureRow`: an index signature
-over data properties plus explicitly typed reserved fields (`_bbox?: Bbox`),
-and `AttributeFetchResult.features` becomes `FeatureRow[]`. The JSDoc on the
-interface is the single statement of the convention — writers spread data
-properties first, so collisions can never clobber reserved values; the
-generic data table keeps receiving `unknown` cells and validates the bbox at
-render time. Row identity comes from data columns via `getFeatureId`, so no
-`_id` key is reserved.
+`contracts/domain/attribute.ts` declares `FeatureRow`: an index signature over data
+properties plus explicitly typed reserved fields (`_bbox?: Bbox`), and
+`AttributeFetchResult.features` becomes `FeatureRow[]`. The JSDoc on the interface
+states the convention: writers spread data properties first, so a data column cannot
+overwrite a reserved value; the generic data table keeps receiving `unknown` cells and
+validates the bbox at render time. Row identity comes from data columns via
+`getFeatureId`, so no `_id` key is reserved. The public meaning of the type is
+documented in [docs/api/extensions.md](../api/extensions.md).
 
 ## Consequences
 
-The boundary is compiler-checked on the reader side: the store reads
-`f._bbox` without casts, and new reserved keys added to the interface are
-immediately sanctioned everywhere a row is read. The writer side is checked
-by convention and tests, not by the compiler — producers build plain objects
-and only the documented-shape contract plus the colocated tests keep them
-honest. The eslint `no-underscore-dangle` allowlist keeps documenting direct
-accesses; it carries `_bbox` alone.
+- The boundary is compiler-checked on the reader side: the store reads `f._bbox` without
+  casts, and reserved keys added to the interface type every read site at once.
+- The writer side is checked by convention and tests, not by the compiler — producers
+  build plain objects; the documented shape and the colocated tests carry the contract.
+- The eslint `no-underscore-dangle` allowlist keeps documenting direct accesses; it
+  carries `_bbox` alone.

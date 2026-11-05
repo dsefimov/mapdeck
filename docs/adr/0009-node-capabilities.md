@@ -1,10 +1,10 @@
-# ADR-0009: Node capabilities and protocols — the source/protocol/core boundary
+# ADR-0009: Layer nodes and protocols
 
 Status: Accepted · Date: 2026-09-22
 
 ## Context
 
-The app renders external data sources as a layer tree on a map. Sources come in
+The application renders external data sources as a layer tree on a map. Sources come in
 different formats — STAC catalogs first, then WMS rasters, COPC point clouds, vector
 tiles, feature services — and each format renders differently and offers different data
 access. The core must treat every source uniformly: the tree, visibility, tools and the
@@ -14,24 +14,24 @@ it can do, and who decides what that is.
 A node can do more than render: it can expose an attribute table, offer styling tools,
 or none of these. What a dataset offers is a fact about the source, not about the
 protocol: a WMS layer may or may not carry attribute data behind a second API, and only
-the source knows which. The protocol, in turn, only answers how data is requested. This
-ADR records the boundary: the source assigns what a node can do (capabilities), the
-protocol defines how each task's data is requested, and the core provides the
-vocabulary, the verification and the menu.
+the source knows which. The protocol, in turn, answers how data is requested. This ADR
+records the boundary: the source assigns what a node can do (capabilities), the protocol
+defines how each task's data is requested, and the core provides the vocabulary, the
+verification and the menu. The exact type shapes are documented in
+[docs/api/extensions.md](../api/extensions.md).
 
 ## Decision
 
 **A node names its protocols and its capabilities.** `LayerNode` carries two
 `ProtocolBinding`s — `renderer` (required, map visualization) and `data` (optional,
 attribute access) — and a capability list: `NodeCapability` entries
-(`{toolId: string, slot: BindingSlot}`), where `slot` names which of the two
-protocol bindings serves that capability. A binding is `{protocolId, sourceUrl,
-params}`: the id resolves through the `ProtocolRegistry`, the URL is the base endpoint
-without query parameters, and `params` is the single source of truth for
-protocol-specific parameters — the protocol never parses query strings out of
-`sourceUrl`. A capability is the id of a layer tool (ADR-0007); the vocabulary is open
-strings because modules register their own tools. Capabilities play no part in
-rendering: the snapshot follows the renderer binding alone.
+(`{toolId: string, slot: BindingSlot}`), where `slot` names which of the two protocol
+bindings serves that capability. A binding is `{protocolId, sourceUrl, params}`: the id
+resolves through the `ProtocolRegistry`, the URL is the base endpoint without query
+parameters, and `params` holds the protocol-specific parameters — the protocol does not
+parse query strings out of `sourceUrl`. A capability is the id of a layer tool
+(ADR-0007); the vocabulary is open strings because modules register their own tools.
+Capabilities play no part in rendering: the snapshot follows the renderer binding alone.
 
 **`renderer` and `data` are tasks, not capabilities.** The two slots name what the
 protocol is used for on the node — the map renders through `renderer`, attribute access
@@ -39,99 +39,94 @@ goes through `data`. Capabilities are tool names assigned to the node. The slot 
 (`BindingSlot`) lives in contracts, shared by the node model, the tool links and the
 source modules.
 
-**The source assigns capabilities; the core never does.** The source adapter is a
-parser plus an assignment step that produces ready-to-show `TreeNode`s: it resolves
-its assets through the core's asset mapper (`assetMapping.mapAssets`, ADR-0018 —
-priority-ordered rules claim each asset, slot fitness picks the slot) and builds
-nodes from the resulting `ProtocolAssignment`s, attaching the capability list and
-possibly a style. Slot-less assets become `relatedObjects` entries of type
-`"report"`. The core never decides what a format looks like or offers — it manages
-the tree, the visibility and the bridge to the map.
+**The source assigns capabilities; the core does not.** The source adapter is a parser
+plus an assignment step that produces ready-to-show `TreeNode`s: it resolves its assets
+through the core's asset mapper (`assetMapping.mapAssets`, ADR-0018 — priority-ordered
+rules claim each asset, slot fitness picks the slot) and builds nodes from the resulting
+`ProtocolAssignment`s, attaching the capability list and possibly a style. Slot-less
+assets become `relatedObjects` entries of type `"report"`. The core does not decide what
+a format looks like or offers — it manages the tree, the visibility and the bridge to
+the map.
 
 **Every assigned capability is verified at assignment.** A capability is implemented
 when a tool link `(protocolId of the node's binding for that slot, that slot, toolId)`
-exists in the tool-link table (ADR-0007); a capability whose slot has no binding on
-the node is unimplemented by definition. The adapter runs the check for every
-capability at assignment, drops unimplemented ones and reports each via the logger.
-Because tools and protocols register at bootstrap and nodes are created only
-afterwards, the check always sees the complete link table — a node carries only
-capabilities that can work.
+exists in the tool-link table (ADR-0007); a capability whose slot has no binding on the
+node is unimplemented by definition. The adapter runs the check for every capability at
+assignment, drops unimplemented ones and reports each via the logger. Because tools and
+protocols register at bootstrap and nodes are created only afterwards, the check always
+sees the complete link table — a node carries only capabilities that can work.
 
 **The menu follows the node's capabilities.** `getToolsForNode` resolves the node's
-capabilities to tool instances in list order, deduplicated by id — the operation
-returns tools only. The menu widget renders the node's report links after them (reports
-travel in `relatedObjects`, ADR-0008); tool authoring and the link mechanism belong to
-ADR-0007. The adapter controls the menu through assignment: a tool linked to the node's
-protocol but not assigned never appears — that is the source's decision, not an
-accident.
+capabilities to tool instances in list order, deduplicated by id. The menu widget renders
+the node's report links after them (reports travel in `relatedObjects`, ADR-0008); tool
+authoring and the link mechanism belong to ADR-0007. The adapter controls the menu
+through assignment: a tool linked to the node's protocol but not assigned never appears —
+that is the source's decision.
 
 **The protocol is a data-request contract without resolution knowledge.** The
 `Protocol<C>` interface declares identity (`id`, `label`), the style contract
 (`defaultStyle`, `createRenderDescriptor` → a typed `RenderDescriptor<C>`), the
 rendering backend (`getLayerAdapter()`), and optional hooks: `fetchAttributes`
-(attribute queries) and `groupRenderUnits` (batching). Point queries are not a
-protocol hook — they live on the `FeatureProvider` port collected by the
-`FeatureProviderRegistry` (WMS's provider implements it; its GetFeatureInfo call
-is an internal of that implementation). The descriptor carries no role field: the protocol that created it is the sole authority
-on how its config is interpreted. Why per-protocol adapters: raster, vector and point cloud
-need fundamentally different backends — native MapLibre layers versus the deck.gl
-overlay — and a single adapter would branch internally by data type. Protocols of the
-same data type reuse the shared adapters (`RasterAdapter`, `VectorAdapter`,
-`GeoJsonAdapter`) — the precedent a new protocol follows.
+(attribute queries) and `groupRenderUnits` (batching). Point queries are not a protocol
+hook — they live on the `FeatureProvider` port collected by the
+`FeatureProviderRegistry` (WMS's provider implements it; its GetFeatureInfo call is an
+internal of that implementation). The descriptor carries no role field: the protocol
+that created it decides how its config is interpreted. Per-protocol adapters, because
+raster, vector and point cloud need different backends — native MapLibre layers versus
+the deck.gl overlay — and a single adapter would branch internally by data type.
+Protocols of the same data type reuse the shared adapters (`RasterAdapter`,
+`VectorAdapter`, `GeoJsonAdapter`).
 
 **Style is a shared vocabulary, interpreted by the protocol.** `node.style` uses the
 style-layer vocabulary of the MapLibre Style Specification (`type`, `paint`, `layout`,
 `minzoom`, `maxzoom`, `filter`, `metadata`); no separate style model is invented. The
-vocabulary is protocol-agnostic by rule: each protocol
-interprets only the properties relevant to its rendering (`raster-opacity` becomes WMS
-opacity, `circle-radius`/`circle-color` become point size and color scheme) and
-silently ignores the rest; unknown keys are never validated because they are never
-read. This is not a hard MapLibre coupling: the vocabulary is shared, and each protocol
-translates it for its own render backend.
+vocabulary is protocol-agnostic by rule: each protocol interprets only the properties
+relevant to its rendering (`raster-opacity` becomes WMS opacity, `circle-radius`/
+`circle-color` become point size and color scheme) and ignores the rest; unknown keys
+are not validated because they are not read. This is not a hard MapLibre coupling: the
+vocabulary is shared, and each protocol translates it for its own render backend.
 
 **The protocol guarantees a style.** `defaultStyle: LayerStyle` is a required field of
 the protocol interface — a protocol without one does not compile — and
-`createRenderDescriptor` merges the node's style over the default, provided keys
-winning. A source that cannot style its data simply omits the style; the guarantee
-moves "protocol implements a style" from a runtime check to a type check.
+`createRenderDescriptor` merges the node's style over the default, provided keys winning.
+A source that cannot style its data omits the style; the requirement moves "protocol
+implements a style" from a runtime check to a type check.
 
 **The protocol contract lives in `contracts/`; implementations live in their domain.**
-`Protocol` and the read-only `ProtocolRegistry` port sit in
-`contracts/domain/protocol.ts`: the contract has two core consumers — layer-tree
-resolves descriptors through it, map builds render units — so the ≥2-consumers rule
-puts it in the core. Protocol implementations, their adapters and their configs stay
-in `domain/protocols/<id>/`.
+`Protocol` and the read-only `ProtocolRegistry` port sit in `contracts/domain/protocol.ts`:
+the contract has two core consumers — layer-tree resolves descriptors through it, map
+builds render units — so it belongs to the core. Protocol implementations, their
+adapters and their configs stay in `domain/protocols/<id>/`.
 
-**Legend is metadata, not a model.** A node's `legend` is descriptive metadata; it
-deliberately has no item model: legend shapes are protocol-specific (a color ramp for a
-raster, a point-size scale for a cloud) with no shared interaction — the UI renders them
-as given, and an item model would force a lowest common denominator onto them.
+**Legend is metadata, not a model.** A node's `legend` is descriptive metadata without an
+item model: legend shapes are protocol-specific (a color ramp for a raster, a point-size
+scale for a cloud) with no shared interaction — the UI renders them as given, and an
+item model would force a lowest common denominator onto them.
 
 **Registration.** Built-in protocols register in `registerProtocols` during bootstrap,
-before modules — which add their own through `context.protocols`. Duplicate ids
-throw (ADR-0005). A node whose protocol id is unregistered stays in the tree and
-produces no map layer — the snapshot excludes it — and the capability check at
-assignment logs a warning for its capabilities; the tree marks such nodes as
-unsupported (ADR-0008).
+before modules — which add their own through `context.protocols`; duplicate ids throw
+(ADR-0005). A node whose protocol id is unregistered stays in the tree and produces no
+map layer — the snapshot excludes it — and the tree marks such nodes as unsupported
+(ADR-0008).
 
 **New layers are invisible.** Sources deliver new layers with `isVisible: false`; the map
 stays empty until the user opts in.
 
 ## Consequences
 
-- A new source format needs a source adapter plus — rarely — a new protocol; the
-  core changes never.
+- A new source format needs a source adapter plus — rarely — a new protocol; the core
+  does not change.
 - What a node can do is data on the node, assigned by the source; the menu is derived by
-  resolving ids, never by recomputing availability.
+  resolving ids, not by recomputing availability.
 - Priority and resolution live in one place — the core's asset mapper; protocols
   contribute slot fitness at registration, so no module carries private resolution
   logic that could drift.
-- A node's capability list is honest by construction: unimplementable capabilities never
-  reach the menu.
+- A node's capability list is implementable by construction: unimplementable
+  capabilities never reach the menu.
 - Trade-off: bindings and capabilities name protocols and tools by string id. A typo in
-  a tool link fails loudly at startup (ADR-0007); a typo in a node's binding or an
+  a tool link fails at startup (ADR-0007); a typo in a node's binding or an
   unimplementable assignment is caught at fetch time by the logger.
-- Trade-off: the shared Mapbox vocabulary means protocols interpret the same keys
+- Trade-off: the shared style vocabulary means protocols interpret the same keys
   differently — `raster-opacity` is meaningful to WMS and ignored by COPC; the
   interpreter, not the vocabulary, decides.
 - The renderer/data split doubles the binding surface but keeps tasks separate: one
