@@ -9,5 +9,5 @@ export {
     formatDistance,
     formatArea,
     formatVolume,
-    convertPointToDegrees,
+    geoPointToLngLatZ,
 } from "@core/lib/geo/formatters";

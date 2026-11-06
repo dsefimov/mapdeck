@@ -32,7 +32,7 @@ export {
     formatDistance,
     formatArea,
     formatVolume,
-    convertPointToDegrees,
+    geoPointToLngLatZ,
 } from "./formatters";
 export { tileToBbox, tileToQuadkey, getTilesForBounds } from "./tile";
 export type { TileCoord } from "./tile";

@@ -12,7 +12,7 @@ is [docs/extending.md](../extending.md); configuration options live in
 | `mapdeck` | `createMapdeck`, `MapdeckRoot`, `createToolPanelWidget`, and the top-level types: `MapdeckOptions`, `MapdeckInstance`, `Module`, `ModuleContext`, `ToolRuntimeContext`, `Widget`, `MapTool`, `LayerTool`, `SourceAdapter`, `SettingMetadata`, `BaseMapConfig`, `Feature`, `RegisterOptions` |
 | `mapdeck/contracts` | the full contract barrel: ports (`OverlayManager`, `MapContext`, `AssetMappingPort`), node and render types (`TreeNode`, `LayerNode`, `ProtocolBinding`, `RenderDescriptor`, `RenderUnit`), protocol/adapter types, feature-provider and point-cloud types, `FeatureRow`, `MAP_TOOL_KIND`, per-kind tool types |
 | `mapdeck/ui` | panel-building surface: primitives (`Button`, `Icon`, `TextInput`, `SelectInput`, `SliderInput`, …), composites (`ToolPanel`, `SegmentsList`, `DataTable`, `ColorPicker`, `SummarySection`, menus), interaction hooks (`useClickOutside`, `useEscapeKey`, `useMenuKeyboard`, `useMapCursor`, `useDebounce`), theme helpers (`getThemeColor`, `subscribeTheme`, `useMeasureColors`, …), `isIconName` |
-| `mapdeck/utils` | pure helpers: `formatDistance`, `formatArea`, `formatVolume`, `convertPointToDegrees` |
+| `mapdeck/utils` | pure helpers: `formatDistance`, `formatArea`, `formatVolume`, `geoPointToLngLatZ` |
 
 The application chrome (`WidgetGrid`, boot screens, error boundaries) is not exported.
 

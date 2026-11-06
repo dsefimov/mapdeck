@@ -22,7 +22,7 @@ precedent) with its own lib-build entry:
   `DEFAULT_ACCENT_CSS`, `useMeasureColors`, …). Everything styles through the
   `mapdeck/styles.css` tokens; there is no separate `ui.css`.
 - **`mapdeck/utils`** — pure helpers, no React, no stores: the geo formatters
-  (`formatDistance`, `formatArea`, `formatVolume`, `convertPointToDegrees`).
+  (`formatDistance`, `formatArea`, `formatVolume`, `geoPointToLngLatZ`).
   Point-cloud picking helpers travel through `mapdeck/contracts` and stay there.
 
 The composition of `mapdeck/ui` is a stability contract, guarded by a unit test:

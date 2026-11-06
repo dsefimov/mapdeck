@@ -77,9 +77,10 @@ export function formatVolume(cubicMeters: number): string {
 }
 
 /**
- * Convert GeoPoint to a planar [lng, lat, z] tuple.
+ * Unpack a GeoPoint into a [lng, lat, z] tuple — the coordinate layout
+ * deck.gl layers take.
  */
-export function convertPointToDegrees(
+export function geoPointToLngLatZ(
     point: GeoPoint,
 ): [number, number, number] {
     return [point.lng, point.lat, point.z];

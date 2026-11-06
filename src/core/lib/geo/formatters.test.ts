@@ -3,7 +3,7 @@ import {
     formatDistance,
     formatArea,
     formatVolume,
-    convertPointToDegrees,
+    geoPointToLngLatZ,
 } from "./formatters";
 
 describe("formatDistance", () => {
@@ -59,10 +59,10 @@ describe("formatVolume", () => {
     });
 });
 
-describe("convertPointToDegrees", () => {
-    it("unpacks a GeoPoint into a planar [lng, lat, z] tuple", () => {
+describe("geoPointToLngLatZ", () => {
+    it("unpacks a GeoPoint into a [lng, lat, z] tuple", () => {
         expect(
-            convertPointToDegrees({ lng: 30, lat: 59, z: 12 }),
+            geoPointToLngLatZ({ lng: 30, lat: 59, z: 12 }),
         ).toEqual([30, 59, 12]);
     });
 });

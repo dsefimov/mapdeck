@@ -12,7 +12,7 @@ import {
 } from "@deck.gl/layers";
 import { COORDINATE_SYSTEM } from "@deck.gl/core";
 import type { Layer } from "@deck.gl/core";
-import { convertPointToDegrees, type GeoPoint } from "@core/lib/geo";
+import { geoPointToLngLatZ, type GeoPoint } from "@core/lib/geo";
 import type { MeasureColors } from "@core/ui/theme";
 import type { Geometry, TechLayerSpec } from "../../types";
 
@@ -34,14 +34,11 @@ const PATH_WIDTH_MAX_PX = 8;
  */
 const PREVIEW_LINE_WIDTH_PX = 2;
 
-const toDegrees = (p: GeoPoint): [number, number, number] =>
-    convertPointToDegrees(p);
-
 const polygonDegrees = (
     points: readonly GeoPoint[],
 ): [number, number, number][] => {
-    const ring = points.map(toDegrees);
-    if (points.length > 0) ring.push(toDegrees(points[0]!));
+    const ring = points.map(geoPointToLngLatZ);
+    if (points.length > 0) ring.push(geoPointToLngLatZ(points[0]!));
     return ring;
 };
 
@@ -55,7 +52,7 @@ const buildPointsLayer = (
     return new ScatterplotLayer({
         id: `${prefix}-points`,
         data: points,
-        getPosition: toDegrees,
+        getPosition: geoPointToLngLatZ,
         getRadius: VERTEX_RADIUS_PX,
         getFillColor: colors.stroke,
         radiusUnits: "pixels",
@@ -114,7 +111,7 @@ const buildPreviewPointLayer = (
     return new ScatterplotLayer({
         id: `${prefix}-preview-point`,
         data: [previewPoint],
-        getPosition: toDegrees,
+        getPosition: geoPointToLngLatZ,
         getRadius: VERTEX_RADIUS_PX,
         getFillColor: colors.preview,
         radiusUnits: "pixels",
@@ -133,7 +130,7 @@ const buildPreviewLineLayer = (
     if (!last || !previewPoint) return null;
     return new LineLayer({
         id: `${prefix}-preview-line`,
-        data: [[toDegrees(last), toDegrees(previewPoint)]],
+        data: [[geoPointToLngLatZ(last), geoPointToLngLatZ(previewPoint)]],
         getPath: (d: unknown) => d as [number, number, number][],
         getColor: colors.preview,
         getWidth: PREVIEW_LINE_WIDTH_PX,
@@ -162,7 +159,7 @@ export function renderTechLayers(
     const allPoints = allGeometries.flatMap((g) => g.points);
 
     const pathData: [number, number, number][][] = [
-        ...polylines.map((g) => g.points.map(toDegrees)),
+        ...polylines.map((g) => g.points.map(geoPointToLngLatZ)),
         ...polygons.map((g) => polygonDegrees(g.points)),
     ];
     const polygonData: [number, number, number][][] = polygons.map((g) =>

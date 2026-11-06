@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-    convertPointToDegrees,
+    geoPointToLngLatZ,
     formatArea,
     formatDistance,
     formatVolume,
@@ -11,7 +11,7 @@ describe("mapdeck/utils subpath", () => {
         expect(formatDistance(1500)).toBe("1.50 km");
         expect(formatArea(20_000)).toBe("2.00 ha");
         expect(formatVolume(2)).toBe("2.00 m³");
-        expect(convertPointToDegrees({ lng: 30, lat: 60, z: 5 })).toEqual([
+        expect(geoPointToLngLatZ({ lng: 30, lat: 60, z: 5 })).toEqual([
             30, 60, 5,
         ]);
     });
