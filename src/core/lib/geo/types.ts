@@ -120,6 +120,14 @@ export class Bbox {
 /** 2D point: [longitude, latitude] */
 export type Point2D = [number, number];
 
+/** Geographic bounding box: [west, south, east, north] in degrees. */
+export type Bbox2DTuple = readonly [
+    west: number,
+    south: number,
+    east: number,
+    north: number,
+];
+
 /** Point on the map in WGS84 degrees. */
 export interface GeoPoint {
     lng: number;

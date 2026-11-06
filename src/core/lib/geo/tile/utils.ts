@@ -8,16 +8,10 @@
  * - Quadkey: string identifier for a tile at a given zoom
  */
 
+import type { Bbox2DTuple } from "../types";
+
 /** Tile coordinate: x and y in [0, 2^zoom). */
 export type TileCoord = readonly [x: number, y: number, zoom: number];
-
-/** Planar bounding box: [west, south, east, north] in WGS84 degrees. */
-export type Bbox2DTuple = readonly [
-    west: number,
-    south: number,
-    east: number,
-    north: number,
-];
 
 /** Latitude at which the Web Mercator square closes onto the poles. */
 const MAX_MERCATOR_LATITUDE = 85.0511287798066;

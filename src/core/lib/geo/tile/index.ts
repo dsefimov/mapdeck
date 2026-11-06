@@ -3,4 +3,4 @@ export {
     tileToQuadkey,
     getTilesForBounds,
 } from "./utils";
-export type { TileCoord, Bbox2DTuple } from "./utils";
+export type { TileCoord } from "./utils";

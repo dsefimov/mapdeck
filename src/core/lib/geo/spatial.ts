@@ -2,6 +2,7 @@
  * Spatial calculation utilities — distance, perimeter and geometry
  * predicates. Pure functions, no dependencies.
  */
+import type { Bbox2DTuple, Point2D } from "./types";
 
 /** Mean Earth radius in meters (IUGG R1, the value turf also uses). */
 const EARTH_RADIUS_M = 6371008.8;
@@ -11,10 +12,7 @@ const EARTH_RADIUS_M = 6371008.8;
  * haversine on the mean Earth radius. Deviates from the true WGS84
  * ellipsoidal geodesic by up to ~0.5% (typically ~0.1%).
  */
-export function greatCircleDistance(
-    a: [number, number],
-    b: [number, number],
-): number {
+export function greatCircleDistance(a: Point2D, b: Point2D): number {
     const lat1 = (a[1] * Math.PI) / 180;
     const lat2 = (b[1] * Math.PI) / 180;
     const dLat = lat2 - lat1;
@@ -29,14 +27,15 @@ export function greatCircleDistance(
 
 /**
  * Check if a point is inside a polygon using ray casting.
- * @param candidate - [x, y] coordinates to test
- * @param polygon - array of [x, y] vertices (does not need to be closed)
+ * @param candidate - [lng, lat] coordinates to test
+ * @param polygon - array of [lng, lat] vertices; a single ring — holes
+ *   are not modelled (does not need to be closed)
  * @returns true for interior points; points exactly on an edge or vertex
  *   are not reliably detected either way — callers must not lean on it
  */
 export function isPointInPolygon(
-    candidate: [number, number],
-    polygon: [number, number][],
+    candidate: Point2D,
+    polygon: Point2D[],
 ): boolean {
     const [px, py] = candidate;
     let inside = false;
@@ -59,11 +58,8 @@ export function isPointInPolygon(
 
 /**
  * Compute the bounding box of a polygon.
- * Returns [minX, minY, maxX, maxY].
  */
-export function polygonBoundingBox(
-    polygon: [number, number][],
-): [number, number, number, number] {
+export function polygonBoundingBox(polygon: Point2D[]): Bbox2DTuple {
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
@@ -81,12 +77,12 @@ export function polygonBoundingBox(
 
 /**
  * Check if a point is inside a bounding box.
- * @param candidate - [x, y] coordinates
+ * @param candidate - [lng, lat] coordinates
  * @param bbox - [minX, minY, maxX, maxY]
  */
 export function isPointInBoundingBox(
-    candidate: [number, number],
-    bbox: [number, number, number, number],
+    candidate: Point2D,
+    bbox: Bbox2DTuple,
 ): boolean {
     const [x, y] = candidate;
     const [minX, minY, maxX, maxY] = bbox;
@@ -94,28 +90,19 @@ export function isPointInBoundingBox(
 }
 
 /**
- * Calculate the perimeter of a polygon defined by an array of points.
+ * Perimeter of a polygon: the ring closes, so two points give the
+ * there-and-back length and fewer than two give 0.
  */
-export function calculatePolygonPerimeter(
-    points: { lng: number; lat: number }[],
-): number {
+export function calculatePolygonPerimeter(points: Point2D[]): number {
     if (points.length < 2) return 0;
 
     let perimeter = 0;
     for (let i = 1; i < points.length; i++) {
-        const prev = points[i - 1]!;
-        const curr = points[i]!;
-        perimeter += greatCircleDistance(
-            [prev.lng, prev.lat],
-            [curr.lng, curr.lat],
-        );
+        perimeter += greatCircleDistance(points[i - 1]!, points[i]!);
     }
     const last = points[points.length - 1]!;
     const first = points[0]!;
-    perimeter += greatCircleDistance(
-        [last.lng, last.lat],
-        [first.lng, first.lat],
-    );
+    perimeter += greatCircleDistance(last, first);
 
     return perimeter;
 }

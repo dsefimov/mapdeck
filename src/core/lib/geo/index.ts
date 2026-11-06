@@ -1,5 +1,6 @@
 export type {
     Point2D,
+    Bbox2DTuple,
     GeoJSONGeometry,
     GeoPoint,
     BBox3D,
@@ -33,4 +34,5 @@ export {
     formatVolume,
     convertPointToDegrees,
 } from "./formatters";
-export { tileToBBOX, tileToQuadkey, getTilesForBounds } from "./tile";
+export { tileToBbox, tileToQuadkey, getTilesForBounds } from "./tile";
+export type { TileCoord } from "./tile";

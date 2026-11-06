@@ -41,7 +41,9 @@ export function measurePolygonArea(points: GeoPoint[]): AreaMeasurements {
     }
     return {
         areaSquareMeters: calculateArea2D(points),
-        perimeterMeters: calculatePolygonPerimeter(points),
+        perimeterMeters: calculatePolygonPerimeter(
+            points.map((p) => [p.lng, p.lat]),
+        ),
         edges,
         vertexCount: points.length,
     };

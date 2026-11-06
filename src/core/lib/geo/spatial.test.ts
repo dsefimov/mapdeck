@@ -39,8 +39,19 @@ describe("isPointInPolygon", () => {
         expect(isPointInPolygon([2, 7], lShape)).toBe(true);
     });
 
-    it("works without a closed ring", () => {
-        expect(isPointInPolygon([5, 5], square)).toBe(true);
+    it("accepts a closed ring — the repeated vertex is harmless", () => {
+        const closed: [number, number][] = [
+            [0, 0],
+            [10, 0],
+            [10, 10],
+            [0, 10],
+            [0, 0],
+        ];
+        expect(isPointInPolygon([5, 5], closed)).toBe(true);
+    });
+
+    it("says outside for an empty polygon", () => {
+        expect(isPointInPolygon([5, 5], [])).toBe(false);
     });
 });
 
@@ -110,22 +121,32 @@ describe("greatCircleDistance", () => {
 
 describe("calculatePolygonPerimeter", () => {
     it("closes the ring: the last vertex connects back to the first", () => {
-        const square = [
-            { lng: 0, lat: 0 },
-            { lng: 0.001, lat: 0 },
-            { lng: 0.001, lat: 0.001 },
-            { lng: 0, lat: 0.001 },
+        const square: [number, number][] = [
+            [0, 0],
+            [0.001, 0],
+            [0.001, 0.001],
+            [0, 0.001],
         ];
 
-        const perimeter = calculatePolygonPerimeter(square);
+        // 0.001° along the equator is exactly (Math.PI / 180) * R * 0.001
+        // meters; four such sides.
+        const side = (Math.PI / 180) * R * 0.001;
+        expect(calculatePolygonPerimeter(square)).toBeCloseTo(
+            4 * side,
+            4,
+        );
+    });
 
-        // Four sides of ~111 m at the equator.
-        expect(perimeter).toBeGreaterThan(4 * 100);
-        expect(perimeter).toBeLessThan(4 * 130);
+    it("gives the there-and-back length for two points", () => {
+        const d = greatCircleDistance([0, 0], [0.001, 0]);
+        expect(calculatePolygonPerimeter([[0, 0], [0.001, 0]])).toBeCloseTo(
+            2 * d,
+            9,
+        );
     });
 
     it("is zero for fewer than two points", () => {
-        expect(calculatePolygonPerimeter([{ lng: 0, lat: 0 }])).toBe(0);
+        expect(calculatePolygonPerimeter([[0, 0]])).toBe(0);
         expect(calculatePolygonPerimeter([])).toBe(0);
     });
 });
