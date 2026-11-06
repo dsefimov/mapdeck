@@ -16,7 +16,13 @@ describe("formatDict", () => {
         expect(formatDict("{missing} stays", {})).toBe("{missing} stays");
     });
 
-    it("ignores braces without word content", () => {
+    it("never reads the prototype chain — {constructor} stays a placeholder", () => {
+        expect(formatDict("{constructor}", {})).toBe("{constructor}");
+    });
+
+    it("interpolates numeric-string keys like any other", () => {
+        // {1} matches the \w+ pattern — it stays only when the key is absent.
         expect(formatDict("{1} and {}", {})).toBe("{1} and {}");
+        expect(formatDict("{1}", { "1": "x" })).toBe("x");
     });
 });

@@ -1,8 +1,9 @@
 /**
  * Simple template interpolation for translation strings.
  *
- * Replaces `{placeholder}` tokens with values from `params`.
- * Missing params are left as-is in the output.
+ * Replaces `{placeholder}` tokens with values from `params` — own
+ * properties only, never the prototype chain. Missing params are left
+ * as-is in the output.
  *
  * Example:
  *   formatDict("Vertex {from} → {to}", { from: 1, to: 2 })
@@ -14,6 +15,7 @@ export function formatDict(
 ): string {
     return template.replace(
         /\{(\w+)\}/g,
-        (_match, key: string) => String(params[key] ?? `{${key}}`),
+        (match, key: string) =>
+            Object.hasOwn(params, key) ? String(params[key]) : match,
     );
 }
