@@ -37,16 +37,15 @@ test.describe("layer tools", () => {
         const slider = page.locator("#pointSize");
         await expect(slider).toBeVisible();
 
-        // The COPC default point size is 2.0 — the slider maximum — so the
-        // only keyboard move available is down: 2.0 → 1.9.
-        await expect(slider).toHaveValue("2");
+        // The COPC default point size is 0.5; one step up is 0.6.
+        await expect(slider).toHaveValue("0.5");
         await slider.focus();
-        await page.keyboard.press("ArrowLeft");
+        await page.keyboard.press("ArrowRight");
 
         // The label renders the node's committed style: keyboard → debounce
         // → setPointSize → updateLayerStyle → observer re-render.
-        await expect(page.getByText("Point size: 1.9 px")).toBeVisible();
-        await expect(slider).toHaveValue("1.9");
+        await expect(page.getByText("Point size: 0.6 px")).toBeVisible();
+        await expect(slider).toHaveValue("0.6");
 
         await console.assertClean("point size slider");
     });
