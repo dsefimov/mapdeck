@@ -33,8 +33,9 @@ export function delaunayTriangulate(points: PointXY[]): Triangle[] {
 
     const coords = new Float64Array(points.length * 2);
     for (let i = 0; i < points.length; i++) {
-        coords[i * 2] = points[i]!.x;
-        coords[i * 2 + 1] = points[i]!.y;
+        const p = points[i]!;
+        coords[i * 2] = p.x;
+        coords[i * 2 + 1] = p.y;
     }
 
     const { triangles } = new Delaunator(coords);

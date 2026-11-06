@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { delaunayTriangulate, type PointXY } from "./delaunay2d";
+import {
+    delaunayTriangulate,
+    type PointXY,
+    type Triangle,
+} from "./delaunay2d";
 
 const pt = (x: number, y: number): PointXY => ({ x, y });
 
-function triangleArea(points: PointXY[], t: { a: number; b: number; c: number }) {
+function triangleArea(points: PointXY[], t: Triangle) {
     const p1 = points[t.a]!;
     const p2 = points[t.b]!;
     const p3 = points[t.c]!;
@@ -76,6 +80,10 @@ describe("delaunayTriangulate", () => {
         const triangles = delaunayTriangulate(points);
 
         expect(triangles.length).toBeGreaterThan(19_000);
+        for (const t of triangles) {
+            // No degenerate triangles: every tile has a positive area.
+            expect(triangleArea(points, t)).toBeGreaterThan(0);
+        }
         const area = triangles.reduce(
             (sum, t) => sum + triangleArea(points, t),
             0,
