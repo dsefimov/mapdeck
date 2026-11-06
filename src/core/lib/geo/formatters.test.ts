@@ -12,6 +12,23 @@ describe("formatDistance", () => {
         expect(formatDistance(2)).toBe("2.00 m");
         expect(formatDistance(1500)).toBe("1.50 km");
     });
+
+    it.each([
+        [[999.999, 1000], "1.00 km"],
+        [[0.9999999, 1], "1.00 m"],
+    ])("re-tiers rounding boundaries %s → %s", (inputs, expected) => {
+        for (const input of inputs) {
+            expect(formatDistance(input)).toBe(expected);
+        }
+    });
+
+    it("keeps the sign but picks the unit by magnitude", () => {
+        expect(formatDistance(-1500)).toBe("-1.50 km");
+    });
+
+    it("renders NaN as an em dash", () => {
+        expect(formatDistance(Number.NaN)).toBe("—");
+    });
 });
 
 describe("formatArea", () => {
@@ -21,6 +38,11 @@ describe("formatArea", () => {
         expect(formatArea(20_000)).toBe("2.00 ha");
         expect(formatArea(2_000_000)).toBe("2.000 km²");
     });
+
+    it("re-tiers when rounding crosses the boundary", () => {
+        expect(formatArea(9999.995)).toBe("1.00 ha");
+        expect(formatArea(999_999.999)).toBe("1.000 km²");
+    });
 });
 
 describe("formatVolume", () => {
@@ -29,6 +51,11 @@ describe("formatVolume", () => {
         expect(formatVolume(0.5)).toBe("500.0 litres");
         expect(formatVolume(12)).toBe("12.00 m³");
         expect(formatVolume(2_000_000)).toBe("2.000 km³");
+    });
+
+    it("re-tiers when rounding crosses the boundary", () => {
+        expect(formatVolume(0.9999999)).toBe("1.00 m³");
+        expect(formatVolume(999_999.999)).toBe("1.000 km³");
     });
 });
 

@@ -4,49 +4,76 @@
  */
 import type { GeoPoint } from "./types";
 
+interface UnitTier {
+    /** Value at which this tier takes over, in base units. */
+    readonly from: number;
+    /** Multiplier from base units to this tier's unit. */
+    readonly scale: number;
+    readonly unit: string;
+    readonly digits: number;
+}
+
 /**
- * Format distance in meters to human-readable string
+ * Pick the tier by magnitude and format to its fixed digits. The tier
+ * is re-picked when rounding carries the display into the next tier
+ * (999.999 m shows as 1.00 km, not 1000.00 m). The sign is kept; the
+ * tier is chosen by magnitude, so -1500 m shows as -1.50 km. NaN has
+ * no magnitude and renders as "—".
  */
+function formatByMagnitude(
+    value: number,
+    tiers: readonly UnitTier[],
+): string {
+    if (Number.isNaN(value)) return "—";
+
+    const magnitude = Math.abs(value);
+    const index = tiers.findIndex((tier) => magnitude >= tier.from);
+    const tier = tiers[index]!;
+    const next = tiers[index - 1];
+    const display = value * tier.scale;
+
+    if (
+        next !== undefined &&
+        Number(display.toFixed(tier.digits)) >= next.from * tier.scale
+    ) {
+        return `${(value * next.scale).toFixed(next.digits)} ${next.unit}`;
+    }
+    return `${display.toFixed(tier.digits)} ${tier.unit}`;
+}
+
+const DISTANCE_TIERS: readonly UnitTier[] = [
+    { from: 1_000, scale: 1 / 1_000, unit: "km", digits: 2 },
+    { from: 1, scale: 1, unit: "m", digits: 2 },
+    { from: 0, scale: 100, unit: "cm", digits: 1 },
+];
+
+const AREA_TIERS: readonly UnitTier[] = [
+    { from: 1_000_000, scale: 1 / 1_000_000, unit: "km²", digits: 3 },
+    { from: 10_000, scale: 1 / 10_000, unit: "ha", digits: 2 },
+    { from: 1, scale: 1, unit: "m²", digits: 2 },
+    { from: 0, scale: 10_000, unit: "cm²", digits: 1 },
+];
+
+const VOLUME_TIERS: readonly UnitTier[] = [
+    { from: 1_000_000, scale: 1 / 1_000_000, unit: "km³", digits: 3 },
+    { from: 1, scale: 1, unit: "m³", digits: 2 },
+    { from: 0.001, scale: 1_000, unit: "litres", digits: 1 },
+    { from: 0, scale: 1_000_000, unit: "ml", digits: 1 },
+];
+
+/** Format a distance in meters. */
 export function formatDistance(meters: number): string {
-    if (meters >= 1000) {
-        return `${(meters / 1000).toFixed(2)} km`;
-    }
-    if (meters >= 1) {
-        return `${meters.toFixed(2)} m`;
-    }
-    return `${(meters * 100).toFixed(1)} cm`;
+    return formatByMagnitude(meters, DISTANCE_TIERS);
 }
 
-/**
- * Format area in square meters to human-readable string
- */
+/** Format an area in square meters. */
 export function formatArea(squareMeters: number): string {
-    if (squareMeters >= 1_000_000) {
-        return `${(squareMeters / 1_000_000).toFixed(3)} km²`;
-    }
-    if (squareMeters >= 10_000) {
-        return `${(squareMeters / 10_000).toFixed(2)} ha`;
-    }
-    if (squareMeters >= 1) {
-        return `${squareMeters.toFixed(2)} m²`;
-    }
-    return `${(squareMeters * 10000).toFixed(1)} cm²`;
+    return formatByMagnitude(squareMeters, AREA_TIERS);
 }
 
-/**
- * Format volume in cubic meters to human-readable string.
- */
+/** Format a volume in cubic meters. */
 export function formatVolume(cubicMeters: number): string {
-    if (cubicMeters >= 1_000_000) {
-        return `${(cubicMeters / 1_000_000).toFixed(3)} km³`;
-    }
-    if (cubicMeters >= 1) {
-        return `${cubicMeters.toFixed(2)} m³`;
-    }
-    if (cubicMeters >= 0.001) {
-        return `${(cubicMeters * 1000).toFixed(1)} litres`;
-    }
-    return `${(cubicMeters * 1_000_000).toFixed(1)} ml`;
+    return formatByMagnitude(cubicMeters, VOLUME_TIERS);
 }
 
 /**
