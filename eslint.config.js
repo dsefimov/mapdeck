@@ -203,6 +203,11 @@ export default [
                                 "lib imports nothing upward — it is the bottom layer.",
                         },
                         {
+                            group: ["@core/lib", "@core/lib/*"],
+                            message:
+                                "Import lib siblings relatively — @core/* is for crossing layers.",
+                        },
+                        {
                             group: [
                                 "**/app/**",
                                 "@widgets/*",

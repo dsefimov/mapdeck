@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { logger } from "@core/lib/logger";
+import { logger } from "../logger";
 import { KeyedRegistry } from "./KeyedRegistry";
 
 interface Item {

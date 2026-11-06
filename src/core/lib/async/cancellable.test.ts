@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { logger } from "@core/lib/logger";
+import { logger } from "../logger";
 import { createCancellableTask } from "./cancellable";
 
 afterEach(() => {
