@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import type { GeoJSONGeometry } from "@core/lib/geo";
-
 import { featureToRow } from "./featureToRow";
 
-const POINT: GeoJSONGeometry = {
+const POINT = {
     type: "Point",
     coordinates: [30.5, 59.9],
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GeoJSONGeometry, BboxTuple } from "./types";
+import type { BboxTuple } from "./types";
 import { Bbox } from "./types";
 import { bboxFromGeometry, flattenTo2D, findBboxProblem, unionBbox } from "./bbox";
 
@@ -40,7 +40,7 @@ describe("bboxFromGeometry", () => {
                     ],
                 ],
             ],
-        } as unknown as GeoJSONGeometry);
+        });
 
         expect([bbox?.west, bbox?.south, bbox?.east, bbox?.north]).toEqual([
             0, 0, 12, 12,
@@ -51,7 +51,7 @@ describe("bboxFromGeometry", () => {
         expect(bboxFromGeometry(undefined)).toBeNull();
         expect(bboxFromGeometry(null)).toBeNull();
         expect(
-            bboxFromGeometry({ type: "Polygon" } as unknown as GeoJSONGeometry),
+            bboxFromGeometry({ type: "Polygon" }),
         ).toBeNull();
     });
 });
@@ -150,9 +150,9 @@ describe("Bbox tuple arity", () => {
     });
 });
 
-function polygon(ring: [number, number][]): GeoJSONGeometry {
+function polygon(ring: [number, number][]): unknown {
     return {
         type: "Polygon",
         coordinates: [ring],
-    } as unknown as GeoJSONGeometry;
+    };
 }

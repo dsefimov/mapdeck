@@ -5,14 +5,27 @@
  * a module cycle (index → bbox → index).
  */
 
-import type { BboxTuple, GeoJSONGeometry } from "./types";
+import type { BboxTuple } from "./types";
 import { Bbox } from "./types";
 
-export function bboxFromGeometry(
-    geometry: GeoJSONGeometry | null | undefined,
-): Bbox | null {
-    if (!geometry || typeof geometry !== "object") return null;
-    if (typeof geometry.type !== "string") return null;
+/** The parts of a GeoJSON geometry this module reads — unvalidated. */
+interface GeometryLike {
+    type: unknown;
+    coordinates?: unknown;
+    geometries?: unknown;
+}
+
+function isGeometryLike(value: unknown): value is GeometryLike {
+    return typeof value === "object" && value !== null && "type" in value;
+}
+
+/**
+ * Bbox of a GeoJSON geometry from untrusted JSON — validated here at
+ * runtime, so the parameter is honestly `unknown`.
+ */
+export function bboxFromGeometry(geometry: unknown): Bbox | null {
+    if (!isGeometryLike(geometry) || typeof geometry.type !== "string")
+        return null;
 
     if (geometry.type === "GeometryCollection") {
         if (

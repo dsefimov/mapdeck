@@ -1,7 +1,6 @@
 export type {
     Point2D,
     Bbox2DTuple,
-    GeoJSONGeometry,
     GeoPoint,
     BBox3D,
     BboxTuple,

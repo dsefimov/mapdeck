@@ -7,7 +7,6 @@ import type {
     WfsRequestParams,
     WfsResponse,
 } from "./types";
-import type { GeoJSONGeometry } from "@core/lib/geo";
 import { buildWfsUrl } from "./url";
 import { parseGeoJsonResponse } from "./parser";
 import { logger } from "@core/lib/logger";
@@ -74,7 +73,7 @@ export async function fetchWfsPageAsFeatures(
     const response = await fetchWfsFeatures(params, signal);
 
     const features = response.features.map((f) =>
-        featureToRow(f.geometry as GeoJSONGeometry | null, f.properties),
+        featureToRow(f.geometry, f.properties),
     );
 
     return { features, totalFeatures: response.totalFeatures };

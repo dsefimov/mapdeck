@@ -1,4 +1,3 @@
-import type { GeoJSONGeometry } from "@core/lib/geo";
 import { logger } from "@core/lib/logger";
 import { fetchChecked } from "../shared/http";
 import type { FeatureRow } from "@core/contracts";
@@ -29,7 +28,7 @@ export interface OgcFeaturesPage {
 interface FeatureCollectionPayload {
     features: Array<{
         id?: string | number;
-        geometry?: GeoJSONGeometry | null;
+        geometry?: unknown;
         properties?: Record<string, unknown> | null;
     }>;
     numberReturned?: number;

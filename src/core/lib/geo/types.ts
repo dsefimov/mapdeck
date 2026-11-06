@@ -141,13 +141,6 @@ export interface GeoPoint {
  */
 export type BBox3D = Bbox & { minZ: number; maxZ: number };
 
-/** GeoJSON geometry object (minimal representation) */
-export interface GeoJSONGeometry {
-    type: string;
-    coordinates?: unknown[];
-    geometries?: GeoJSONGeometry[];
-}
-
 /**
  * A single plane: unit normal plus the signed plane constant.
  *
