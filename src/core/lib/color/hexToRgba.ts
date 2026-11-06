@@ -1,38 +1,32 @@
+/** Hex color: optional `#`, then 3, 6 or 8 hex digits. */
+const HEX_COLOR = /^#?([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+
+/** RGBA channels, each 0-255. */
+export type Rgba = [r: number, g: number, b: number, a: number];
+
 /**
- * Convert a hex color string to an RGBA array [r, g, b, a].
- * Alpha is 0-255. Supports "#RRGGBB", "#RGB" and "#RRGGBBAA" formats.
- * Throws on anything else — a NaN channel would silently poison every
- * color derived from it.
+ * Convert a hex color — `RGB`, `RRGGBB` or `RRGGBBAA`, with or without
+ * the leading `#` — to RGBA channels. `defaultAlpha` applies to formats
+ * without their own alpha. Throws on anything else — a NaN channel
+ * would silently poison every color derived from it.
  */
-const HEX_PATTERN = /^(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
-
-export function hexToRgba(
-    hex: string,
-    alpha: number = 255,
-): [number, number, number, number] {
-    const cleaned = hex.replace("#", "").trim();
-
-    if (!HEX_PATTERN.test(cleaned)) {
+export function hexToRgba(hex: string, defaultAlpha = 255): Rgba {
+    const digits = HEX_COLOR.exec(hex.trim())?.[1];
+    if (!digits) {
         throw new Error(`hexToRgba: invalid hex color "${hex}"`);
     }
 
-    if (cleaned.length === 3) {
-        const r = parseInt(cleaned[0]! + cleaned[0], 16);
-        const g = parseInt(cleaned[1]! + cleaned[1], 16);
-        const b = parseInt(cleaned[2]! + cleaned[2], 16);
-        return [r, g, b, alpha];
-    }
+    const full =
+        digits.length === 3
+            ? [...digits].map((c) => c + c).join("")
+            : digits;
+    const channel = (index: number) =>
+        parseInt(full.slice(index * 2, index * 2 + 2), 16);
 
-    if (cleaned.length === 8) {
-        const r = parseInt(cleaned.substring(0, 2), 16);
-        const g = parseInt(cleaned.substring(2, 4), 16);
-        const b = parseInt(cleaned.substring(4, 6), 16);
-        const a = parseInt(cleaned.substring(6, 8), 16);
-        return [r, g, b, a];
-    }
-
-    const r = parseInt(cleaned.substring(0, 2), 16);
-    const g = parseInt(cleaned.substring(2, 4), 16);
-    const b = parseInt(cleaned.substring(4, 6), 16);
-    return [r, g, b, alpha];
+    return [
+        channel(0),
+        channel(1),
+        channel(2),
+        full.length === 8 ? channel(3) : defaultAlpha,
+    ];
 }

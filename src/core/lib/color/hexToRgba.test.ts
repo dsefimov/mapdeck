@@ -21,6 +21,9 @@ describe("hexToRgba", () => {
         ["#12345"],
         [""],
         ["#12345zz"],
+        ["f#ff"],
+        ["##fff"],
+        ["ff#ff"],
     ])("throws on invalid input %s instead of returning NaN channels", (input) => {
         expect(() => hexToRgba(input)).toThrow(/invalid hex color/);
     });
