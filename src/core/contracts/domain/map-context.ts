@@ -1,6 +1,6 @@
 import type maplibregl from "maplibre-gl";
 import type { Viewport, PickingInfo } from "@deck.gl/core";
-import type { FrustumPlanes } from "@core/lib/geo";
+import type { FrustumPlanes } from "./frustum";
 import type { PointPickingCamera } from "./point-cloud-picking";
 
 /**

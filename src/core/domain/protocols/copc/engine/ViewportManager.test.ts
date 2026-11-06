@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Viewport } from "@deck.gl/core";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import type { FrustumPlanes } from "@core/lib/geo";
+import type { FrustumPlanes } from "@core/contracts";
 import { ViewportManager } from "./ViewportManager";
 
 const PLANES: FrustumPlanes = {

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ColorScheme, type PointCloudData } from "@core/contracts";
-import { Bbox, type BBox3D, type FrustumPlanes } from "@core/lib/geo";
+import { Bbox, type BBox3D } from "@core/lib/geo";
+import type { FrustumPlanes } from "@core/contracts";
 import type { CachedNode } from "../../types";
 import type { CameraSnapshot } from "../geometry";
 import {

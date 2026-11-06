@@ -4,7 +4,7 @@
  */
 
 import type { CameraSnapshot } from "./frustum";
-import type { FrustumPlanes } from "@core/lib/geo";
+import type { FrustumPlanes } from "@core/contracts";
 import type { ProjectToCommonSpace } from "./projection";
 import type { MapContext } from "@core/contracts";
 

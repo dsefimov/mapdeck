@@ -4,7 +4,7 @@ import { MapboxOverlay } from "@deck.gl/mapbox";
 import type { MapboxOverlayProps } from "@deck.gl/mapbox";
 import type maplibregl from "maplibre-gl";
 import { logger } from "@core/lib/logger";
-import type { FrustumPlane, FrustumPlanes } from "@core/lib/geo";
+import type { FrustumPlane, FrustumPlanes } from "@core/contracts";
 import type {
     OverlayManager as IOverlayManager,
     PointPickingCamera,

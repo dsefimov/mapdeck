@@ -1,6 +1,7 @@
 export * from "./tree";
 export * from "./render";
 export * from "./map-context";
+export * from "./frustum";
 export * from "./protocol";
 export * from "./asset-mapping";
 export * from "./source";

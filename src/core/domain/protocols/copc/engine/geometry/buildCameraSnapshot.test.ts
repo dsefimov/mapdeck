@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { WebMercatorViewport } from "@deck.gl/core";
 import type { Viewport } from "@deck.gl/core";
-import type { FrustumPlanes } from "@core/lib/geo";
+import type { FrustumPlanes } from "@core/contracts";
 import {
     buildCameraSnapshot,
     type CameraProviders,

@@ -7,7 +7,7 @@ export {
     projectNodeBoundsToCommonSpace,
     isAabbInFrustumPlanes,
 } from "./frustum";
-export { type FrustumPlane, type FrustumPlanes } from "@core/lib/geo";
+export { type FrustumPlane, type FrustumPlanes } from "@core/contracts";
 export { metersPerDegreeAt } from "./geoMath";
 export { clampLatLng } from "./wgs84";
 export { extractProjcsFromWkt } from "./crs";

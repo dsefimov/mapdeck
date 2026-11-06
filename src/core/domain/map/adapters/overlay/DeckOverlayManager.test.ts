@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { WebMercatorViewport } from "@deck.gl/core";
 import type maplibregl from "maplibre-gl";
-import type { FrustumPlanes } from "@core/lib/geo";
+import type { FrustumPlanes } from "@core/contracts";
 import { DeckOverlayManager } from "./DeckOverlayManager";
 
 function fakeMap() {

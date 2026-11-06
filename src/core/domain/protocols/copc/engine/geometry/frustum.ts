@@ -3,7 +3,8 @@
  * COPC-specific: operates in deck.gl common space via projection helpers.
  */
 
-import { Bbox, type BBox3D, type FrustumPlanes } from "@core/lib/geo";
+import { Bbox, type BBox3D } from "@core/lib/geo";
+import type { FrustumPlanes } from "@core/contracts";
 import type { ProjectToCommonSpace } from "./projection";
 
 /** Immutable camera state for a single traversal/render frame. */

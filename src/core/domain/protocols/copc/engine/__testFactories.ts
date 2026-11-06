@@ -1,4 +1,5 @@
-import { Bbox, type BBox3D, type FrustumPlanes } from "@core/lib/geo";
+import { Bbox, type BBox3D } from "@core/lib/geo";
+import type { FrustumPlanes } from "@core/contracts";
 import type { CachedNode } from "../types";
 import type { CameraSnapshot } from "./geometry";
 import { parseOctreeKey } from "./octree/octreeKey";

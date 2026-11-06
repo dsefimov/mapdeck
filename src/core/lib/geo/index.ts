@@ -4,8 +4,6 @@ export type {
     GeoPoint,
     BBox3D,
     BboxTuple,
-    FrustumPlane,
-    FrustumPlanes,
 } from "./types";
 export { Bbox } from "./types";
 export {

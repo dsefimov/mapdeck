@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { WebMercatorViewport } from "@deck.gl/core";
-import {
-    Bbox,
-    type BBox3D,
-    type FrustumPlane,
-    type FrustumPlanes,
-} from "@core/lib/geo";
+import { Bbox, type BBox3D } from "@core/lib/geo";
+import type { FrustumPlane, FrustumPlanes } from "@core/contracts";
 import {
     isAabbInFrustumPlanes,
     projectNodeBoundsToCommonSpace,
