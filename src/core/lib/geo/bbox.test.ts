@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { GeoJSONGeometry } from "./types";
+import type { GeoJSONGeometry, BboxTuple } from "./types";
 import { Bbox } from "./types";
 import { bboxFromGeometry, flattenTo2D, findBboxProblem, unionBbox } from "./bbox";
 
@@ -140,16 +140,12 @@ describe("findBboxProblem", () => {
 
 describe("Bbox tuple arity", () => {
     it("rejects a 5-element tuple instead of silently reading it as 2D", () => {
-        const five = [0, 0, 1, 1, 2] as unknown as ConstructorParameters<
-            typeof Bbox
-        >[0];
+        const five = [0, 0, 1, 1, 2] as unknown as BboxTuple;
         expect(() => new Bbox(five)).toThrow(/4-element/);
     });
 
     it("rejects a too-short tuple", () => {
-        const three = [0, 0, 1] as unknown as ConstructorParameters<
-            typeof Bbox
-        >[0];
+        const three = [0, 0, 1] as unknown as BboxTuple;
         expect(() => new Bbox(three)).toThrow(/4-element/);
     });
 });

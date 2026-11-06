@@ -12,7 +12,7 @@ import {
     getTilesForBounds,
     tileToQuadkey,
     tileToBBOX,
-} from "@core/lib/geo/tile";
+} from "@core/lib/geo";
 import { hexToRgba } from "@core/lib/color";
 import { DEFAULT_ACCENT_CSS } from "@core/ui/theme";
 import { appendUrlParams } from "../logic/appendUrlParams";

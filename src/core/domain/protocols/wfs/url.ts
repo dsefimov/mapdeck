@@ -4,7 +4,7 @@
  */
 
 import type { WfsRequestParams } from "./types";
-import { parseUrl } from "@core/lib/url/parseUrl";
+import { parseUrl } from "@core/lib/url";
 
 /**
  * Detect WFS version from URL params or use default.

@@ -1,5 +1,5 @@
 import { logger } from "@core/lib/logger";
-import { parseUrl } from "@core/lib/url/parseUrl";
+import { parseUrl } from "@core/lib/url";
 import { fetchChecked } from "../shared/http";
 import { buildWmsFeatureInfoUrl, wmsCrsKey } from "./url";
 import { computeFeatureInfoPixel } from "./featureInfo";

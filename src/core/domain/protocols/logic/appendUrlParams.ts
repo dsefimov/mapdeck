@@ -1,4 +1,4 @@
-import { parseUrl } from "@core/lib/url/parseUrl";
+import { parseUrl } from "@core/lib/url";
 
 /**
  * Append query parameters to a URL, preserving existing ones.

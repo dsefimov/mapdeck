@@ -6,7 +6,7 @@ import type {
 } from "@core/contracts";
 import { baseAssetParams } from "../baseAssetParams";
 import { logger } from "@core/lib/logger";
-import { parseUrl } from "@core/lib/url/parseUrl";
+import { parseUrl } from "@core/lib/url";
 
 /** What a full GetMap href splits into at the source boundary. */
 interface SplitGetMapUrl {
