@@ -26,6 +26,13 @@ describe("formatDistance", () => {
         expect(formatDistance(-1500)).toBe("-1.50 km");
     });
 
+    it.each([
+        [-999.999, "-1.00 km"],
+        [-0.9999999, "-1.00 m"],
+    ])("re-tiers negative rounding boundaries %s → %s", (input, expected) => {
+        expect(formatDistance(input)).toBe(expected);
+    });
+
     it("renders NaN as an em dash", () => {
         expect(formatDistance(Number.NaN)).toBe("—");
     });

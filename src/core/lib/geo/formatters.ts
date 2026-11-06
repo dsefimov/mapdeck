@@ -34,7 +34,8 @@ function formatByMagnitude(
 
     if (
         next !== undefined &&
-        Number(display.toFixed(tier.digits)) >= next.from * tier.scale
+        Math.abs(Number(display.toFixed(tier.digits))) >=
+            next.from * tier.scale
     ) {
         return `${(value * next.scale).toFixed(next.digits)} ${next.unit}`;
     }
