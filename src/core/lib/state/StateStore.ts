@@ -1,19 +1,13 @@
+import { logger } from "../logger";
+
 /**
  * Generic keyed container for instance-scoped state (view models,
  * interaction controllers created outside a constructor list).
- *
- * Plain container: it holds no observable state of its own. Whether a stored
- * value is observable is decided by the value itself — MobX stores created via
- * `makeAutoObservable` are the intended payloads.
  */
 export class StateStore {
     private readonly _state = new Map<string, unknown>();
 
-    /**
-     * Get the state under `key`, creating it via `factory` on first access.
-     * The factory SHALL be invoked exactly once per key; the same instance
-     * SHALL be returned on every subsequent access.
-     */
+    /** Create via `factory` on first access; the same instance afterwards. */
     get<T>(key: string, factory: () => T): T {
         if (this._state.has(key)) {
             return this._state.get(key) as T;
@@ -23,42 +17,50 @@ export class StateStore {
         return created;
     }
 
-    /** Discard the state under `key` — the next `get` creates a fresh instance. */
+    /** Discard the entry, disposing it first — the next `get` creates a fresh instance. */
     remove(key: string): void {
+        const value = this._state.get(key);
         this._state.delete(key);
+        disposeQuietly(value);
     }
 
-    /** Report whether state exists under `key`. */
-    has(key: string): boolean {
-        return this._state.has(key);
-    }
-
-    /**
-     * Read existing state without creating it — for consumers that may only
-     * use state someone else owns (e.g. a view model before its first
-     * open). Returns undefined when the key is absent.
-     */
+    /** Read without creating; undefined when the key is absent. */
     peek<T>(key: string): T | undefined {
         return this._state.has(key) ? (this._state.get(key) as T) : undefined;
     }
 
     /**
-     * Dispose every entry that acquired resources, then clear the container:
-     * the disposal contract reaches keyed instance state, so a
-     * restart releases instance-scoped state created outside the
-     * constructor list.
+     * Dispose every entry that acquired resources and clear the
+     * container. Entries release in reverse creation order; the
+     * container clears before disposal, so a dispose that re-enters
+     * the store sees no stale entries.
      */
     dispose(): void {
-        for (const value of this._state.values()) {
-            if (
-                typeof value === "object" &&
-                value !== null &&
-                "dispose" in value &&
-                typeof (value as { dispose: unknown }).dispose === "function"
-            ) {
-                (value as { dispose: () => void }).dispose();
-            }
-        }
+        const values = [...this._state.values()].reverse();
         this._state.clear();
+        for (const value of values) disposeQuietly(value);
+    }
+}
+
+interface DisposableResource {
+    dispose(): void;
+}
+
+function isDisposable(value: unknown): value is DisposableResource {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        "dispose" in value &&
+        typeof value.dispose === "function"
+    );
+}
+
+/** Dispose a value; a failing dispose is logged, not thrown. */
+function disposeQuietly(value: unknown): void {
+    if (!isDisposable(value)) return;
+    try {
+        value.dispose();
+    } catch (error) {
+        logger.error("StateStore: dispose failed", error);
     }
 }

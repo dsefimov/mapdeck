@@ -58,7 +58,8 @@ pipelines — is case-2 state: a controller class obtained through `stateStore`,
 component rendering it (ADR-0008).
 
 Instance state lives in `StateStore` (`src/core/lib/state/StateStore.ts`): a keyed
-container with get-or-create `get(key, factory)`, `remove(key)` and `has(key)`. It
+container with get-or-create `get(key, factory)`, `remove(key)` and read-only
+`peek(key)`. It
 imposes no observability — whether a value is observable is the value's own choice — and
 holds state in memory only; persistence is not a goal.
 

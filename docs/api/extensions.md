@@ -54,7 +54,7 @@ runtime slice:
 
 | Member | Type | Purpose |
 |---|---|---|
-| `stateStore` | keyed instance-state container | per-instance controllers: `get(key, factory)`, `remove(key)`, `has(key)` |
+| `stateStore` | keyed instance-state container | per-instance controllers: `get(key, factory)`, `remove(key)`, `peek(key)` |
 | `locale` | locale API | translate: `t(namespace)` returns the current dictionary |
 | `protocols` | protocol registry (read) | resolve descriptors |
 | `featureProviders` | feature-provider registry (read) | feature-info queries |
