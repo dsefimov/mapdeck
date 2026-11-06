@@ -5,7 +5,7 @@ import { LayerManager } from "../adapters/LayerManager";
 import { prefixStyleFragment } from "../logic/prefixStyleFragment";
 import { registerPmtilesProtocol } from "../pmtilesProtocol";
 import { logger } from "@core/lib/logger";
-import { validateBbox, flattenTo2D, type Bbox } from "@core/lib/geo";
+import { findBboxProblem, flattenTo2D, type Bbox } from "@core/lib/geo";
 import type { StoreRegistry } from "@core/store-registry";
 import type { MapContext } from "@core/contracts";
 
@@ -114,9 +114,9 @@ export class MapStore {
             return;
         }
 
-        const validation = validateBbox(bbox);
-        if (!validation.isValid) {
-            logger.warn(`Cannot zoom: ${validation.error}`);
+        const problem = findBboxProblem(bbox);
+        if (problem) {
+            logger.warn(`Cannot zoom: invalid bbox (${problem})`);
             return;
         }
 

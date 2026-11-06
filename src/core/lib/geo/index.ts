@@ -9,11 +9,12 @@ export type {
 export { Bbox } from "./types";
 export {
     flattenTo2D,
-    validateBbox,
+    findBboxProblem,
     unionBbox,
     bboxFromGeometry,
     bboxFromTuple,
 } from "./bbox";
+export type { BboxProblem } from "./bbox";
 export {
     isPointInPolygon,
     polygonBoundingBox,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { GeoJSONGeometry } from "./types";
 import { Bbox } from "./types";
-import { bboxFromGeometry, flattenTo2D, unionBbox, validateBbox } from "./bbox";
+import { bboxFromGeometry, flattenTo2D, findBboxProblem, unionBbox } from "./bbox";
 
 describe("bboxFromGeometry", () => {
     it("extracts a polygon's extent", () => {
@@ -101,26 +101,40 @@ describe("unionBbox", () => {
     });
 });
 
-describe("validateBbox", () => {
+describe("findBboxProblem", () => {
     it("accepts a well-formed box", () => {
-        const result = validateBbox(new Bbox([0, 0, 1, 1]));
-
-        expect(result.isValid).toBe(true);
-        expect(result.error).toBeUndefined();
+        expect(findBboxProblem(new Bbox([0, 0, 1, 1]))).toBeUndefined();
     });
 
-    it("rejects an inverted box", () => {
-        const result = validateBbox(new Bbox([2, 0, 1, 1]));
-
-        expect(result.isValid).toBe(false);
-        expect(result.error).toBeTruthy();
+    it("accepts a degenerate box — equal edges are a point or a line", () => {
+        expect(findBboxProblem(new Bbox([0, 0, 0, 0]))).toBeUndefined();
+        expect(
+            findBboxProblem(new Bbox([0, 0, 1, 0])),
+        ).toBeUndefined();
     });
 
-    it("rejects an inverted vertical extent", () => {
-        const result = validateBbox(new Bbox([0, 0, 6, 1, 1, 5]));
+    it("reports an inverted horizontal extent", () => {
+        expect(findBboxProblem(new Bbox([2, 0, 1, 1]))).toBe(
+            "inverted-horizontal",
+        );
+    });
 
-        expect(result.isValid).toBe(false);
-        expect(result.error).toContain("Z");
+    it("reports an inverted vertical extent", () => {
+        expect(findBboxProblem(new Bbox([0, 2, 1, 1]))).toBe(
+            "inverted-vertical",
+        );
+    });
+
+    it("reports an inverted elevation extent", () => {
+        expect(findBboxProblem(new Bbox([0, 0, 6, 1, 1, 5]))).toBe(
+            "inverted-elevation",
+        );
+    });
+
+    it("rejects an antimeridian-crossing box as inverted", () => {
+        expect(findBboxProblem(new Bbox([170, -10, -170, 10]))).toBe(
+            "inverted-horizontal",
+        );
     });
 });
 

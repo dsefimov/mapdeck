@@ -110,16 +110,21 @@ export function unionBbox(a: Bbox | null, b: Bbox | null): Bbox | null {
     return new Bbox([minX, minY, maxX, maxY]);
 }
 
-export function validateBbox(bbox: Bbox): { isValid: boolean; error?: string } {
-    if (bbox.west > bbox.east || bbox.south > bbox.north)
-        return {
-            isValid: false,
-            error: "Invalid bounds: W<E and S<N required",
-        };
-    if (bbox.is3D && bbox.minZ! > bbox.maxZ!)
-        return {
-            isValid: false,
-            error: "Invalid Z bounds: minZ < maxZ required",
-        };
-    return { isValid: true };
+/** Why a {@link Bbox} cannot be used as map bounds. */
+export type BboxProblem =
+    | "inverted-horizontal"
+    | "inverted-vertical"
+    | "inverted-elevation";
+
+/**
+ * The first reason `bbox` is unusable as bounds, or undefined when it is
+ * usable. Equal edges are allowed — a degenerate box is a point or a
+ * line. Boxes crossing the antimeridian (west > east, RFC 7946) are
+ * rejected: split them into two before validating.
+ */
+export function findBboxProblem(bbox: Bbox): BboxProblem | undefined {
+    if (bbox.west > bbox.east) return "inverted-horizontal";
+    if (bbox.south > bbox.north) return "inverted-vertical";
+    if (bbox.is3D && bbox.minZ! > bbox.maxZ!) return "inverted-elevation";
+    return undefined;
 }
