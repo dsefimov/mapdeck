@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { StoreProvider } from "@core/shell";
 import { LocaleStore } from "@core/common/locale/LocaleStore";
-import { StateStore } from "@core/lib/state/StateStore";
+import { StateStore } from "@core/lib/state";
 import { Bbox } from "@core/lib/geo";
 import {
     LayerTreeNodeTypes,

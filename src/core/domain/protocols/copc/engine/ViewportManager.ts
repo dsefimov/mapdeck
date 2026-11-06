@@ -5,7 +5,7 @@ import {
     buildCameraSnapshot,
     type Viewport,
 } from "./geometry/buildCameraSnapshot";
-import { debounce } from "@core/lib/async/debounce";
+import { debounce } from "@core/lib/async";
 
 /** Unified provider for viewport-dependent state. */
 export interface ViewportStateProvider {

@@ -10,7 +10,7 @@ import {
 import { SettingsStore } from "@core/common/settings";
 import { WidgetStore } from "@core/common/widget";
 import { LocaleStore, coreTranslations } from "@core/common/locale";
-import { StateStore } from "@core/lib/state/StateStore";
+import { StateStore } from "@core/lib/state";
 import { logger } from "@core/lib/logger";
 import type {
     ModuleContext,

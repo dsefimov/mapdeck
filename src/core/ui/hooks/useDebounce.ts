@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from "react";
-import { debounce } from "@core/lib/async/debounce";
+import { debounce } from "@core/lib/async";
 
 type Callback<T extends unknown[]> = (...args: T) => void;
 

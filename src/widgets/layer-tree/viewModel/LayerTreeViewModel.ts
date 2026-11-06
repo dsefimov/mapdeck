@@ -1,5 +1,5 @@
 import { makeAutoObservable, observable, runInAction } from "mobx";
-import { debounce } from "@core/lib/async/debounce";
+import { debounce } from "@core/lib/async";
 import { searchTree, type TreeState } from "@core/domain/layer-tree";
 import { isGroupNode } from "@core/contracts";
 import type { StoreRegistry } from "@core/store-registry";

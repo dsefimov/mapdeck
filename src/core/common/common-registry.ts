@@ -5,7 +5,7 @@
  */
 import type { LocaleStore } from "./locale/LocaleStore";
 import type { SettingsStore } from "./settings/SettingsStore";
-import type { StateStore } from "@core/lib/state/StateStore";
+import type { StateStore } from "@core/lib/state";
 import type { WidgetStore } from "./widget/WidgetStore";
 
 export interface CommonRegistry {

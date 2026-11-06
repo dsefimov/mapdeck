@@ -8,7 +8,7 @@
  * `common/` nor a domain, so `contracts/` keeps no edge into the store graph.
  */
 
-import type { StateStore } from "@core/lib/state/StateStore";
+import type { StateStore } from "@core/lib/state";
 import type { RegisterOptions } from "@core/lib/registry";
 import type {
     ProtocolRegistry,

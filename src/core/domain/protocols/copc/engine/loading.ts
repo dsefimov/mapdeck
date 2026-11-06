@@ -1,5 +1,5 @@
 import type { CachedNode } from "../types";
-import { MinHeap } from "@core/lib/async/MinHeap";
+import { MinHeap } from "@core/lib/async";
 
 /**
  * Callback to actually load a single node. The signal aborts together with
