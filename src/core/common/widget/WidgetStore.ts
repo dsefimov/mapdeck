@@ -33,7 +33,7 @@ export interface WidgetInstance {
  * lives in `StateStore` keyed by widget id.
  */
 export class WidgetStore {
-    private _definitions = new Registry<StoredWidget>();
+    private _definitions = new Registry<StoredWidget>("Widget");
     private _instances = observable.map<string, WidgetInstance>();
 
     constructor(readonly rootStore: CommonRegistry) {

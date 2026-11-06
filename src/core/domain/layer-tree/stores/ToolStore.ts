@@ -9,7 +9,7 @@ import { Registry, GroupedRegistry, type RegisterOptions } from "@core/lib/regis
 import type { StoreRegistry } from "@core/store-registry";
 
 export class ToolStore {
-    private toolsById = new Registry<LayerTool>();
+    private toolsById = new Registry<LayerTool>("Layer tool");
     private rendererTools = new GroupedRegistry<LayerTool>();
     private dataTools = new GroupedRegistry<LayerTool>();
 

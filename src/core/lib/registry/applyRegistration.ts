@@ -1,5 +1,5 @@
 import { logger } from "@core/lib/logger";
-import type { RegisterOptions } from "./Registry";
+import type { RegisterOptions } from "./registerOptions";
 
 /** What `applyRegistration` needs besides the holder map. */
 export interface RegistrationEntry<K, T> {

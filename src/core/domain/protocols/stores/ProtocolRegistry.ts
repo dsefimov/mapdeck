@@ -24,7 +24,7 @@ import {
  * overriding a protocol overrides its declaration too.
  */
 export class ProtocolRegistry implements ProtocolRegistrationPort {
-    private readonly byId = new Registry<Protocol>();
+    private readonly byId = new Registry<Protocol>("Protocol");
 
     constructor(private readonly assetMapping?: AssetMappingPort) {}
 

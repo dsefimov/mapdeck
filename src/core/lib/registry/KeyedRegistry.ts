@@ -1,4 +1,4 @@
-import type { RegisterOptions } from "./Registry";
+import type { RegisterOptions } from "./registerOptions";
 import { applyRegistration } from "./applyRegistration";
 
 /**

@@ -1,10 +1,5 @@
 import { KeyedRegistry } from "./KeyedRegistry";
-
-/** Registration modifiers — the explicit replacement escape hatch. */
-export interface RegisterOptions {
-    /** Replace an existing entry with the same id (logs a warning). */
-    override?: boolean;
-}
+import type { RegisterOptions } from "./registerOptions";
 
 /**
  * Unique-id registry: `id → T`, where the item carries its own `id`.
@@ -16,7 +11,15 @@ export interface RegisterOptions {
  * {@link KeyedRegistry}; this is the own-id specialization.
  */
 export class Registry<T extends { id: string }> {
-    private readonly _keyed = new KeyedRegistry<string, T>("Item");
+    private readonly _keyed: KeyedRegistry<string, T>;
+
+    /**
+     * @param label - names the entries in error/warning messages,
+     *   e.g. "Map tool".
+     */
+    constructor(label: string) {
+        this._keyed = new KeyedRegistry<string, T>(label);
+    }
 
     /** Register an entry. Throws on a duplicate id unless `override` is set. */
     register(item: T, opts?: RegisterOptions): void {

@@ -20,7 +20,7 @@ export type { MapClickPoint } from "@core/contracts";
  */
 export class MapToolStore {
     /** Registered tools indexed by their ID */
-    private tools = new Registry<MapTool>();
+    private tools = new Registry<MapTool>("Map tool");
     /** Currently active tool ID (null if no tool is active) */
     activeToolId: string | null = null;
     /** Current map reference (set via onMapChanged) */
