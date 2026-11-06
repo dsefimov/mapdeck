@@ -37,11 +37,11 @@ export function createCancellableReaction<T>(
                 currentTask.cancel();
             }
             currentTask = createCancellableTask();
-            // run() rethrows real failures; the catch only keeps that
-            // handled rejection off the global handler.
             void currentTask
                 .run((signal) => effect(value, signal))
-                .catch(() => {});
+                .catch((error) =>
+                    logger.error("Reaction effect failed", error),
+                );
         },
         {
             ...options,

@@ -33,10 +33,9 @@ describe("createCancellableReaction", () => {
         await flushMicrotasks();
 
         expect(unhandled).toEqual([]);
-        // Non-abort failures rethrow without lib logging — the reaction's
-        // catch handles them, so nothing reaches the global handler and
-        // nothing is double-reported.
-        expect(errorSpy).not.toHaveBeenCalled();
+        // Non-abort failures rethrow from run(); the reaction's catch
+        // logs them exactly once and keeps them off the global handler.
+        expect(errorSpy).toHaveBeenCalledTimes(1);
 
         reaction();
         process.off("unhandledRejection", collector);
