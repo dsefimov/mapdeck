@@ -76,13 +76,48 @@ describe("structuralEquals — special object kinds", () => {
         expect(structuralEquals(new Date(0), 0)).toBe(false);
     });
 
-    it("treats class instances structurally via own enumerable keys", () => {
+});
+
+describe("structuralEquals — kind mismatches and built-ins", () => {
+    it("does not equate an array with an object", () => {
+        expect(structuralEquals([], {})).toBe(false);
+        expect(structuralEquals([1], { 0: 1 })).toBe(false);
+    });
+
+    it("does not equate a Date with a plain object", () => {
+        expect(structuralEquals(new Date(0), {})).toBe(false);
+    });
+
+    it("compares Map, Set and RegExp by identity only", () => {
+        expect(structuralEquals(new Map([[1, 2]]), new Map())).toBe(false);
+        expect(structuralEquals(new Set([1]), new Set())).toBe(false);
+        expect(structuralEquals(/a/, /b/)).toBe(false);
+        expect(structuralEquals(/a/, /a/)).toBe(false);
+    });
+
+    it("compares class instances by identity only", () => {
         class Point {
             constructor(
                 readonly x: number,
                 readonly y: number,
             ) {}
         }
-        expect(structuralEquals(new Point(1, 2), { x: 1, y: 2 })).toBe(true);
+        expect(structuralEquals(new Point(1, 2), { x: 1, y: 2 })).toBe(false);
+        const same = new Point(1, 2);
+        expect(structuralEquals(same, same)).toBe(true);
+    });
+
+    it("compares null-prototype objects structurally", () => {
+        const a = Object.assign(Object.create(null), { x: 1 });
+        const b = Object.assign(Object.create(null), { x: 1 });
+        expect(structuralEquals(a, b)).toBe(true);
+    });
+
+    it("ignores keys inherited from the prototype chain", () => {
+        expect(structuralEquals({}, Object.create({ x: 1 }))).toBe(false);
+    });
+
+    it("distinguishes 0 from -0", () => {
+        expect(structuralEquals(0, -0)).toBe(false);
     });
 });
