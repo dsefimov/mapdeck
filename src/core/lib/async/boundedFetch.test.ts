@@ -152,4 +152,15 @@ describe("boundedFetch", () => {
             name: "TimeoutError",
         });
     });
+
+    it("rethrows a caller-owned timeout as-is when no timeoutMs is armed", async () => {
+        vi.stubGlobal("fetch", hangingFetch());
+
+        const rejection = await boundedFetch("https://x.io/caller-timeout", {
+            signal: AbortSignal.timeout(10),
+        }).catch((error: unknown) => error);
+
+        expect(rejection).not.toBeInstanceOf(FetchTimeoutError);
+        expect(rejection).toMatchObject({ name: "TimeoutError" });
+    });
 });

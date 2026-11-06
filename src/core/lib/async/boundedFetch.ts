@@ -48,9 +48,13 @@ export async function boundedFetch(
     try {
         return await fetch(url, request);
     } catch (error) {
-        if (error instanceof DOMException && error.name === "TimeoutError") {
-            throw new FetchTimeoutError(url, timeoutMs!);
-        }
+        // Own ceiling armed and it fired — wrap it. A caller-owned
+        // AbortSignal.timeout rethrows as-is: it is not ours to retype.
+        // The name check avoids cross-realm DOMException mismatches.
+        const timedOut =
+            timeoutMs !== undefined &&
+            (error as { name?: unknown }).name === "TimeoutError";
+        if (timedOut) throw new FetchTimeoutError(url, timeoutMs);
         throw error;
     }
 }
