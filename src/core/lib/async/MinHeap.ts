@@ -1,6 +1,7 @@
 /**
  * Generic binary min-heap with O(log n) push/pop.
  * A priority queue for ordered scheduling (load queues, timers).
+ * The relative order of equal-priority items is not guaranteed.
  */
 export class MinHeap<T> {
     private heap: T[] = [];
@@ -13,7 +14,7 @@ export class MinHeap<T> {
 
     push(item: T): void {
         this.heap.push(item);
-        this._bubbleUp(this.heap.length - 1);
+        this.siftUp(this.heap.length - 1);
     }
 
     pop(): T | undefined {
@@ -22,7 +23,7 @@ export class MinHeap<T> {
         const last = this.heap.pop()!;
         if (this.heap.length > 0) {
             this.heap[0] = last;
-            this._sinkDown(0);
+            this.siftDown(0);
         }
         return top;
     }
@@ -35,35 +36,35 @@ export class MinHeap<T> {
         this.heap = [];
     }
 
-    private _bubbleUp(i: number): void {
-        while (i > 0) {
-            const parent = (i - 1) >> 1;
-            if (this.compare(this.heap[i]!, this.heap[parent]!) < 0) {
-                [this.heap[i], this.heap[parent]] = [
-                    this.heap[parent]!,
-                    this.heap[i]!,
-                ];
-                i = parent;
-            } else break;
+    private isLess(i: number, j: number): boolean {
+        return this.compare(this.heap[i]!, this.heap[j]!) < 0;
+    }
+
+    private swap(i: number, j: number): void {
+        [this.heap[i], this.heap[j]] = [this.heap[j]!, this.heap[i]!];
+    }
+
+    private siftUp(index: number): void {
+        while (index > 0) {
+            const parent = (index - 1) >> 1;
+            if (!this.isLess(index, parent)) return;
+            this.swap(index, parent);
+            index = parent;
         }
     }
 
-    private _sinkDown(i: number): void {
-        const n = this.heap.length;
-        while (true) {
-            let smallest = i;
-            const l = 2 * i + 1;
-            const r = 2 * i + 2;
-            if (l < n && this.compare(this.heap[l]!, this.heap[smallest]!) < 0)
-                smallest = l;
-            if (r < n && this.compare(this.heap[r]!, this.heap[smallest]!) < 0)
-                smallest = r;
-            if (smallest === i) break;
-            [this.heap[i], this.heap[smallest]] = [
-                this.heap[smallest]!,
-                this.heap[i]!,
-            ];
-            i = smallest;
+    private siftDown(index: number): void {
+        for (;;) {
+            let smallest = index;
+            const left = 2 * index + 1;
+            const right = left + 1;
+            if (left < this.heap.length && this.isLess(left, smallest))
+                smallest = left;
+            if (right < this.heap.length && this.isLess(right, smallest))
+                smallest = right;
+            if (smallest === index) return;
+            this.swap(index, smallest);
+            index = smallest;
         }
     }
 }
