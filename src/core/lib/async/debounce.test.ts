@@ -41,7 +41,7 @@ describe("debounce", () => {
         const debounced = debounce(fn, 100);
 
         debounced();
-        debounced.cancel?.();
+        debounced.cancel();
         vi.advanceTimersByTime(200);
 
         expect(fn).not.toHaveBeenCalled();
@@ -53,7 +53,7 @@ describe("debounce", () => {
 
         debounced();
         vi.advanceTimersByTime(100);
-        debounced.cancel?.();
+        debounced.cancel();
         vi.advanceTimersByTime(100);
 
         expect(fn).toHaveBeenCalledTimes(1);

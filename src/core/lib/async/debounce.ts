@@ -1,28 +1,30 @@
+/** A debounced function with a handle to drop the pending invocation. */
+export interface Debounced<A extends unknown[]> {
+    (...args: A): void;
+    cancel(): void;
+}
+
 /**
  * Creates a debounced version of the provided function.
- * The debounced function delays invoking `fn` until `delay` ms have elapsed
- * since the last invocation. The returned callable always carries `cancel()`
- * to clear any pending invocation.
+ * The debounced function delays invoking `fn` until `delayMs` ms have
+ * elapsed since the last invocation.
  */
-export function debounce<T extends unknown[]>(
-    fn: (this: unknown, ...args: T) => void,
-    delay: number,
-): {
-    (this: unknown, ...args: T): void;
-    cancel: () => void;
-} {
+export function debounce<A extends unknown[]>(
+    fn: (...args: A) => void,
+    delayMs: number,
+): Debounced<A> {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
-    const debounced = function (this: unknown, ...args: T): void {
-        if (timer) clearTimeout(timer);
+    const debounced = (...args: A): void => {
+        if (timer !== null) clearTimeout(timer);
         timer = setTimeout(() => {
             timer = null;
-            fn.apply(this, args);
-        }, delay);
+            fn(...args);
+        }, delayMs);
     };
 
     debounced.cancel = (): void => {
-        if (timer) {
+        if (timer !== null) {
             clearTimeout(timer);
             timer = null;
         }
