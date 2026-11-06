@@ -22,7 +22,7 @@ export {
     polygonBoundingBox,
     isPointInBoundingBox,
     greatCircleDistance,
-    calculatePolygonPerimeter,
+    polygonPerimeter,
 } from "./spatial";
 export type { PointXY, Triangle } from "./delaunay2d";
 export { delaunayTriangulate } from "./delaunay2d";

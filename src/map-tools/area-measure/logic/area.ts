@@ -8,7 +8,7 @@
  * removing the last @turf dependency and unifying precision with
  * volume-measure.
  */
-import { greatCircleDistance, calculatePolygonPerimeter } from "@core/lib/geo";
+import { greatCircleDistance, polygonPerimeter } from "@core/lib/geo";
 import type { GeoPoint } from "@core/lib/geo";
 import area from "@turf/area";
 import { polygon } from "@turf/helpers";
@@ -41,7 +41,7 @@ export function measurePolygonArea(points: GeoPoint[]): AreaMeasurements {
     }
     return {
         areaSquareMeters: calculateArea2D(points),
-        perimeterMeters: calculatePolygonPerimeter(
+        perimeterMeters: polygonPerimeter(
             points.map((p) => [p.lng, p.lat]),
         ),
         edges,

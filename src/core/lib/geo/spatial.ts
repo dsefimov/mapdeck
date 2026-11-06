@@ -93,7 +93,7 @@ export function isPointInBoundingBox(
  * Perimeter of a polygon: the ring closes, so two points give the
  * there-and-back length and fewer than two give 0.
  */
-export function calculatePolygonPerimeter(points: Point2D[]): number {
+export function polygonPerimeter(points: Point2D[]): number {
     if (points.length < 2) return 0;
 
     let perimeter = 0;

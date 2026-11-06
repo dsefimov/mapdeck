@@ -4,7 +4,7 @@ import {
     polygonBoundingBox,
     isPointInBoundingBox,
     greatCircleDistance,
-    calculatePolygonPerimeter,
+    polygonPerimeter,
 } from "./spatial";
 
 /** Mean Earth radius used by the implementation, meters. */
@@ -119,7 +119,7 @@ describe("greatCircleDistance", () => {
     });
 });
 
-describe("calculatePolygonPerimeter", () => {
+describe("polygonPerimeter", () => {
     it("closes the ring: the last vertex connects back to the first", () => {
         const square: [number, number][] = [
             [0, 0],
@@ -131,7 +131,7 @@ describe("calculatePolygonPerimeter", () => {
         // 0.001° along the equator is exactly (Math.PI / 180) * R * 0.001
         // meters; four such sides.
         const side = (Math.PI / 180) * R * 0.001;
-        expect(calculatePolygonPerimeter(square)).toBeCloseTo(
+        expect(polygonPerimeter(square)).toBeCloseTo(
             4 * side,
             4,
         );
@@ -139,14 +139,14 @@ describe("calculatePolygonPerimeter", () => {
 
     it("gives the there-and-back length for two points", () => {
         const d = greatCircleDistance([0, 0], [0.001, 0]);
-        expect(calculatePolygonPerimeter([[0, 0], [0.001, 0]])).toBeCloseTo(
+        expect(polygonPerimeter([[0, 0], [0.001, 0]])).toBeCloseTo(
             2 * d,
             9,
         );
     });
 
     it("is zero for fewer than two points", () => {
-        expect(calculatePolygonPerimeter([[0, 0]])).toBe(0);
-        expect(calculatePolygonPerimeter([])).toBe(0);
+        expect(polygonPerimeter([[0, 0]])).toBe(0);
+        expect(polygonPerimeter([])).toBe(0);
     });
 });
