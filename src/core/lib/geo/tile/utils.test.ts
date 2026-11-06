@@ -1,24 +1,47 @@
 import { describe, expect, it } from "vitest";
-import { tileToBBOX, tileToQuadkey, getTilesForBounds } from "./utils";
+import {
+    tileToBbox,
+    tileToQuadkey,
+    getTilesForBounds,
+    type TileCoord,
+} from "./utils";
 
-describe("tileToBBOX", () => {
+describe("tileToBbox", () => {
     it("maps the origin tile at zoom 0 to the whole world", () => {
-        expect(tileToBBOX([0, 0, 0])).toEqual([-180, -85.0511287798066, 180, 85.0511287798066]);
+        const [w, s, e, n] = tileToBbox([0, 0, 0]);
+
+        expect(w).toBeCloseTo(-180, 6);
+        expect(s).toBeCloseTo(-85.0511287798066, 6);
+        expect(e).toBeCloseTo(180, 6);
+        expect(n).toBeCloseTo(85.0511287798066, 6);
     });
 
     it("quarters the world at zoom 1", () => {
-        const [w, s, e, n] = tileToBBOX([1, 0, 1]);
+        const [w, s, e, n] = tileToBbox([1, 0, 1]);
 
         expect(w).toBeCloseTo(0, 6);
         expect(s).toBeCloseTo(0, 6);
         expect(e).toBeCloseTo(180, 6);
         expect(n).toBeCloseTo(85.0511287798066, 6);
     });
+
+    it("round-trips: a tile's bbox covers the tile itself", () => {
+        const tile: TileCoord = [3, 5, 3];
+        const tiles = getTilesForBounds(tileToBbox(tile), 3);
+
+        expect(tiles).toContainEqual(tile);
+    });
 });
 
 describe("tileToQuadkey", () => {
     it("encodes the zoom-0 tile as the empty key", () => {
         expect(tileToQuadkey([0, 0, 0])).toBe("");
+    });
+
+    it("matches the Bing tile system example: tile (3, 5, 3) → \"213\"", () => {
+        // The documented reference from Microsoft's Bing Maps Tile
+        // System: tileX 3 = 011₂, tileY 5 = 101₂ → 100111₂ = 213₄.
+        expect(tileToQuadkey([3, 5, 3])).toBe("213");
     });
 
     it("encodes ancestry: a child's key starts with the parent's", () => {

@@ -8,6 +8,17 @@
  * - Quadkey: string identifier for a tile at a given zoom
  */
 
+/** Tile coordinate: x and y in [0, 2^zoom). */
+export type TileCoord = readonly [x: number, y: number, zoom: number];
+
+/** Planar bounding box: [west, south, east, north] in WGS84 degrees. */
+export type Bbox2DTuple = readonly [
+    west: number,
+    south: number,
+    east: number,
+    north: number,
+];
+
 /** Latitude at which the Web Mercator square closes onto the poles. */
 const MAX_MERCATOR_LATITUDE = 85.0511287798066;
 
@@ -50,11 +61,8 @@ function yToLat(y: number, zoom: number): number {
 
 /**
  * Convert a tile to its bounding box.
- * Returns [west, south, east, north] in WGS84 degrees.
  */
-export function tileToBBOX(
-    tile: [number, number, number],
-): [number, number, number, number] {
+export function tileToBbox(tile: TileCoord): Bbox2DTuple {
     const [x, y, zoom] = tile;
     const west = xToLon(x, zoom);
     const east = xToLon(x + 1, zoom);
@@ -64,15 +72,18 @@ export function tileToBBOX(
 }
 
 /**
- * Generate a quadkey string for a tile.
- * A quadkey uniquely identifies a tile across zoom levels. Correct for
- * zoom up to 31 — x and y are shifted with 32-bit operations.
+ * Generate a quadkey string for a tile — the Bing tile system
+ * interleaving: each base-4 digit is 2·(y bit) + (x bit), most
+ * significant bits first. Correct for zoom up to 31 — x and y are
+ * shifted with 32-bit operations.
  */
-export function tileToQuadkey(tile: [number, number, number]): string {
-    let [x, y, zoom] = tile;
+export function tileToQuadkey(tile: TileCoord): string {
+    const zoom = tile[2];
+    let x = tile[0];
+    let y = tile[1];
     let key = "";
     for (let z = zoom; z > 0; z--) {
-        const digit = ((x & 1) << 1) | (y & 1);
+        const digit = ((y & 1) << 1) | (x & 1);
         key = digit.toString() + key;
         x >>= 1;
         y >>= 1;
@@ -84,32 +95,18 @@ export function tileToQuadkey(tile: [number, number, number]): string {
 const DEFAULT_MAX_TILES = 10_000;
 
 /**
- * All tiles at `zoom` overlapping `bbox`, as [x, y, zoom] triples. A
- * box edge that coincides with a tile boundary does not count as
- * overlapping the tile beyond it; a degenerate box — a single point —
- * yields the one tile the point touches (the floor side of a boundary).
- * A box with west > east (an antimeridian crossing, RFC 7946) yields no
- * tiles; split it into two boxes. Throws when the tile count would
- * exceed `maxTiles`.
+ * All tiles at `zoom` overlapping `bbox`. A box edge that coincides
+ * with a tile boundary does not count as overlapping the tile beyond
+ * it; a degenerate box — a single point — yields the one tile the
+ * point touches (the floor side of a boundary). A box with west > east
+ * (an antimeridian crossing, RFC 7946) yields no tiles; split it into
+ * two boxes. Throws when the tile count would exceed `maxTiles`.
  */
-/** The single tile a degenerate (point) box touches; none outside the world. */
-function pointTile(
-    bbox: [number, number, number, number],
-    zoom: number,
-): Array<[number, number, number]> {
-    const [west, , , north] = bbox;
-    const x = Math.floor(lonToX(west, zoom));
-    const y = Math.floor(latToY(north, zoom));
-    const max = 2 ** zoom - 1;
-    if (x < 0 || x > max || y < 0 || y > max) return [];
-    return [[x, y, zoom]];
-}
-
 export function getTilesForBounds(
-    bbox: [number, number, number, number],
+    bbox: Bbox2DTuple,
     zoom: number,
     maxTiles: number = DEFAULT_MAX_TILES,
-): Array<[number, number, number]> {
+): TileCoord[] {
     const [west, south, east, north] = bbox;
 
     if (west === east && south === north) return pointTile(bbox, zoom);
@@ -128,11 +125,21 @@ export function getTilesForBounds(
         );
     }
 
-    const tiles: Array<[number, number, number]> = [];
+    const tiles: TileCoord[] = [];
     for (let x = minX; x <= maxX; x++) {
         for (let y = minY; y <= maxY; y++) {
             tiles.push([x, y, zoom]);
         }
     }
     return tiles;
+}
+
+/** The single tile a degenerate (point) box touches; none outside the world. */
+function pointTile(bbox: Bbox2DTuple, zoom: number): TileCoord[] {
+    const [west, , , north] = bbox;
+    const x = Math.floor(lonToX(west, zoom));
+    const y = Math.floor(latToY(north, zoom));
+    const max = 2 ** zoom - 1;
+    if (x < 0 || x > max || y < 0 || y > max) return [];
+    return [[x, y, zoom]];
 }

@@ -11,7 +11,8 @@ import { boundedFetch } from "@core/lib/async";
 import {
     getTilesForBounds,
     tileToQuadkey,
-    tileToBBOX,
+    tileToBbox,
+    type TileCoord,
 } from "@core/lib/geo";
 import { hexToRgba } from "@core/lib/color";
 import { DEFAULT_ACCENT_CSS } from "@core/ui/theme";
@@ -219,14 +220,14 @@ export class GeoJsonAdapter implements LayerAdapter {
 
     private _uncachedTiles(
         state: GeoJsonLayerState,
-        tiles: Array<[number, number, number]>,
-    ): Array<[number, number, number]> {
+        tiles: TileCoord[],
+    ): TileCoord[] {
         return tiles.filter((tile) => !state.tiles.has(tileToQuadkey(tile)));
     }
 
     private async _fetchTile(
         baseUrl: string,
-        tile: [number, number, number],
+        tile: TileCoord,
         batchSignal: AbortSignal,
     ): Promise<FeatureCollection | null> {
         try {
@@ -327,10 +328,10 @@ function createGeoJsonState(
 /** Tile request URL: bbox/limit as query params, preserving existing ones. */
 function buildTileUrl(
     baseUrl: string,
-    tile: [number, number, number],
+    tile: TileCoord,
 ): string {
     return appendUrlParams(baseUrl, {
-        bbox: tileToBBOX(tile).join(","),
+        bbox: tileToBbox(tile).join(","),
         limit: String(TILE_LIMIT),
     });
 }
