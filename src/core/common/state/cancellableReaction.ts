@@ -3,7 +3,10 @@ import {
     type IReactionDisposer,
     type IReactionOptions,
 } from "mobx";
-import { createCancellable, type CancellableTask } from "@core/lib/async";
+import {
+    createCancellableTask,
+    type CancellableTask,
+} from "@core/lib/async";
 import { logger } from "@core/lib/logger";
 
 export interface CancellableReactionResult {
@@ -33,9 +36,9 @@ export function createCancellableReaction<T>(
             if (currentTask) {
                 currentTask.cancel();
             }
-            currentTask = createCancellable();
-            // run() logs non-abort failures before rejecting; the catch
-            // only keeps that handled rejection off the global handler.
+            currentTask = createCancellableTask();
+            // run() rethrows real failures; the catch only keeps that
+            // handled rejection off the global handler.
             void currentTask
                 .run((signal) => effect(value, signal))
                 .catch(() => {});

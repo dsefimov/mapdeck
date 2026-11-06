@@ -20,7 +20,7 @@ import {
     DEFAULT_MAX_SCREEN_ERROR_PX,
     DEFAULT_MAX_OCTREE_DEPTH,
 } from "../engine/streamingConfig";
-import { createCancellable } from "@core/lib/async";
+import { createCancellableTask } from "@core/lib/async";
 import { comparer } from "mobx";
 import { CopcStreamingLoader } from "../engine/CopcStreamingLoader";
 import { ViewportManager } from "../engine/ViewportManager";
@@ -38,7 +38,7 @@ const VIEWPORT_DEBOUNCE_MS = 150;
 interface PointCloudLayerState {
     loader: CopcStreamingLoader;
     viewportManager: ViewportManager | null;
-    initTask: ReturnType<typeof createCancellable>;
+    initTask: ReturnType<typeof createCancellableTask>;
     config: Record<string, unknown>;
     /** Latest frame from the loader. */
     frame: PointCloudFrame | null;
@@ -111,7 +111,7 @@ export class PointCloudAdapter
                 this._lazPerfWasmUrl,
             );
 
-            const task = createCancellable();
+            const task = createCancellableTask();
 
             const state: PointCloudLayerState = {
                 loader,

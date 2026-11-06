@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { logger } from "@core/lib/logger";
-import { createCancellable } from "./cancellable";
+import { createCancellableTask } from "./cancellable";
 
 afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe("createCancellable", () => {
+describe("createCancellableTask", () => {
     it("runs the task and exposes its signal", async () => {
-        const task = createCancellable();
+        const task = createCancellableTask();
         const seen: AbortSignal[] = [];
 
         await task.run(async (signal) => {
@@ -21,7 +21,7 @@ describe("createCancellable", () => {
 
     it("swallows a rejection after cancel — the cancellation is expected", async () => {
         const debug = vi.spyOn(logger, "debug").mockImplementation(() => {});
-        const task = createCancellable();
+        const task = createCancellableTask();
         const error = new Error("aborted work");
 
         const done = task.run(async () => {
@@ -33,9 +33,17 @@ describe("createCancellable", () => {
         expect(debug).toHaveBeenCalled();
     });
 
+    it("returns the task's value, undefined only when cancelled", async () => {
+        const task = createCancellableTask();
+
+        await expect(task.run(async () => "payload")).resolves.toBe(
+            "payload",
+        );
+    });
+
     it("rethrows an error that is not a cancellation", async () => {
         const boom = new Error("real failure");
-        const task = createCancellable();
+        const task = createCancellableTask();
 
         await expect(
             task.run(async () => {

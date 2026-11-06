@@ -1,16 +1,21 @@
-import { logger } from "@core/lib/logger";
+import { logger } from "../logger";
 
 export interface CancellableTask {
     signal: AbortSignal;
     cancel: () => void;
-    run: (fn: (signal: AbortSignal) => Promise<void>) => Promise<void>;
+    run: <T>(
+        fn: (signal: AbortSignal) => Promise<T>,
+    ) => Promise<T | undefined>;
 }
 
 /**
- * Creates a cancellable task with an AbortController.
- * Use `run()` to execute async work that can be cancelled via `cancel()`.
+ * Creates a cancellable task around one AbortController. `run` forwards
+ * the controller's signal to the task; `cancel` aborts it. A rejection
+ * observed after `cancel` is swallowed — ANY error, including a genuine
+ * bug that happens to land post-cancel; errors before cancellation
+ * rethrow to the caller.
  */
-export function createCancellable(): CancellableTask {
+export function createCancellableTask(): CancellableTask {
     const controller = new AbortController();
 
     return {
@@ -18,18 +23,17 @@ export function createCancellable(): CancellableTask {
             return controller.signal;
         },
         cancel: () => {
-            logger.debug("CancellableTask: cancelled");
             controller.abort();
         },
-        run: async (fn: (signal: AbortSignal) => Promise<void>) => {
+        run: async <T>(fn: (signal: AbortSignal) => Promise<T>) => {
             try {
-                await fn(controller.signal);
+                return await fn(controller.signal);
             } catch (error) {
-                if (!controller.signal.aborted) {
-                    logger.error("CancellableTask: unhandled error:", error);
-                    throw error;
-                }
-                logger.debug("CancellableTask: task cancelled (aborted)");
+                if (!controller.signal.aborted) throw error;
+                logger.debug(
+                    "CancellableTask: swallowed a post-cancel error",
+                    error,
+                );
             }
         },
     };
