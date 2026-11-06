@@ -35,6 +35,15 @@ describe("GroupedRegistry", () => {
         expect(registry.get("missing")).toEqual([]);
     });
 
+    it("get returns a copy — mutating it leaves the registry intact", () => {
+        const registry = new GroupedRegistry<Item>();
+        registry.add("cap", item("a"));
+
+        (registry.get("cap") as Item[]).push(item("intruder"));
+
+        expect(registry.get("cap").map((i) => i.id)).toEqual(["a"]);
+    });
+
     it("has reports group existence", () => {
         const registry = new GroupedRegistry<Item>();
         registry.add("a", item("x"));
