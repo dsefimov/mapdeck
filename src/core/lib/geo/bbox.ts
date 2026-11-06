@@ -55,14 +55,11 @@ export function bboxFromGeometry(geometry: unknown): Bbox | null {
 export function bboxFromTuple(
     tuple: readonly number[] | undefined | null,
 ): Bbox | null {
-    const arityOk =
-        tuple !== null &&
-        tuple !== undefined &&
-        (tuple.length === 4 || tuple.length === 6) &&
-        tuple.every((v) => Number.isFinite(v));
+    if (!tuple || (tuple.length !== 4 && tuple.length !== 6)) return null;
+    if (!tuple.every((v) => Number.isFinite(v))) return null;
     // Arity and elements are validated above; the cast only restores
     // tuple-ness for the constructor.
-    return arityOk ? new Bbox(tuple as BboxTuple) : null;
+    return new Bbox(tuple as BboxTuple);
 }
 
 function parseCoords2D(coords: unknown[]): Bbox | null {
@@ -100,7 +97,10 @@ function traverse(
 }
 
 export function flattenTo2D(bbox: Bbox): Bbox {
-    return new Bbox([bbox.west, bbox.south, bbox.east, bbox.north]);
+    // Bbox is immutable — an already-2D box can be returned as-is.
+    return bbox.hasElevation()
+        ? new Bbox([bbox.west, bbox.south, bbox.east, bbox.north])
+        : bbox;
 }
 
 export function unionBbox(a: Bbox | null, b: Bbox | null): Bbox | null {
@@ -112,7 +112,7 @@ export function unionBbox(a: Bbox | null, b: Bbox | null): Bbox | null {
     const maxX = Math.max(a.east, b.east);
     const maxY = Math.max(a.north, b.north);
 
-    if (a.is3D || b.is3D) {
+    if (a.hasElevation() || b.hasElevation()) {
         // A missing vertical side is neutral: it must not drag the union
         // to an infinity. Tuple order is [w, s, minZ, e, n, maxZ].
         const minZ = Math.min(a.minZ ?? Infinity, b.minZ ?? Infinity);
@@ -138,6 +138,7 @@ export type BboxProblem =
 export function findBboxProblem(bbox: Bbox): BboxProblem | undefined {
     if (bbox.west > bbox.east) return "inverted-horizontal";
     if (bbox.south > bbox.north) return "inverted-vertical";
-    if (bbox.is3D && bbox.minZ! > bbox.maxZ!) return "inverted-elevation";
+    if (bbox.hasElevation() && bbox.minZ > bbox.maxZ)
+        return "inverted-elevation";
     return undefined;
 }

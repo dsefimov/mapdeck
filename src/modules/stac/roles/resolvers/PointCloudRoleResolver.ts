@@ -36,7 +36,7 @@ export class PointCloudRoleResolver implements AssetRule {
         const bbox = bboxFromTuple(ctx.itemBbox);
         if (bbox) {
             params.coordinateOrigin = bbox.center;
-            if (bbox.is3D) params.bounds = bbox.bounds3D;
+            if (bbox.hasElevation()) params.bounds = bbox.bounds3D;
         }
 
         return {

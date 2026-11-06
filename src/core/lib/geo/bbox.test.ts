@@ -61,11 +61,16 @@ describe("flattenTo2D", () => {
         // Tuple order: [west, south, minZ, east, north, maxZ].
         const flat = flattenTo2D(new Bbox([0, 1, 2, 3, 4, 5]));
 
-        expect(flat.is3D).toBe(false);
+        expect(flat.hasElevation()).toBe(false);
         expect(flat.minZ).toBeUndefined();
         expect([flat.west, flat.south, flat.east, flat.north]).toEqual([
             0, 1, 3, 4,
         ]);
+    });
+
+    it("returns the same instance for an already-2D box", () => {
+        const box = new Bbox([0, 1, 2, 3]);
+        expect(flattenTo2D(box)).toBe(box);
     });
 });
 
@@ -95,7 +100,7 @@ describe("unionBbox", () => {
             new Bbox([0, 0, 1, 1]),
         );
 
-        expect(union?.is3D).toBe(true);
+        expect(union?.hasElevation()).toBe(true);
         expect(union?.minZ).toBe(5);
         expect(union?.maxZ).toBe(6);
     });

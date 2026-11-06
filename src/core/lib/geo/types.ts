@@ -53,7 +53,7 @@ export class Bbox {
         readonly maxX: number;
         readonly maxY: number;
         readonly maxZ: number;
-    }): Bbox & { minZ: number; maxZ: number } {
+    }): BBox3D {
         return new Bbox([
             c.minX,
             c.minY,
@@ -61,8 +61,14 @@ export class Bbox {
             c.maxX,
             c.maxY,
             c.maxZ,
-        ]) as Bbox & { minZ: number; maxZ: number };
+        ]) as BBox3D;
     }
+
+    /*
+     * The min/max aliases below are COPC-engine vocabulary; the canonical
+     * dictionary is west/south/east/north. The aliases retire when the
+     * engine block is reworked.
+     */
 
     /** Minimum longitude (west). */
     get minX(): number {
@@ -84,14 +90,16 @@ export class Bbox {
         return this.north;
     }
 
-    /** True if this bbox has Z dimension. */
-    get is3D(): boolean {
+    /** True (and narrows to BBox3D) when this bbox carries elevation. */
+    hasElevation(): this is BBox3D {
         return this.minZ !== undefined && this.maxZ !== undefined;
     }
 
     /** Center point as [longitude, latitude, z]. Z is 0 for 2D bbox. */
     get center(): [number, number, number] {
-        const z = this.is3D ? (this.minZ! + this.maxZ!) / 2 : 0;
+        const z = this.hasElevation()
+            ? (this.minZ + this.maxZ) / 2
+            : 0;
         return [(this.west + this.east) / 2, (this.south + this.north) / 2, z];
     }
 
@@ -105,14 +113,14 @@ export class Bbox {
 
     /** 6-element tuple [west, south, minZ, east, north, maxZ] or null if 2D. */
     get bounds3D(): [number, number, number, number, number, number] | null {
-        if (!this.is3D) return null;
+        if (!this.hasElevation()) return null;
         return [
             this.west,
             this.south,
-            this.minZ!,
+            this.minZ,
             this.east,
             this.north,
-            this.maxZ!,
+            this.maxZ,
         ];
     }
 }
