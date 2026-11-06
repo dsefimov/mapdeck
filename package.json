@@ -60,7 +60,6 @@
         "@deck.gl/layers": "^9.2.7",
         "@deck.gl/mapbox": "^9.2.7",
         "@turf/area": "^7.3.5",
-        "@turf/distance": "^7.3.4",
         "@turf/helpers": "^7.4.0",
         "copc": "^0.0.8",
         "delaunator": "^5.1.0",

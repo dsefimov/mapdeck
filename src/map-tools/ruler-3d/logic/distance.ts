@@ -2,7 +2,7 @@
  * Pure measurement math for the 3D ruler: per-segment horizontal,
  * vertical and Euclidean distances over a drawn polyline.
  */
-import { geodesicDistance } from "@core/lib/geo";
+import { greatCircleDistance } from "@core/lib/geo";
 import type { GeoPoint } from "@core/lib/geo";
 import type { SegmentDistance3D } from "../types";
 
@@ -14,10 +14,10 @@ function euclideanFromComponents(
     return Math.sqrt(horizontal * horizontal + vertical * vertical);
 }
 
-/** Full 3D distance: geodesic ground track combined with height delta. */
+/** Full 3D distance: great-circle ground track combined with height delta. */
 export function euclidean3D(p1: GeoPoint, p2: GeoPoint): number {
     return euclideanFromComponents(
-        geodesicDistance([p1.lng, p1.lat], [p2.lng, p2.lat]),
+        greatCircleDistance([p1.lng, p1.lat], [p2.lng, p2.lat]),
         Math.abs(p2.z - p1.z),
     );
 }
@@ -36,8 +36,8 @@ export function measurePolyline3D(points: GeoPoint[]): Polyline3DMeasurements {
         const from = points[i - 1];
         const to = points[i];
         if (!from || !to) continue;
-        // One geodesic per segment feeds both the horizontal and the 3D distance.
-        const horizontal = geodesicDistance(
+        // One great-circle distance per segment feeds both horizontal and 3D.
+        const horizontal = greatCircleDistance(
             [from.lng, from.lat],
             [to.lng, to.lat],
         );

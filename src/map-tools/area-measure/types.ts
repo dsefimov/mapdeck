@@ -10,7 +10,7 @@ import type { GeoPoint } from "@core/lib/geo";
 export interface PolygonEdge {
     from: GeoPoint;
     to: GeoPoint;
-    distanceMeters: number; // geodesic distance in meters
+    distanceMeters: number; // great-circle distance in meters
 }
 
 /**

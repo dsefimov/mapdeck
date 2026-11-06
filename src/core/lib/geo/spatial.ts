@@ -1,10 +1,31 @@
 /**
- * Spatial calculation utilities — Turf wrappers + geometry predicates.
- * Pure functions for geodesic distance, perimeter, and point-in-polygon tests.
+ * Spatial calculation utilities — distance, perimeter and geometry
+ * predicates. Pure functions, no dependencies.
  */
 
-import distance from "@turf/distance";
-import { point } from "@turf/helpers";
+/** Mean Earth radius in meters (IUGG R1, the value turf also uses). */
+const EARTH_RADIUS_M = 6371008.8;
+
+/**
+ * Great-circle distance between two [lng, lat] points in meters —
+ * haversine on the mean Earth radius. Deviates from the true WGS84
+ * ellipsoidal geodesic by up to ~0.5% (typically ~0.1%).
+ */
+export function greatCircleDistance(
+    a: [number, number],
+    b: [number, number],
+): number {
+    const lat1 = (a[1] * Math.PI) / 180;
+    const lat2 = (b[1] * Math.PI) / 180;
+    const dLat = lat2 - lat1;
+    const dLon = ((b[0] - a[0]) * Math.PI) / 180;
+    const sinLat = Math.sin(dLat / 2);
+    const sinLon = Math.sin(dLon / 2);
+    const h =
+        sinLat * sinLat +
+        Math.cos(lat1) * Math.cos(lat2) * sinLon * sinLon;
+    return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
+}
 
 /**
  * Check if a point is inside a polygon using ray casting.
@@ -73,16 +94,6 @@ export function isPointInBoundingBox(
 }
 
 /**
- * Calculate the geodesic distance between two points in meters.
- */
-export function geodesicDistance(
-    a: [number, number],
-    b: [number, number],
-): number {
-    return distance(point(a), point(b), { units: "meters" });
-}
-
-/**
  * Calculate the perimeter of a polygon defined by an array of points.
  */
 export function calculatePolygonPerimeter(
@@ -94,14 +105,17 @@ export function calculatePolygonPerimeter(
     for (let i = 1; i < points.length; i++) {
         const prev = points[i - 1]!;
         const curr = points[i]!;
-        perimeter += geodesicDistance(
+        perimeter += greatCircleDistance(
             [prev.lng, prev.lat],
             [curr.lng, curr.lat],
         );
     }
     const last = points[points.length - 1]!;
     const first = points[0]!;
-    perimeter += geodesicDistance([last.lng, last.lat], [first.lng, first.lat]);
+    perimeter += greatCircleDistance(
+        [last.lng, last.lat],
+        [first.lng, first.lat],
+    );
 
     return perimeter;
 }

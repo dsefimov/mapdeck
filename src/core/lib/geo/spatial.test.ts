@@ -3,9 +3,12 @@ import {
     isPointInPolygon,
     polygonBoundingBox,
     isPointInBoundingBox,
-    geodesicDistance,
+    greatCircleDistance,
     calculatePolygonPerimeter,
 } from "./spatial";
+
+/** Mean Earth radius used by the implementation, meters. */
+const R = 6371008.8;
 
 describe("isPointInPolygon", () => {
     const square: [number, number][] = [
@@ -64,11 +67,44 @@ describe("isPointInBoundingBox", () => {
     });
 });
 
-describe("geodesicDistance", () => {
+describe("greatCircleDistance", () => {
     it("is zero for identical points and positive otherwise", () => {
-        expect(geodesicDistance([30, 59], [30, 59])).toBe(0);
-        expect(geodesicDistance([30, 59], [30.001, 59])).toBeGreaterThan(50);
-        expect(geodesicDistance([30, 59], [30.001, 59])).toBeLessThan(100);
+        expect(greatCircleDistance([30, 59], [30, 59])).toBe(0);
+        expect(greatCircleDistance([30, 59], [30.001, 59])).toBeGreaterThan(
+            50,
+        );
+        expect(greatCircleDistance([30, 59], [30.001, 59])).toBeLessThan(100);
+    });
+
+    it("matches the analytic arc lengths on the equator and a meridian", () => {
+        const quarter = (Math.PI / 2) * R; // quarter of the circumference
+        expect(greatCircleDistance([0, 0], [90, 0])).toBeCloseTo(
+            quarter,
+            6,
+        );
+        expect(greatCircleDistance([0, 0], [0, 90])).toBeCloseTo(
+            quarter,
+            6,
+        );
+        expect(greatCircleDistance([0, 0], [180, 0])).toBeCloseTo(
+            Math.PI * R,
+            6,
+        );
+        expect(greatCircleDistance([0, 0], [1, 0])).toBeCloseTo(
+            (Math.PI / 180) * R,
+            6,
+        );
+    });
+
+    it("matches the value turf produced on the Vincenty test pair", () => {
+        // Flinders Peak → Buninyong Gap. The WGS84 geodesic is
+        // 54 972.271 m (Vincenty 1975); the spherical model reads
+        // ~0.085% short — the documented accuracy trade-off.
+        const d = greatCircleDistance(
+            [144.42486789, -37.95103342],
+            [143.92649553, -37.65282114],
+        );
+        expect(d).toBeCloseTo(54925.508, 2);
     });
 });
 

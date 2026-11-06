@@ -22,10 +22,13 @@ dependency rule "`lib` imports nothing" adds a case to square: the geo math in
   streaming and data-port architecture of ADR-0011/0012 is their record.
 - **Host singletons as peers** — `react`, `react-dom`, `mobx`, `mobx-react-lite`:
   ADR-0019.
-- **Geo math on vetted packages** — `delaunator`, `@turf/distance` + `@turf/helpers`,
-  `@turf/area`. Hand-rolled geodesics and triangulation are rejected: haversine edge
-  cases and robust-predicate pitfalls fail quietly, and a wrong measurement is worse
-  than a dependency.
+- **Geo math on vetted packages** — `delaunator`; `@turf/area` + `@turf/helpers`
+  (the area tool only, slated to move into one local metric frame). Distances are
+  in-house haversine (`greatCircleDistance`): the formula is five lines pinned by
+  analytic arc-length tests — equator, meridian, the antipodal `asin(1)` edge — and
+  the Vincenty reference pair, which is what replaced the "vetted package" argument
+  for it. Hand-rolled triangulation stays rejected: robust-predicate pitfalls fail
+  quietly, and a wrong measurement is worse than a dependency.
 - **Single-purpose utilities** — `react-grid-layout`, `pmtiles`, `proj4`: small,
   permissively licensed; this policy is their record.
 

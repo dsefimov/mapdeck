@@ -1,8 +1,14 @@
 /**
- * Pure measurement math for the area tool: geodesic edges, perimeter and
- * projected 2D area of the drawn polygon.
+ * Pure measurement math for the area tool: great-circle edges, perimeter
+ * and projected 2D area of the drawn polygon.
+ *
+ * Both the turf area and the great-circle perimeter are spherical.
+ * The migration path is one local metric frame (the volume-measure
+ * pattern): planar shoelace area + planar perimeter in that frame,
+ * removing the last @turf dependency and unifying precision with
+ * volume-measure.
  */
-import { geodesicDistance, calculatePolygonPerimeter } from "@core/lib/geo";
+import { greatCircleDistance, calculatePolygonPerimeter } from "@core/lib/geo";
 import type { GeoPoint } from "@core/lib/geo";
 import area from "@turf/area";
 import { polygon } from "@turf/helpers";
@@ -27,7 +33,7 @@ export function measurePolygonArea(points: GeoPoint[]): AreaMeasurements {
         edges.push({
             from,
             to,
-            distanceMeters: geodesicDistance(
+            distanceMeters: greatCircleDistance(
                 [from.lng, from.lat],
                 [to.lng, to.lat],
             ),

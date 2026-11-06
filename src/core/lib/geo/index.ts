@@ -19,7 +19,7 @@ export {
     isPointInPolygon,
     polygonBoundingBox,
     isPointInBoundingBox,
-    geodesicDistance,
+    greatCircleDistance,
     calculatePolygonPerimeter,
 } from "./spatial";
 export type { PointXY, Triangle } from "./delaunay2d";
