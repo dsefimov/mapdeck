@@ -1,7 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import { formatDistance } from "@core/lib/geo";
-import { formatDict, typedDict } from "@core/lib/text";
+import { interpolate, typedDict } from "@core/lib/text";
 import type { MeasureController } from "@map-tools/shared/MeasureController";
 import { MeasurePanel } from "@map-tools/shared/MeasurePanel";
 
@@ -24,7 +24,7 @@ export const Ruler3DComponent: (
             measurePolyline3D(points);
 
         const segmentItems: Segment[] = segments.map((seg, i) => ({
-            label: formatDict(dict["segment.label"], {
+            label: interpolate(dict["segment.label"], {
                 from: i + 1,
                 to: i + 2,
             }),

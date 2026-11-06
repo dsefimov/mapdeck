@@ -6,10 +6,10 @@
  * as-is in the output.
  *
  * Example:
- *   formatDict("Vertex {from} → {to}", { from: 1, to: 2 })
+ *   interpolate("Vertex {from} → {to}", { from: 1, to: 2 })
  *   // => "Vertex 1 → 2"
  */
-export function formatDict(
+export function interpolate(
     template: string,
     params: Record<string, string | number>,
 ): string {

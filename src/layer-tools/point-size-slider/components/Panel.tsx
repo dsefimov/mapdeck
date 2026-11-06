@@ -3,7 +3,7 @@ import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/shell";
 import { isLayerNode } from "@core/contracts";
 import { DEFAULT_POINT_SIZE_PX } from "@core/domain/protocols/copc";
-import { formatDict, typedDict } from "@core/lib/text";
+import { interpolate, typedDict } from "@core/lib/text";
 import { logger } from "@core/lib/logger";
 import { SliderInput } from "@core/ui/components/primitives/inputs";
 import { Field } from "@core/ui/components";
@@ -50,7 +50,7 @@ export const PointSizeSliderComponent: (
             htmlFor="pointSize"
             label={
                 <>
-                    {formatDict(dict["label.pointSize"], {
+                    {interpolate(dict["label.pointSize"], {
                         value: displayPointSize.toFixed(1),
                     })}
                     {viewModel.isPending && (

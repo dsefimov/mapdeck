@@ -15,7 +15,7 @@ import {
     type ResponsiveLayouts,
     type LayoutItem,
 } from "react-grid-layout/legacy";
-import { formatDict, typedDict } from "@core/lib/text";
+import { interpolate, typedDict } from "@core/lib/text";
 import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
 import { Text } from "@core/ui/components/primitives/text/Text";
 import {
@@ -398,7 +398,7 @@ const renderGridWindow = (params: GridWindowParams): React.ReactNode => {
                 title={
                     isFixed
                         ? widgetName
-                        : formatDict(dict["widgetGrid.dragToMove"], {
+                        : interpolate(dict["widgetGrid.dragToMove"], {
                               name: widgetName,
                           })
                 }
@@ -413,7 +413,7 @@ const renderGridWindow = (params: GridWindowParams): React.ReactNode => {
                     >
                         <IconButton
                             icon="close"
-                            label={formatDict(
+                            label={interpolate(
                                 dict["widgetGrid.closeLabel"],
                                 { name: widgetName },
                             )}

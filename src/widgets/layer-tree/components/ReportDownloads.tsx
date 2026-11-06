@@ -2,7 +2,7 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/shell";
 import type { RelatedObject } from "@core/contracts";
-import { formatDict, typedDict } from "@core/lib/text";
+import { interpolate, typedDict } from "@core/lib/text";
 import { Text } from "@core/ui/components";
 import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
 import { openReport, downloadReport } from "../utils";
@@ -46,7 +46,7 @@ export const ReportDownloads: (props: ReportDownloadsProps) => React.ReactNode =
                                 onClick={() =>
                                     openReport(obj.sourceUrl ?? "", obj.title)
                                 }
-                                title={formatDict(dict["aria.openReport"], {
+                                title={interpolate(dict["aria.openReport"], {
                                     label: obj.title,
                                 })}
                             >
@@ -60,7 +60,7 @@ export const ReportDownloads: (props: ReportDownloadsProps) => React.ReactNode =
                             </button>
                             <IconButton
                                 icon="file-download"
-                                label={formatDict(
+                                label={interpolate(
                                     dict["aria.downloadReport"],
                                     { label: obj.title },
                                 )}

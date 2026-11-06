@@ -2,7 +2,7 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/shell";
 import { isLayerNode } from "@core/contracts";
-import { formatDict, typedDict } from "@core/lib/text";
+import { interpolate, typedDict } from "@core/lib/text";
 import { logger } from "@core/lib/logger";
 import { SliderInput } from "@core/ui/components/primitives/inputs";
 import { Field } from "@core/ui/components";
@@ -40,7 +40,7 @@ export const RasterOpacityComponent: (
 
     return (
         <Field
-            label={formatDict(dict["label.opacity"], {
+            label={interpolate(dict["label.opacity"], {
                 percent: Math.round(currentOpacity * 100),
             })}
             htmlFor="opacity"

@@ -1,7 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import { formatDistance, formatArea } from "@core/lib/geo";
-import { formatDict, typedDict } from "@core/lib/text";
+import { interpolate, typedDict } from "@core/lib/text";
 import type { MeasureController } from "@map-tools/shared/MeasureController";
 import { MeasurePanel } from "@map-tools/shared/MeasurePanel";
 
@@ -23,7 +23,7 @@ export const AreaMeasureComponent: (
         const measurements = measurePolygonArea(points);
 
         const segmentItems: Segment[] = measurements.edges.map((edge, i) => ({
-            label: formatDict(dict["segment.label"], {
+            label: interpolate(dict["segment.label"], {
                 from: i + 1,
                 to: i + 2,
             }),

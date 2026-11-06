@@ -1,5 +1,5 @@
 import React from "react";
-import { formatDict } from "@core/lib/text";
+import { interpolate } from "@core/lib/text";
 import { Icon } from "@core/ui/components";
 import { Text } from "@core/ui/components/primitives/text/Text";
 import type { SortDirection, GeometryColumnConfig } from "../types";
@@ -84,11 +84,11 @@ export const ColumnarHeaderRow = React.memo<ColumnarHeaderRowProps>(
                             <input
                                 type="text"
                                 className={styles.filterInput}
-                                placeholder={formatDict(
+                                placeholder={interpolate(
                                     dict["dataTable.filterColumn"] ?? "",
                                     { column: col },
                                 )}
-                                aria-label={formatDict(
+                                aria-label={interpolate(
                                     dict["dataTable.filterColumn"] ?? "",
                                     { column: col },
                                 )}

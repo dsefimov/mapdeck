@@ -1,5 +1,5 @@
 import { type StoredWidget, LOCALE_KEY_WIDGET_NAME } from "@core/contracts";
-import { formatDict, typedDict } from "@core/lib/text";
+import { interpolate, typedDict } from "@core/lib/text";
 import { useRootStore } from "@core/shell";
 import { observer } from "mobx-react-lite";
 import type { SidebarLocaleKey } from "../locale";
@@ -35,7 +35,7 @@ const WidgetButton = observer<WidgetButtonProps>(
                 className={widgetButtonClass}
                 onClick={handleClick}
                 title={widgetName}
-                aria-label={formatDict(dict["aria.selectWidget"], {
+                aria-label={interpolate(dict["aria.selectWidget"], {
                     name: widgetName,
                 })}
             >
