@@ -1,75 +1,56 @@
+/** Raised when the {@link boundedFetch} time ceiling fires. */
+export class FetchTimeoutError extends Error {
+    constructor(
+        readonly url: string,
+        readonly timeoutMs: number,
+    ) {
+        super(`Request timed out after ${timeoutMs}ms: ${url}`);
+        this.name = "FetchTimeoutError";
+    }
+}
+
+export interface BoundedFetchOptions {
+    headers?: HeadersInit | undefined;
+    method?: string | undefined;
+    cache?: RequestCache | undefined;
+    /** Hard ceiling covering headers and body; omit for no ceiling. */
+    timeoutMs?: number | undefined;
+    signal?: AbortSignal | undefined;
+}
+
 /**
- * Fetch with a hard time ceiling and external cancellation.
+ * Fetch with a hard time ceiling and optional external cancellation.
  *
- * A hung server rejects with a "timed out" error (distinguishable from a
- * caller's abort); an aborted external signal rejects with the native
- * AbortError. Timer and listeners are always cleaned up.
+ * The ceiling and the caller's signal cover the whole request — headers
+ * and body alike: if the ceiling fires while the caller is still
+ * reading the body, the body read rejects with the native
+ * `TimeoutError` (a caller's abort — with the native `AbortError`). A
+ * timeout on the request itself rejects with {@link FetchTimeoutError}.
  */
-/** Wire an external abort signal into the controller; returns unbind. */
-function linkSignal(
-    controller: AbortController,
-    signal: AbortSignal | undefined,
-): () => void {
-    if (!signal) return () => {};
-    const onAbort = () => controller.abort();
-    signal.addEventListener("abort", onAbort, { once: true });
-    return () => signal.removeEventListener("abort", onAbort);
-}
-
-/** Arm the time ceiling; returns disarm. */
-function armTimeout(
-    controller: AbortController,
-    timeoutMs: number | undefined,
-): () => void {
-    if (timeoutMs === undefined) return () => {};
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    return () => clearTimeout(timer);
-}
-
 export async function boundedFetch(
     url: string,
-    init: {
-        headers?: Record<string, string> | undefined;
-        /** Hard ceiling for the whole request; omit for no ceiling. */
-        timeoutMs?: number | undefined;
-        /** Caller-owned cancellation (consumer removed, superseded batch...). */
-        signal?: AbortSignal | undefined;
-        method?: string | undefined;
-        /**
-         * Cache mode forwarded to fetch. Callers fetching unique-byte
-         * requests (e.g. HTTP ranges) pass "no-store" — the
-         * protocol-specific rationale lives with those callers.
-         */
-        cache?: RequestCache | undefined;
-    } = {},
+    options: BoundedFetchOptions = {},
 ): Promise<Response> {
-    const controller = new AbortController();
-    const disarmTimeout = armTimeout(controller, init.timeoutMs);
-    const unlinkSignal = linkSignal(controller, init.signal);
+    const { timeoutMs, signal: callerSignal, ...init } = options;
+    const signals = [
+        callerSignal,
+        timeoutMs === undefined ? undefined : AbortSignal.timeout(timeoutMs),
+    ].filter((signal): signal is AbortSignal => signal !== undefined);
+
+    // exactOptionalPropertyTypes: a `| undefined` property cannot be
+    // spread into RequestInit's optional properties — assign each one.
+    const request: RequestInit = {};
+    if (init.headers !== undefined) request.headers = init.headers;
+    if (init.method !== undefined) request.method = init.method;
+    if (init.cache !== undefined) request.cache = init.cache;
+    if (signals.length > 0) request.signal = AbortSignal.any(signals);
 
     try {
-        return await fetch(url, {
-            ...(init.headers !== undefined ? { headers: init.headers } : {}),
-            ...(init.method !== undefined ? { method: init.method } : {}),
-            ...(init.cache !== undefined ? { cache: init.cache } : {}),
-            signal: controller.signal,
-        });
+        return await fetch(url, request);
     } catch (error) {
-        // Both the timer and the caller's signal abort the controller — and
-        // an armed ceiling is not proof it fired (a network TypeError
-        // rejects long before it), so ask the controller who aborted it.
-        if (
-            init.timeoutMs !== undefined &&
-            controller.signal.aborted &&
-            !init.signal?.aborted
-        ) {
-            throw new Error(
-                `Request timed out after ${init.timeoutMs}ms: ${url}`,
-            );
+        if (error instanceof DOMException && error.name === "TimeoutError") {
+            throw new FetchTimeoutError(url, timeoutMs!);
         }
         throw error;
-    } finally {
-        disarmTimeout();
-        unlinkSignal();
     }
 }

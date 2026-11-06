@@ -8,16 +8,23 @@ import {
 const TIMEOUT_MS = 30_000;
 const URL = "https://example.com/cloud.copc.laz";
 
-/** A fetch stand-in that never settles on its own — only a signal ends it. */
+/**
+ * A fetch stand-in that never settles on its own — only a signal ends
+ * it. Rejects with the signal's abort reason, like the native fetch.
+ */
 function hangingFetch(): (
     url: string,
     init: { signal?: AbortSignal },
 ) => Promise<Response> {
     return (_url, init) =>
         new Promise((_resolve, reject) => {
-            init.signal?.addEventListener("abort", () => {
-                reject(new DOMException("Aborted", "AbortError"));
-            });
+            const signal = init.signal;
+            if (!signal) return;
+            if (signal.aborted) {
+                reject(signal.reason);
+                return;
+            }
+            signal.addEventListener("abort", () => reject(signal.reason));
         });
 }
 
@@ -77,19 +84,16 @@ describe("createBoundedGetter over an HTTP source", () => {
     });
 
     it("rejects with a timeout error when the server hangs", async () => {
-        vi.useFakeTimers();
+        // AbortSignal.timeout is a native timer — fake timers cannot
+        // fast-forward it, so the ceiling is real and short.
         fetchMock.mockImplementation(hangingFetch());
 
         const getter = createBoundedGetter(
             URL,
             new AbortController().signal,
-            TIMEOUT_MS,
+            10,
         );
-        const loaded = expect(getter(0, 10)).rejects.toThrow(/timed out/);
-
-        vi.advanceTimersByTime(TIMEOUT_MS + 1);
-        await loaded;
-        vi.useRealTimers();
+        await expect(getter(0, 10)).rejects.toThrow(/timed out/);
     });
 
     it("rejects with an AbortError when the caller cancels the load", async () => {
@@ -154,15 +158,12 @@ describe("createHttpRangeGetter", () => {
     });
 
     it("rejects with a timeout error when the server hangs", async () => {
-        vi.useFakeTimers();
+        // AbortSignal.timeout is a native timer — fake timers cannot
+        // fast-forward it, so the ceiling is real and short.
         fetchMock.mockImplementation(hangingFetch());
 
-        const loaded = expect(
-            createHttpRangeGetter(URL, TIMEOUT_MS)(0, 10),
-        ).rejects.toThrow(/timed out/);
-
-        vi.advanceTimersByTime(TIMEOUT_MS + 1);
-        await loaded;
-        vi.useRealTimers();
+        await expect(createHttpRangeGetter(URL, 10)(0, 10)).rejects.toThrow(
+            /timed out/,
+        );
     });
 });
