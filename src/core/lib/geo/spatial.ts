@@ -22,7 +22,8 @@ export function greatCircleDistance(a: Point2D, b: Point2D): number {
     const h =
         sinLat * sinLat +
         Math.cos(lat1) * Math.cos(lat2) * sinLon * sinLon;
-    return 2 * EARTH_RADIUS_M * Math.asin(Math.sqrt(h));
+    // h can exceed 1 by a rounding ulp near antipodes.
+    return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
 /**

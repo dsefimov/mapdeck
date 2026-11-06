@@ -117,6 +117,15 @@ describe("greatCircleDistance", () => {
         );
         expect(d).toBeCloseTo(54925.508, 2);
     });
+
+    it("stays finite for near-antipodal pairs", () => {
+        // h lands a rounding-hair from 1; the clamp keeps asin in
+        // range instead of producing NaN on some engines.
+        const d = greatCircleDistance([0, 10], [180, -10]);
+        expect(Number.isFinite(d)).toBe(true);
+        expect(d).toBeGreaterThan(20_000_000);
+        expect(d).toBeLessThanOrEqual(Math.PI * R);
+    });
 });
 
 describe("polygonPerimeter", () => {
