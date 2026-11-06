@@ -45,7 +45,7 @@ export function bboxFromGeometry(geometry: unknown): Bbox | null {
         geometry.type === "Point"
             ? [geometry.coordinates]
             : geometry.coordinates;
-    return parseCoords2D(coords);
+    return bboxOfPositions(coords);
 }
 
 /**
@@ -62,38 +62,34 @@ export function bboxFromTuple(
     return new Bbox(tuple as BboxTuple);
 }
 
-function parseCoords2D(coords: unknown[]): Bbox | null {
+/** Yields every [x, y] position at any nesting depth of `node`. */
+function* positionsOf(node: unknown): Generator<[number, number]> {
+    if (!Array.isArray(node)) return;
+    if (typeof node[0] === "number" && typeof node[1] === "number") {
+        yield [node[0], node[1]];
+        return;
+    }
+    for (const child of node) {
+        yield* positionsOf(child);
+    }
+}
+
+function bboxOfPositions(coords: unknown[]): Bbox | null {
     let minX = Infinity,
         minY = Infinity,
         maxX = -Infinity,
         maxY = -Infinity;
     let found = false;
 
-    const update = (x: number, y: number) => {
-        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    for (const [x, y] of positionsOf(coords)) {
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
         maxX = Math.max(maxX, x);
         maxY = Math.max(maxY, y);
         found = true;
-    };
-
-    traverse(coords, update);
-    return found ? new Bbox([minX, minY, maxX, maxY]) : null;
-}
-
-function traverse(
-    arr: unknown[],
-    update: (x: number, y: number) => void,
-): void {
-    for (const item of arr) {
-        if (!Array.isArray(item)) continue;
-        if (typeof item[0] === "number" && typeof item[1] === "number") {
-            update(item[0], item[1]);
-        } else {
-            traverse(item, update);
-        }
     }
+    return found ? new Bbox([minX, minY, maxX, maxY]) : null;
 }
 
 export function flattenTo2D(bbox: Bbox): Bbox {

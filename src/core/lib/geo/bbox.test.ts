@@ -54,6 +54,21 @@ describe("bboxFromGeometry", () => {
             bboxFromGeometry({ type: "Polygon" }),
         ).toBeNull();
     });
+
+    it("skips non-finite positions but keeps the finite ones", () => {
+        const bbox = bboxFromGeometry({
+            type: "LineString",
+            coordinates: [
+                [0, 0],
+                [Number.NaN, 5],
+                [10, 10],
+            ],
+        });
+
+        expect([bbox?.west, bbox?.south, bbox?.east, bbox?.north]).toEqual([
+            0, 0, 10, 10,
+        ]);
+    });
 });
 
 describe("flattenTo2D", () => {
