@@ -51,4 +51,27 @@ describe("getTilesForBounds", () => {
 
         expect(tiles).toHaveLength(4);
     });
+
+    it("yields the touched tile for a degenerate bbox on a tile boundary", () => {
+        // (0, 0) is the shared corner of all four z1 tiles; the floor
+        // side is the south-east quadrant.
+        expect(getTilesForBounds([0, 0, 0, 0], 1)).toEqual([[1, 1, 1]]);
+    });
+
+    it("yields no tiles for an antimeridian-crossing box (west > east)", () => {
+        expect(getTilesForBounds([170, -10, -170, 10], 1)).toEqual([]);
+    });
+
+    it("yields no tiles for a box entirely outside the world", () => {
+        expect(getTilesForBounds([-200, -10, -190, 10], 3)).toEqual([]);
+    });
+
+    it("throws when the tile count would exceed the limit", () => {
+        expect(() =>
+            getTilesForBounds([-180, -85, 180, 85], 10, 100),
+        ).toThrow(/exceed the limit/);
+        expect(() =>
+            getTilesForBounds([-180, -85, 180, 85], 10),
+        ).toThrow(/exceed the limit/);
+    });
 });

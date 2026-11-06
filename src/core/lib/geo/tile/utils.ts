@@ -8,10 +8,8 @@
  * - Quadkey: string identifier for a tile at a given zoom
  */
 
-const PI = Math.PI;
-const TWO_PI = PI * 2;
-const RAD_TO_DEG = 180 / PI;
-const DEG_TO_RAD = PI / 180;
+/** Latitude at which the Web Mercator square closes onto the poles. */
+const MAX_MERCATOR_LATITUDE = 85.0511287798066;
 
 /**
  * Convert longitude to tile x at given zoom.
@@ -24,10 +22,14 @@ function lonToX(lon: number, zoom: number): number {
  * Convert latitude to tile y at given zoom.
  */
 function latToY(lat: number, zoom: number): number {
-    const clamped = Math.min(Math.max(lat, -85.05), 85.05);
-    const sin = Math.sin(clamped * DEG_TO_RAD);
+    const clamped = Math.min(
+        Math.max(lat, -MAX_MERCATOR_LATITUDE),
+        MAX_MERCATOR_LATITUDE,
+    );
+    const sin = Math.sin((clamped * Math.PI) / 180);
     return (
-        (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * PI)) * Math.pow(2, zoom)
+        (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) *
+        Math.pow(2, zoom)
     );
 }
 
@@ -42,8 +44,8 @@ function xToLon(x: number, zoom: number): number {
  * Convert tile y to latitude.
  */
 function yToLat(y: number, zoom: number): number {
-    const n = PI - (TWO_PI * y) / Math.pow(2, zoom);
-    return RAD_TO_DEG * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+    const n = Math.PI - (2 * Math.PI * y) / Math.pow(2, zoom);
+    return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
 }
 
 /**
@@ -63,7 +65,8 @@ export function tileToBBOX(
 
 /**
  * Generate a quadkey string for a tile.
- * A quadkey uniquely identifies a tile across zoom levels.
+ * A quadkey uniquely identifies a tile across zoom levels. Correct for
+ * zoom up to 31 — x and y are shifted with 32-bit operations.
  */
 export function tileToQuadkey(tile: [number, number, number]): string {
     let [x, y, zoom] = tile;
@@ -77,25 +80,53 @@ export function tileToQuadkey(tile: [number, number, number]): string {
     return key;
 }
 
+/** Runaway guard: a whole-world query at a high zoom would hang the tab. */
+const DEFAULT_MAX_TILES = 10_000;
+
 /**
- * Get all tiles at `zoom` that overlap with the given bounding box.
- * Returns array of [x, y, zoom] tiles.
+ * All tiles at `zoom` overlapping `bbox`, as [x, y, zoom] triples. A
+ * box edge that coincides with a tile boundary does not count as
+ * overlapping the tile beyond it; a degenerate box — a single point —
+ * yields the one tile the point touches (the floor side of a boundary).
+ * A box with west > east (an antimeridian crossing, RFC 7946) yields no
+ * tiles; split it into two boxes. Throws when the tile count would
+ * exceed `maxTiles`.
  */
-export function getTilesForBounds(
+/** The single tile a degenerate (point) box touches; none outside the world. */
+function pointTile(
     bbox: [number, number, number, number],
     zoom: number,
 ): Array<[number, number, number]> {
+    const [west, , , north] = bbox;
+    const x = Math.floor(lonToX(west, zoom));
+    const y = Math.floor(latToY(north, zoom));
+    const max = 2 ** zoom - 1;
+    if (x < 0 || x > max || y < 0 || y > max) return [];
+    return [[x, y, zoom]];
+}
+
+export function getTilesForBounds(
+    bbox: [number, number, number, number],
+    zoom: number,
+    maxTiles: number = DEFAULT_MAX_TILES,
+): Array<[number, number, number]> {
     const [west, south, east, north] = bbox;
+
+    if (west === east && south === north) return pointTile(bbox, zoom);
+
     const minX = Math.max(0, Math.floor(lonToX(west, zoom)));
-    const maxX = Math.min(
-        Math.pow(2, zoom) - 1,
-        Math.ceil(lonToX(east, zoom)) - 1,
-    );
+    const maxX = Math.min(2 ** zoom - 1, Math.ceil(lonToX(east, zoom)) - 1);
     const minY = Math.max(0, Math.floor(latToY(north, zoom)));
-    const maxY = Math.min(
-        Math.pow(2, zoom) - 1,
-        Math.ceil(latToY(south, zoom)) - 1,
-    );
+    const maxY = Math.min(2 ** zoom - 1, Math.ceil(latToY(south, zoom)) - 1);
+
+    if (maxX < minX || maxY < minY) return [];
+
+    const count = (maxX - minX + 1) * (maxY - minY + 1);
+    if (count > maxTiles) {
+        throw new Error(
+            `getTilesForBounds: ${count} tiles at zoom ${zoom} exceed the limit of ${maxTiles}`,
+        );
+    }
 
     const tiles: Array<[number, number, number]> = [];
     for (let x = minX; x <= maxX; x++) {
