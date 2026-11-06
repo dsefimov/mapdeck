@@ -26,28 +26,35 @@ function passes(level: LogLevel): boolean {
     return LEVEL_WEIGHT[level] >= LEVEL_WEIGHT[threshold];
 }
 
+const PREFIX: Record<LogLevel, string> = {
+    debug: "[mapdeck:debug]",
+    info: "[mapdeck:info]",
+    warn: "[mapdeck:warn]",
+    error: "[mapdeck:error]",
+};
+
 export const logger = {
     debug: (...args: unknown[]): void => {
         if (passes("debug")) {
-            console.log("[DEBUG]", ...args);
+            console.debug(PREFIX.debug, ...args);
         }
     },
 
     info: (...args: unknown[]): void => {
         if (passes("info")) {
-            console.info("[INFO]", ...args);
+            console.info(PREFIX.info, ...args);
         }
     },
 
     warn: (...args: unknown[]): void => {
         if (passes("warn")) {
-            console.warn("[WARN]", ...args);
+            console.warn(PREFIX.warn, ...args);
         }
     },
 
     error: (...args: unknown[]): void => {
         if (passes("error")) {
-            console.error("[ERROR]", ...args);
+            console.error(PREFIX.error, ...args);
         }
     },
 } as const;

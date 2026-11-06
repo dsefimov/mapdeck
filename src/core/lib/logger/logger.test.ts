@@ -8,13 +8,13 @@ afterEach(() => {
 
 describe("logger threshold", () => {
     it("suppresses debug and info at the default warn threshold", () => {
-        const log = vi.spyOn(console, "log").mockImplementation(() => {});
+        const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
         const info = vi.spyOn(console, "info").mockImplementation(() => {});
 
         logger.debug("quiet");
         logger.info("quiet");
 
-        expect(log).not.toHaveBeenCalled();
+        expect(debug).not.toHaveBeenCalled();
         expect(info).not.toHaveBeenCalled();
     });
 
@@ -25,17 +25,20 @@ describe("logger threshold", () => {
         logger.warn("loud");
         logger.error("louder");
 
-        expect(warn).toHaveBeenCalledWith("[WARN]", "loud");
-        expect(error).toHaveBeenCalledWith("[ERROR]", "louder");
+        expect(warn).toHaveBeenCalledWith("[mapdeck:warn]", "loud");
+        expect(error).toHaveBeenCalledWith("[mapdeck:error]", "louder");
     });
 
     it("raises visibility with configureLogger", () => {
-        const log = vi.spyOn(console, "log").mockImplementation(() => {});
+        const debug = vi.spyOn(console, "debug").mockImplementation(() => {});
 
         configureLogger("debug");
         logger.debug("visible now");
 
-        expect(log).toHaveBeenCalledWith("[DEBUG]", "visible now");
+        expect(debug).toHaveBeenCalledWith(
+            "[mapdeck:debug]",
+            "visible now",
+        );
     });
 
     it("an error-only threshold silences warnings", () => {
