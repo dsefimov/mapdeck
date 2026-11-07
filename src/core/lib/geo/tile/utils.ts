@@ -91,10 +91,10 @@ const DEFAULT_MAX_TILES = 10_000;
 /**
  * All tiles at `zoom` overlapping `bbox`. A box edge that coincides
  * with a tile boundary does not count as overlapping the tile beyond
- * it; a degenerate box — a single point — yields the one tile the
- * point touches (the floor side of a boundary). A box with west > east
- * (an antimeridian crossing, RFC 7946) yields no tiles; split it into
- * two boxes. Throws when the tile count would exceed `maxTiles`.
+ * it; a degenerate axis (a point or a zero-width/height line)
+ * collapses to its floor-side tile. A box with west > east (an
+ * antimeridian crossing, RFC 7946) yields no tiles; split it into two
+ * boxes. Throws when the tile count would exceed `maxTiles`.
  */
 export function getTilesForBounds(
     bbox: Bbox2DTuple,
@@ -102,13 +102,18 @@ export function getTilesForBounds(
     maxTiles: number = DEFAULT_MAX_TILES,
 ): TileCoord[] {
     const [west, south, east, north] = bbox;
-
-    if (west === east && south === north) return pointTile(bbox, zoom);
+    const maxIndex = 2 ** zoom - 1;
 
     const minX = Math.max(0, Math.floor(lonToX(west, zoom)));
-    const maxX = Math.min(2 ** zoom - 1, Math.ceil(lonToX(east, zoom)) - 1);
     const minY = Math.max(0, Math.floor(latToY(north, zoom)));
-    const maxY = Math.min(2 ** zoom - 1, Math.ceil(latToY(south, zoom)) - 1);
+    const maxX =
+        west === east
+            ? Math.min(maxIndex, Math.floor(lonToX(east, zoom)))
+            : Math.min(maxIndex, Math.ceil(lonToX(east, zoom)) - 1);
+    const maxY =
+        south === north
+            ? Math.min(maxIndex, Math.floor(latToY(south, zoom)))
+            : Math.min(maxIndex, Math.ceil(latToY(south, zoom)) - 1);
 
     if (maxX < minX || maxY < minY) return [];
 
@@ -126,14 +131,4 @@ export function getTilesForBounds(
         }
     }
     return tiles;
-}
-
-/** The single tile a degenerate (point) box touches; none outside the world. */
-function pointTile(bbox: Bbox2DTuple, zoom: number): TileCoord[] {
-    const [west, , , north] = bbox;
-    const x = Math.floor(lonToX(west, zoom));
-    const y = Math.floor(latToY(north, zoom));
-    const max = 2 ** zoom - 1;
-    if (x < 0 || x > max || y < 0 || y > max) return [];
-    return [[x, y, zoom]];
 }

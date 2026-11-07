@@ -76,9 +76,14 @@ describe("getTilesForBounds", () => {
     });
 
     it("yields the touched tile for a degenerate bbox on a tile boundary", () => {
-        // (0, 0) is the shared corner of all four z1 tiles; the floor
-        // side is the south-east quadrant.
         expect(getTilesForBounds([0, 0, 0, 0], 1)).toEqual([[1, 1, 1]]);
+    });
+
+    it("yields the touched column for a zero-width line on a tile boundary", () => {
+        // The meridian line: x collapses to the east-side column, y spans normally.
+        expect(getTilesForBounds([0, 0, 0, 1], 1)).toEqual([[1, 0, 1]]);
+        // The equator line: y collapses to the south-side row.
+        expect(getTilesForBounds([0, 0, 1, 0], 1)).toEqual([[1, 1, 1]]);
     });
 
     it("yields no tiles for an antimeridian-crossing box (west > east)", () => {

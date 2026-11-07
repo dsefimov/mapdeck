@@ -156,7 +156,16 @@ export class GeoJsonAdapter implements LayerAdapter {
         const zoom = this._resolveZoom(state);
         if (zoom < 0) return;
 
-        const tiles = getTilesForBounds(this._mapBbox(state), zoom);
+        let tiles;
+        try {
+            tiles = getTilesForBounds(this._mapBbox(state), zoom);
+        } catch (error) {
+            logger.error(
+                `GeoJsonAdapter: tile query for "${layerId}" exceeded the tile limit`,
+                error,
+            );
+            return;
+        }
 
         this._resetOnZoomChange(state, zoom);
         state.lastZoom = zoom;
