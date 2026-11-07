@@ -24,6 +24,7 @@ const THEME_FILES = [
 /** Element-scoped custom properties, set from JS inline style (not in the theme). */
 const ELEMENT_SCOPED_VARS = new Set([
     "--slider-fill", // set inline from SliderInput (JS)
+    "--icon", // set inline from Icon (JS), points at the --icon-<name> token
     "--depth", // set inline from the layer-tree BaseNode
     "--thumb-size", // local variable in .slider (SliderInput)
 ]);

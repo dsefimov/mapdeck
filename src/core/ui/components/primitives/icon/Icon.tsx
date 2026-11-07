@@ -1,11 +1,10 @@
 import React from "react";
 import { cn } from "@core/ui/utils/cn";
-import { isIconName } from "../../../icons/registry";
 import type { IconName } from "../../../icons/registry";
 import styles from "./Icon.module.css";
 
 export type { IconName };
-export { isIconName };
+export { isIconName } from "../../../icons/registry";
 
 export interface IconProps {
     /**
@@ -23,46 +22,28 @@ export interface IconProps {
 /** Names that can serve as a CSS custom-property identifier suffix. */
 const CUSTOM_ICON_ID = /^[\w-]+$/;
 
-/**
- * Inline mask style for a non-registry icon name — the glyph comes from
- * the `--icon-<name>` token the host or a module defines. `undefined`
- * when the name cannot be a token identifier (no glyph renders).
- */
-export function customIconStyle(name: string):
-    | { maskImage: string; WebkitMaskImage: string }
-    | undefined {
+function iconStyle(name: string): React.CSSProperties | undefined {
     if (!CUSTOM_ICON_ID.test(name)) return undefined;
-    const token = `var(--icon-${name})`;
-    return { maskImage: token, WebkitMaskImage: token };
+    return { "--icon": `var(--icon-${name})` } as React.CSSProperties;
 }
 
 /**
  * Design-system icon: a masked span painted with currentColor. The glyph
  * comes from the `--icon-<name>` theme token, so hosts swap artwork and
  * recolor the set through the same token overrides as the rest of the
- * theme; names outside the registry render through an inline mask-image
- * of the same token shape. Icon size is determined entirely by the parent
- * container's CSS. Interactive icons use IconButton — a clickable icon is
- * not accessible.
+ * theme. Icon size is determined entirely by the parent container's CSS.
+ * Interactive icons use IconButton — a clickable icon is not accessible.
  */
 export const Icon: (props: IconProps) => React.ReactNode = ({
     name,
     className,
     title,
-}) => {
-    const inRegistry = isIconName(name);
-    return (
-        <span
-            role={title ? "img" : undefined}
-            aria-label={title}
-            aria-hidden={!title || undefined}
-            className={cn(
-                styles.icon,
-                inRegistry ? styles[name] : undefined,
-                className,
-            )}
-            style={inRegistry ? undefined : customIconStyle(name)}
-        />
-    );
-};
-
+}) => (
+    <span
+        role={title ? "img" : undefined}
+        aria-label={title}
+        aria-hidden={!title || undefined}
+        className={cn(styles.icon, className)}
+        style={iconStyle(name)}
+    />
+);
