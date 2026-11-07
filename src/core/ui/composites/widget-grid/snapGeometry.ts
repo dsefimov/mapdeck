@@ -8,7 +8,7 @@ import type { LayoutItem } from "react-grid-layout/legacy";
 /** Threshold in grid units for edge snapping. */
 const EDGE_SNAP_THRESHOLD = 1;
 
-/** Threshold in grid units for center alignment. */
+/** Tolerance in grid units for "the widget sits on the grid's cross-axis center". */
 const CENTER_SNAP_THRESHOLD = 3;
 
 /** Grid dimensions the snap math needs. */
@@ -26,11 +26,6 @@ export interface GridLayoutConfig {
     rows: number;
 }
 
-export interface SnapResult {
-    layout: Partial<LayoutItem>;
-    snapped: boolean;
-}
-
 /** Row height that fits `rows` rows into the container height. */
 export const calculateRowHeight = (
     containerHeight: number,
@@ -44,146 +39,50 @@ export const calculateRowHeight = (
     return availableHeight / layoutConfig.rows;
 };
 
-const isCenteredHorizontally = (
+/** One axis of the grid: which coordinates it uses and where it ends. */
+interface SnapAxis {
+    pos: "x" | "y";
+    size: "w" | "h";
+    limit: number;
+}
+
+/**
+ * Resize-stop snap toward the far edge of an axis: a widget whose far edge
+ * reaches the grid limit (while near the cross-axis center) is stretched
+ * exactly to the limit. Only the "se" handle is enabled
+ * (`resizeHandles={["se"]}`), so the near edges never move during a resize
+ * and near-edge snaps cannot occur.
+ */
+function snapToFarEdge(
     item: LayoutItem,
-    gridCols: number,
-): boolean => {
-    const gridCenterX = gridCols / 2;
+    oldItem: LayoutItem,
+    axis: SnapAxis,
+    nearCrossCenter: boolean,
+): Partial<LayoutItem> | null {
+    const edge = item[axis.pos] + item[axis.size];
+    const oldEdge = oldItem[axis.pos] + oldItem[axis.size];
+    if (
+        edge >= axis.limit - EDGE_SNAP_THRESHOLD &&
+        nearCrossCenter &&
+        (oldEdge < axis.limit - EDGE_SNAP_THRESHOLD ||
+            Math.abs(edge - oldEdge) > 0.5)
+    ) {
+        const stretched = axis.limit - item[axis.pos];
+        if (Math.abs(stretched - item[axis.size]) > 0.1) {
+            return { [axis.size]: stretched } as Partial<LayoutItem>;
+        }
+    }
+    return null;
+}
+
+const isNearGridCenterX = (item: LayoutItem, gridCols: number): boolean => {
     const widgetCenterX = item.x + item.w / 2;
-    return Math.abs(widgetCenterX - gridCenterX) <= CENTER_SNAP_THRESHOLD;
+    return Math.abs(widgetCenterX - gridCols / 2) <= CENTER_SNAP_THRESHOLD;
 };
 
-const isCenteredVertically = (
-    item: LayoutItem,
-    gridRows: number,
-): boolean => {
-    const gridCenterY = gridRows / 2;
+const isNearGridCenterY = (item: LayoutItem, gridRows: number): boolean => {
     const widgetCenterY = item.y + item.h / 2;
-    return Math.abs(widgetCenterY - gridCenterY) <= CENTER_SNAP_THRESHOLD;
-};
-
-const trySnapToRightEdge = (
-    item: LayoutItem,
-    oldItem: LayoutItem,
-    gridCols: number,
-    centeredVertically: boolean,
-): SnapResult | null => {
-    const itemRight = item.x + item.w;
-    const oldRight = oldItem.x + oldItem.w;
-    if (
-        itemRight >= gridCols - EDGE_SNAP_THRESHOLD &&
-        centeredVertically &&
-        (oldRight < gridCols - EDGE_SNAP_THRESHOLD ||
-            Math.abs(itemRight - oldRight) > 0.5)
-    ) {
-        const newWidth = gridCols - item.x;
-        if (Math.abs(newWidth - item.w) > 0.1) {
-            return { layout: { w: newWidth }, snapped: true };
-        }
-    }
-    return null;
-};
-
-const trySnapToBottomEdge = (
-    item: LayoutItem,
-    oldItem: LayoutItem,
-    gridRows: number,
-    centeredHorizontally: boolean,
-): SnapResult | null => {
-    const itemBottom = item.y + item.h;
-    const oldBottom = oldItem.y + oldItem.h;
-    if (
-        itemBottom >= gridRows - EDGE_SNAP_THRESHOLD &&
-        centeredHorizontally &&
-        (oldBottom < gridRows - EDGE_SNAP_THRESHOLD ||
-            Math.abs(itemBottom - oldBottom) > 0.5)
-    ) {
-        const newHeight = gridRows - item.y;
-        if (Math.abs(newHeight - item.h) > 0.1) {
-            return { layout: { h: newHeight }, snapped: true };
-        }
-    }
-    return null;
-};
-
-const trySnapToLeftEdge = (
-    item: LayoutItem,
-    oldItem: LayoutItem,
-    gridCols: number,
-    centeredVertically: boolean,
-): SnapResult | null => {
-    if (
-        item.x <= EDGE_SNAP_THRESHOLD &&
-        centeredVertically &&
-        (oldItem.x > EDGE_SNAP_THRESHOLD || Math.abs(item.x - oldItem.x) > 0.5)
-    ) {
-        const widthChange = oldItem.x - item.x;
-        const newWidth = Math.min(item.w + widthChange, gridCols);
-        if (Math.abs(newWidth - item.w) > 0.1) {
-            return { layout: { x: 0, w: newWidth }, snapped: true };
-        }
-    }
-    return null;
-};
-
-const trySnapToTopEdge = (
-    item: LayoutItem,
-    oldItem: LayoutItem,
-    gridRows: number,
-    centeredHorizontally: boolean,
-): SnapResult | null => {
-    if (
-        item.y <= EDGE_SNAP_THRESHOLD &&
-        centeredHorizontally &&
-        (oldItem.y > EDGE_SNAP_THRESHOLD || Math.abs(item.y - oldItem.y) > 0.5)
-    ) {
-        const heightChange = oldItem.y - item.y;
-        const newHeight = Math.min(item.h + heightChange, gridRows);
-        if (Math.abs(newHeight - item.h) > 0.1) {
-            return { layout: { y: 0, h: newHeight }, snapped: true };
-        }
-    }
-    return null;
-};
-
-const computeSnapPosition = (
-    item: LayoutItem,
-    oldItem: LayoutItem,
-    gridCols: number,
-    gridRows: number,
-): SnapResult => {
-    const rightEdgeSnap = trySnapToRightEdge(
-        item,
-        oldItem,
-        gridCols,
-        isCenteredVertically(item, gridRows),
-    );
-    if (rightEdgeSnap) return rightEdgeSnap;
-
-    const bottomEdgeSnap = trySnapToBottomEdge(
-        item,
-        oldItem,
-        gridRows,
-        isCenteredHorizontally(item, gridCols),
-    );
-    if (bottomEdgeSnap) return bottomEdgeSnap;
-
-    const leftEdgeSnap = trySnapToLeftEdge(
-        item,
-        oldItem,
-        gridCols,
-        isCenteredVertically(item, gridRows),
-    );
-    if (leftEdgeSnap) return leftEdgeSnap;
-
-    return (
-        trySnapToTopEdge(
-            item,
-            oldItem,
-            gridRows,
-            isCenteredHorizontally(item, gridCols),
-        ) ?? { layout: {}, snapped: false }
-    );
+    return Math.abs(widgetCenterY - gridRows / 2) <= CENTER_SNAP_THRESHOLD;
 };
 
 /**
@@ -196,20 +95,21 @@ export const calculateEdgeSnap = (
     gridCols: number,
     gridRows: number,
 ): LayoutItem | null => {
-    const newItem = { ...item };
-    const snapResult = computeSnapPosition(
-        newItem,
+    const rightSnap = snapToFarEdge(
+        item,
         oldItem,
-        gridCols,
-        gridRows,
+        { pos: "x", size: "w", limit: gridCols },
+        isNearGridCenterY(item, gridRows),
     );
+    if (rightSnap) return { ...item, ...rightSnap };
 
-    if (snapResult.snapped) {
-        Object.assign(newItem, snapResult.layout);
-        return newItem;
-    }
-
-    return null;
+    const bottomSnap = snapToFarEdge(
+        item,
+        oldItem,
+        { pos: "y", size: "h", limit: gridRows },
+        isNearGridCenterX(item, gridCols),
+    );
+    return bottomSnap ? { ...item, ...bottomSnap } : null;
 };
 
 interface EdgeProximity {
@@ -224,16 +124,16 @@ const computeEdgeProximity = (
     gridCols: number,
     gridRows: number,
 ): EdgeProximity => {
-    const centeredH = isCenteredHorizontally(item, gridCols);
-    const centeredV = isCenteredVertically(item, gridRows);
+    const centeredX = isNearGridCenterX(item, gridCols);
+    const centeredY = isNearGridCenterY(item, gridRows);
 
     return {
-        nearTop: item.y <= EDGE_SNAP_THRESHOLD && centeredH,
+        nearTop: item.y <= EDGE_SNAP_THRESHOLD && centeredX,
         nearBottom:
-            gridRows - (item.y + item.h) <= EDGE_SNAP_THRESHOLD && centeredH,
-        nearLeft: item.x <= EDGE_SNAP_THRESHOLD && centeredV,
+            gridRows - (item.y + item.h) <= EDGE_SNAP_THRESHOLD && centeredX,
+        nearLeft: item.x <= EDGE_SNAP_THRESHOLD && centeredY,
         nearRight:
-            gridCols - (item.x + item.w) <= EDGE_SNAP_THRESHOLD && centeredV,
+            gridCols - (item.x + item.w) <= EDGE_SNAP_THRESHOLD && centeredY,
     };
 };
 
