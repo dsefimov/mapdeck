@@ -11,23 +11,21 @@ export interface MenuSize {
     margin: number;
 }
 
-export interface MapContextMenuAPI {
-    isOpen: boolean;
+export interface ContextMenuApi {
     position: ContextMenuPosition | null;
     open: (pos: ContextMenuPosition) => void;
     close: () => void;
 }
 
-export function useMapContextMenu(): MapContextMenuAPI {
+export function useContextMenu(): ContextMenuApi {
     const [position, setPosition] = useState<ContextMenuPosition | null>(
         null,
     );
 
     // Memoized so consumers that park the API in an effect keep a stable
     // object between position changes.
-    return useMemo<MapContextMenuAPI>(
+    return useMemo<ContextMenuApi>(
         () => ({
-            isOpen: position !== null,
             position,
             open: setPosition,
             close: () => setPosition(null),

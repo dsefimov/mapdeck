@@ -1,7 +1,7 @@
 /* global performance */
 import { useEffect, useRef, type RefObject } from "react";
 import maplibregl from "maplibre-gl";
-import type { MapContextMenuAPI } from "@core/ui/components";
+import type { ContextMenuApi } from "@core/ui/components";
 import type { MapClickPoint } from "@core/domain/map";
 import { isStaticClick } from "./isStaticClick";
 
@@ -25,7 +25,7 @@ const ECHO_PRESS_WINDOW_MS = 200;
  */
 export function useMapContextMenuTrigger(
     mapRef: RefObject<maplibregl.Map | null>,
-    ctx: MapContextMenuAPI,
+    ctx: ContextMenuApi,
     lastRightClickRef: RefObject<MapClickPoint | null>,
 ): void {
     const rightClickStartRef = useRef<{ x: number; y: number } | null>(null);

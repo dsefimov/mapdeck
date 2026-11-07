@@ -1,8 +1,8 @@
-export { useMapContextMenu } from "./useContextMenu";
+export { useContextMenu } from "./useContextMenu";
 export type {
-    MapContextMenuAPI,
+    ContextMenuApi,
     ContextMenuPosition,
     MenuSize,
 } from "./useContextMenu";
 export { default as ContextMenu } from "./ContextMenu";
-export type { ContextMenuProps } from "./ContextMenu";
+export type { ContextMenuProps, ContextMenuItem } from "./ContextMenu";

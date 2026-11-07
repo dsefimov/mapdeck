@@ -37,9 +37,10 @@ export {
     type CollapsibleMenuProps,
 } from "./layout/collapsible-menu/CollapsibleMenu";
 export { default as ContextMenu } from "./layout/context-menu/ContextMenu";
+export type { ContextMenuItem } from "./layout/context-menu/ContextMenu";
 export {
-    useMapContextMenu,
-    type MapContextMenuAPI,
+    useContextMenu,
+    type ContextMenuApi,
     type ContextMenuPosition,
     type MenuSize,
 } from "./layout/context-menu/useContextMenu";

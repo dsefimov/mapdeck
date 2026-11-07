@@ -21,7 +21,7 @@ const PANEL_SURFACE = [
     "InlineError",
     "CollapsibleMenu",
     "ContextMenu",
-    "useMapContextMenu",
+    "useContextMenu",
     "useClickOutside",
     "useEscapeKey",
     "useDebounce",

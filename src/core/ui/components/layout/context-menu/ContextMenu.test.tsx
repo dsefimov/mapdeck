@@ -7,33 +7,29 @@ import ContextMenu from "./ContextMenu";
 
 afterEach(cleanup);
 
-const TOOLS = [
-    { id: "ruler" },
-    { id: "area" },
-    { id: "volume" },
+const ITEMS = [
+    { id: "ruler", label: "ruler" },
+    { id: "area", label: "area" },
+    { id: "volume", label: "volume" },
 ];
 
 interface MenuOverrides {
-    activeToolId?: string | null;
+    activeItemId?: string | null;
     onClose?: () => void;
 }
 
 function renderMenu({
-    activeToolId = null,
+    activeItemId = null,
     onClose = vi.fn(),
 }: MenuOverrides = {}) {
     render(
         <ContextMenu
-            isOpen
             position={{ x: 10, y: 10 }}
-            onClose={onClose}
-            tools={TOOLS}
-            activeToolId={activeToolId}
-            onToolClick={vi.fn()}
+            items={ITEMS}
+            activeItemId={activeItemId}
             header="Map tools"
-            resolveToolName={(id) =>
-                TOOLS.find((t) => t.id === id)?.id ?? id
-            }
+            onSelect={vi.fn()}
+            onClose={onClose}
         />,
     );
     return {
@@ -91,8 +87,8 @@ describe("ContextMenu keyboard navigation", () => {
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 
-    it("marks the active tool with aria-current", () => {
-        const { item } = renderMenu({ activeToolId: "area" });
+    it("marks the active item with aria-current", () => {
+        const { item } = renderMenu({ activeItemId: "area" });
 
         expect(item("area")).toHaveAttribute("aria-current", "true");
         expect(item("ruler")).not.toHaveAttribute("aria-current");

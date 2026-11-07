@@ -2,8 +2,7 @@ import { useRef, type MouseEvent as ReactMouseEvent } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/shell";
-import { ContextMenu, useMapContextMenu } from "@core/ui/components";
-import type { MapTool } from "@core/contracts";
+import { ContextMenu, useContextMenu } from "@core/ui/components";
 import { LOCALE_KEY_TOOL_NAME } from "@core/contracts";
 import type { MapClickPoint } from "@core/domain/map";
 import { useMapLifecycle } from "../utils/useMapLifecycle";
@@ -17,7 +16,7 @@ const MapViewerComponent = observer(({ className = "" }: MapViewerProps) => {
     const rootStore = useRootStore();
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useMapLifecycle(mapContainerRef, rootStore);
-    const contextMenu = useMapContextMenu();
+    const contextMenu = useContextMenu();
     const lastRightClickRef = useRef<MapClickPoint | null>(null);
 
     useMapContextMenuTrigger(mapRef, contextMenu, lastRightClickRef);
@@ -36,11 +35,19 @@ const MapViewerComponent = observer(({ className = "" }: MapViewerProps) => {
         contextMenu.open({ x: e.clientX, y: e.clientY });
     };
 
-    const handleToolClick = (tool: MapTool) => {
-        viewModel.runMenuAction(tool, contextMenu, lastRightClickRef.current);
+    const tools = rootStore.mapToolStore.toolsList;
+    const handleSelect = (id: string) => {
+        const tool = tools.find((t) => t.id === id);
+        if (tool) {
+            viewModel.runMenuAction(tool, contextMenu, lastRightClickRef.current);
+        }
     };
 
-    const tools = rootStore.mapToolStore.toolsList;
+    const items = tools.map((tool) => ({
+        id: tool.id,
+        label:
+            rootStore.localeStore.t(tool.id)[LOCALE_KEY_TOOL_NAME] ?? tool.id,
+    }));
     const activeToolId = rootStore.mapToolStore.activeToolId;
     const header =
         rootStore.localeStore.t(MAP_VIEWER_ID)["contextMenu.header"] ??
@@ -54,16 +61,12 @@ const MapViewerComponent = observer(({ className = "" }: MapViewerProps) => {
         <div className={containerClassName}>
             <div ref={mapContainerRef} className={styles.mapContainer} />
             <ContextMenu
-                isOpen={contextMenu.isOpen}
                 position={contextMenu.position}
-                onClose={contextMenu.close}
-                tools={tools}
-                activeToolId={activeToolId}
-                onToolClick={handleToolClick}
+                items={items}
+                activeItemId={activeToolId}
                 header={header}
-                resolveToolName={(id) =>
-                    rootStore.localeStore.t(id)[LOCALE_KEY_TOOL_NAME] ?? id
-                }
+                onSelect={handleSelect}
+                onClose={contextMenu.close}
                 onReposition={handleReposition}
             />
         </div>

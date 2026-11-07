@@ -57,8 +57,9 @@ export {
     CollapsibleMenu,
     type CollapsibleMenuProps,
     ContextMenu,
-    useMapContextMenu,
-    type MapContextMenuAPI,
+    type ContextMenuItem,
+    useContextMenu,
+    type ContextMenuApi,
     type ContextMenuPosition,
     type MenuSize,
 } from "@core/ui";

@@ -7,16 +7,20 @@ import { clampMenuPosition } from "./clampMenuPosition";
 import type { ContextMenuPosition, MenuSize } from "./useContextMenu";
 import styles from "./ContextMenu.module.css";
 
-export interface ContextMenuProps<T extends { id: string }> {
-    isOpen: boolean;
+export interface ContextMenuItem {
+    id: string;
+    label: string;
+}
+
+export interface ContextMenuProps {
+    /** Null position means the menu is closed. */
     position: ContextMenuPosition | null;
-    onClose: () => void;
-    tools: T[];
-    activeToolId: string | null;
-    onToolClick: (tool: T) => void;
-    /** Caption over the tool list — the host owns the vocabulary. */
+    items: ContextMenuItem[];
+    activeItemId?: string | null;
+    /** Caption over the item list — the host owns the vocabulary. */
     header: string;
-    resolveToolName: (toolId: string) => string;
+    onSelect: (id: string) => void;
+    onClose: () => void;
     /**
      * Right-press on the backdrop while the menu is open — the standard
      * "relocate here" gesture. Receives the raw event so the host can map
@@ -28,17 +32,16 @@ export interface ContextMenuProps<T extends { id: string }> {
 /** Gap between cursor and menu when the CSS padding cannot be parsed. */
 const MENU_MARGIN_FALLBACK_PX = 8;
 
-const ContextMenuComponent = <T extends { id: string }>({
-    isOpen,
+const ContextMenuComponent = ({
     position,
-    onClose,
-    tools,
-    activeToolId,
-    onToolClick,
+    items,
+    activeItemId,
     header,
-    resolveToolName,
+    onSelect,
+    onClose,
     onReposition,
-}: ContextMenuProps<T>) => {
+}: ContextMenuProps) => {
+    const isOpen = position !== null;
     const [menuSize, setMenuSize] = useState<MenuSize | null>(null);
     const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -140,15 +143,14 @@ const ContextMenuComponent = <T extends { id: string }>({
                 <Text variant="caption" className={styles.header}>
                     {header}
                 </Text>
-                {tools.map((tool) => {
-                    const isActive = activeToolId === tool.id;
-                    const toolName = resolveToolName(tool.id);
+                {items.map((item) => {
+                    const isActive = activeItemId === item.id;
                     return (
                         <button
-                            key={tool.id}
+                            key={item.id}
                             type="button"
                             className={styles.item}
-                            onClick={() => onToolClick(tool)}
+                            onClick={() => onSelect(item.id)}
                             role="menuitem"
                             aria-current={isActive ? "true" : undefined}
                         >
@@ -159,7 +161,7 @@ const ContextMenuComponent = <T extends { id: string }>({
                                 tone={isActive ? "accent" : undefined}
                                 weight={isActive ? "semibold" : undefined}
                             >
-                                {toolName}
+                                {item.label}
                             </Text>
                         </button>
                     );
