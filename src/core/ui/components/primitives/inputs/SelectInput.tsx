@@ -1,24 +1,21 @@
-import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { typedDict } from "@core/lib/text";
 import { Icon } from "@core/ui/components/primitives/icon/Icon";
 import { Text } from "@core/ui/components/primitives/text/Text";
 import { useClickOutside } from "@core/ui/hooks/useClickOutside";
 import { cn } from "@core/ui/utils/cn";
+import {
+    activeDescendantId,
+    buildSections,
+    optionDomId,
+    type OptionEntry,
+    type SelectOption,
+} from "./selectModel";
+import { useSelectPanel } from "./useSelectPanel";
 import styles from "./SelectInput.module.css";
 
-export interface SelectOption {
-    label: string;
-    value: string;
-    /** Consecutive options sharing a group render under one labeled section. */
-    group?: string;
-}
+export type { SelectOption } from "./selectModel";
 
 export interface SelectInputProps {
     id: string;
@@ -33,55 +30,6 @@ export interface SelectInputProps {
     dict: Record<string, string>;
     onChange: (value: string) => void;
     className?: string;
-}
-
-/** Panel offset from the trigger, px */
-const PANEL_OFFSET = 4;
-
-/**
- * id the trigger's aria-activedescendant points at — the currently
- * highlighted option, only while an open panel has options to show.
- */
-function activeDescendantId(
-    id: string,
-    open: boolean,
-    itemCount: number,
-    highlight: number,
-): string | undefined {
-    return open && itemCount > 0 ? `${id}-option-${highlight}` : undefined;
-}
-
-/** One flat item with its index — the keyboard model stays flat. */
-interface OptionEntry {
-    item: SelectOption;
-    index: number;
-}
-
-/** Consecutive items sharing a group render as one labeled group. */
-interface ListSection {
-    label?: string | undefined;
-    entries: OptionEntry[];
-}
-
-/**
- * Groups items into renderable sections: a run of options with the same
- * group becomes one `[role="group"]`, ungrouped runs stay direct children
- * of the listbox.
- */
-function buildSections(items: SelectOption[]): ListSection[] {
-    const sections: ListSection[] = [];
-    items.forEach((item, index) => {
-        const last = sections[sections.length - 1];
-        if (last && last.label === item.group) {
-            last.entries.push({ item, index });
-        } else {
-            sections.push({
-                label: item.group,
-                entries: [{ item, index }],
-            });
-        }
-    });
-    return sections;
 }
 
 /**
@@ -102,42 +50,26 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
     const emptyText = typedDict<"select.noOptions">(dict)[
         "select.noOptions"
     ];
-    const triggerRef = useRef<HTMLButtonElement>(null);
-    const panelRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);
     const [highlight, setHighlight] = useState(0);
-    const [position, setPosition] = useState<{
-        top: number;
-        left: number;
-        width: number;
-    } | null>(null);
-
-    const selected = items.find((item) => item.value === value);
-
-    const measure = useCallback(() => {
-        const rect = triggerRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        setPosition({
-            top: rect.bottom + PANEL_OFFSET,
-            left: rect.left,
-            width: rect.width,
-        });
-    }, []);
 
     const closePanel = useCallback(() => {
         setOpen(false);
     }, []);
 
+    const { triggerRef, panelRef, position } = useSelectPanel(open, closePanel);
+
+    const selected = items.find((item) => item.value === value);
+
     const openPanel = useCallback(() => {
         if (disabled) return;
-        measure();
         const index = Math.max(
             0,
             items.findIndex((item) => item.value === value),
         );
         setHighlight(index);
         setOpen(true);
-    }, [disabled, items, measure, value]);
+    }, [disabled, items, value]);
 
     const selectItem = useCallback(
         (item: SelectOption) => {
@@ -154,36 +86,12 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
         defer: true,
     });
 
-    // Panel position is fixed — close on outside scroll/resize so it does
-    // not end up misplaced. The panel's own list scrolls too (max-height +
-    // overflow): the wheel and the arrow-key scrollIntoView both land
-    // there, and those scrolls must not close it.
     useEffect(() => {
         if (!open) return;
-        const close = (event: Event): void => {
-            if (
-                event.target instanceof Node &&
-                panelRef.current?.contains(event.target)
-            ) {
-                return;
-            }
-            closePanel();
-        };
-        window.addEventListener("scroll", close, true);
-        window.addEventListener("resize", close);
-        return () => {
-            window.removeEventListener("scroll", close, true);
-            window.removeEventListener("resize", close);
-        };
-    }, [open, closePanel]);
-
-    const optionRefs = useRef(new Map<number, HTMLDivElement>());
-    useEffect(() => {
-        if (!open) return;
-        optionRefs.current
-            .get(highlight)
+        document
+            .getElementById(optionDomId(id, highlight))
             ?.scrollIntoView({ block: "nearest" });
-    }, [open, highlight]);
+    }, [open, highlight, id]);
 
     const sections = useMemo(() => buildSections(items), [items]);
 
@@ -191,16 +99,8 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
         <div
             key={`${item.group ?? ""}:${item.value}`}
             role="option"
-            id={`${id}-option-${index}`}
+            id={optionDomId(id, index)}
             aria-selected={item.value === value}
-            data-index={index}
-            ref={(el) => {
-                if (el) {
-                    optionRefs.current.set(index, el);
-                } else {
-                    optionRefs.current.delete(index);
-                }
-            }}
             className={cn(
                 styles.option,
                 index === highlight && styles.highlight,
@@ -242,37 +142,35 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
     const handleOpenKeyDown = (
         e: React.KeyboardEvent<HTMLButtonElement>,
     ): void => {
-        if (e.key === "ArrowDown") {
-            e.preventDefault();
-            navigate(1);
-            return;
-        }
-        if (e.key === "ArrowUp") {
-            e.preventDefault();
-            navigate(-1);
-            return;
-        }
-        if (e.key === "Home") {
-            e.preventDefault();
-            setHighlight(0);
-            return;
-        }
-        if (e.key === "End") {
-            e.preventDefault();
-            setHighlight(Math.max(0, items.length - 1));
-            return;
-        }
-        if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            selectHighlighted();
-            return;
-        }
-        if (e.key === "Escape") {
-            e.preventDefault();
-            setOpen(false);
-        } else if (e.key === "Tab") {
-            // Tab — close without preventDefault, focus moves naturally
-            setOpen(false);
+        switch (e.key) {
+            case "ArrowDown":
+                e.preventDefault();
+                navigate(1);
+                return;
+            case "ArrowUp":
+                e.preventDefault();
+                navigate(-1);
+                return;
+            case "Home":
+                e.preventDefault();
+                setHighlight(0);
+                return;
+            case "End":
+                e.preventDefault();
+                setHighlight(Math.max(0, items.length - 1));
+                return;
+            case "Enter":
+            case " ":
+                e.preventDefault();
+                selectHighlighted();
+                return;
+            case "Escape":
+                e.preventDefault();
+                closePanel();
+                return;
+            case "Tab":
+                // Close without preventDefault — focus moves naturally.
+                closePanel();
         }
     };
 
@@ -299,13 +197,12 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
                 aria-expanded={open}
                 aria-label={ariaLabel}
                 aria-controls={`${id}-listbox`}
-                aria-activedescendant={activeDescendantId(
-                    id,
-                    open,
-                    items.length,
-                    highlight,
-                )}
-                onClick={() => (open ? setOpen(false) : openPanel())}
+                aria-activedescendant={
+                    open
+                        ? activeDescendantId(id, items.length, highlight)
+                        : undefined
+                }
+                onClick={() => (open ? closePanel() : openPanel())}
                 onKeyDown={handleKeyDown}
             >
                 <Text
@@ -378,4 +275,3 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
         </>
     );
 };
-
