@@ -82,19 +82,16 @@ describe("DataTable sort cycle", () => {
     it("cycles a column through asc → desc → reset", () => {
         renderTable();
 
-        // First click — ascending.
         sortByName();
         expect(nameHeader()).toHaveAttribute("aria-sort", "ascending");
         expect(rowTexts()[0]).toContain("alpha");
         expect(rowTexts()[2]).toContain("charlie");
 
-        // Second click — descending.
         sortByName();
         expect(nameHeader()).toHaveAttribute("aria-sort", "descending");
         expect(rowTexts()[0]).toContain("charlie");
         expect(rowTexts()[2]).toContain("alpha");
 
-        // Third click — reset to the original order, sort inactive.
         sortByName();
         expect(nameHeader()).not.toHaveAttribute("aria-sort");
         expect(rowTexts()[0]).toContain("bravo");

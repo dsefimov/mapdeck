@@ -162,7 +162,6 @@ describe("applyDragSnap (drag)", () => {
     });
 
     it("a drop near a corner takes the horizontal band, not the vertical one", () => {
-        // Near the bottom and the left edge at once; top/bottom wins.
         expect(applyDragSnap(item({ x: 1, y: 7, w: 4, h: 12 }), GRID)).toEqual({
             ...item({ x: 1, y: 7, w: 4, h: 12 }),
             x: 0,

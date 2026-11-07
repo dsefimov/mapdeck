@@ -37,7 +37,6 @@ describe("useDebounce", () => {
         expect(cb).toHaveBeenCalledTimes(1);
         expect(cb).toHaveBeenCalledWith("a");
 
-        // The flushed timer is cancelled — no second invocation.
         act(() => vi.advanceTimersByTime(200));
         expect(cb).toHaveBeenCalledTimes(1);
         expect(result.current.isPending).toBe(false);
@@ -94,7 +93,6 @@ describe("useDebounce", () => {
         act(() => vi.advanceTimersByTime(100));
         expect(cb).toHaveBeenCalledTimes(1);
 
-        // Nothing is pending anymore — a later flush must stay silent.
         act(() => result.current.flush());
 
         expect(cb).toHaveBeenCalledTimes(1);

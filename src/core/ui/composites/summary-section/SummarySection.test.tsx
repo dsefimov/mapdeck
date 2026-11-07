@@ -45,7 +45,6 @@ describe("SummarySection", () => {
         expect(dotOf(HORIZONTAL)).not.toBeNull();
         expect(dotOf(VERTICAL)).not.toBeNull();
         expect(dotOf("Без маркера")).toBeNull();
-        // The two dots carry different color classes.
         expect(dotOf(HORIZONTAL)?.className).not.toBe(
             dotOf(VERTICAL)?.className,
         );
