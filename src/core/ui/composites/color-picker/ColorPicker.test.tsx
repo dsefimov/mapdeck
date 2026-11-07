@@ -89,7 +89,7 @@ describe("ColorPicker instance ids", () => {
             label.getAttribute("for") ?? "",
         );
 
-        expect(target).toBeInstanceOf(HTMLCanvasElement);
+        expect(target).toHaveAttribute("role", "slider");
     });
 });
 
@@ -105,7 +105,7 @@ describe("ColorPicker hex field", () => {
         expect(log.commits).toEqual(["#445566"]);
     });
 
-    it("preserves the typed case in the committed value", async () => {
+    it("normalizes the committed value to lowercase", async () => {
         const log = commitLog();
         render(<StatefulPicker commits={log.push} />);
         const user = userEvent.setup();
@@ -113,7 +113,7 @@ describe("ColorPicker hex field", () => {
         await user.clear(hexField("Accent"));
         await user.type(hexField("Accent"), "33AAFF");
 
-        expect(log.commits).toEqual(["#33AAFF"]);
+        expect(log.commits).toEqual(["#33aaff"]);
     });
 
     it("does not commit a partial hex value", async () => {
@@ -140,7 +140,7 @@ describe("ColorPicker hex field", () => {
         expect(hexField("Accent")).toHaveValue("#33aa55");
     });
 
-    it("normalizes the display and re-commits on blur of valid input", async () => {
+    it("normalizes the display on blur without re-committing", async () => {
         const log = commitLog();
         render(<StatefulPicker commits={log.push} />);
         const user = userEvent.setup();
@@ -149,7 +149,7 @@ describe("ColorPicker hex field", () => {
         await user.type(hexField("Accent"), "445566");
         await user.tab();
 
-        expect(log.commits).toEqual(["#445566", "#445566"]);
+        expect(log.commits).toEqual(["#445566"]);
         expect(hexField("Accent")).toHaveValue("#445566");
     });
 
@@ -173,6 +173,62 @@ describe("ColorPicker hex field", () => {
         );
 
         expect(hexField("Accent")).toHaveValue("#0051ca");
+    });
+});
+
+describe("ColorPicker hue state", () => {
+    function hueOf(): number {
+        return Number(
+            screen.getByRole("slider").getAttribute("aria-valuenow"),
+        );
+    }
+
+    it("keeps hue 360 when its own commit echoes back as #ff0000", async () => {
+        const log = commitLog();
+        render(<StatefulPicker commits={log.push} />);
+        const user = userEvent.setup();
+
+        const slider = screen.getByRole("slider");
+        slider.focus();
+        await user.keyboard("{End}");
+
+        expect(log.commits).toEqual(["#ff0000"]);
+        // The echo of hue 360 is red — recomputing the hue from it would
+        // snap the thumb from the right edge back to 0.
+        expect(hueOf()).toBe(360);
+    });
+
+    it("recomputes the hue only for an external value the hue cannot produce", () => {
+        const { rerender } = render(
+            <ColorPicker
+                label="Accent"
+                dict={DICT}
+                value="#ff0000"
+                onChange={vi.fn()}
+            />,
+        );
+        expect(hueOf()).toBe(0);
+
+        // A gray has no hue — it reads as 0, thumb stays left.
+        rerender(
+            <ColorPicker
+                label="Accent"
+                dict={DICT}
+                value="#808080"
+                onChange={vi.fn()}
+            />,
+        );
+        expect(hueOf()).toBe(0);
+
+        rerender(
+            <ColorPicker
+                label="Accent"
+                dict={DICT}
+                value="#00ff00"
+                onChange={vi.fn()}
+            />,
+        );
+        expect(hueOf()).toBe(120);
     });
 });
 

@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useState } from "react";
+import { hexToHue, hueToHex, normalizeHex } from "@core/lib/color";
 import { interpolate, typedDict } from "@core/lib/text";
-import { InputLabel } from "@core/ui/components/primitives/inputs";
+import { InputLabel, TextInput } from "@core/ui/components/primitives/inputs";
 import { ColorSlider } from "@core/ui/components/primitives/color-slider/ColorSlider";
 import styles from "./ColorPicker.module.css";
 
@@ -15,20 +16,11 @@ export interface ColorPickerProps {
     onChange: (color: string) => void;
 }
 
-const HEX_REGEX = /^#?([0-9a-fA-F]{6})$/;
-
-function isValidHex(value: string): boolean {
-    return HEX_REGEX.test(value);
-}
-
-function formatHex(value: string): string {
-    const clean = value.replace("#", "");
-    if (clean.length === 6) return `#${clean}`;
-    return value;
-}
-
 /**
- * Color: swatch + hex input + hue slider (ColorSlider).
+ * Color picker: swatch + hex field + hue slider. Hue is the slider state;
+ * it is recomputed from `value` only when the external color is not the
+ * one the current hue would produce — dragging never fights the prop,
+ * and the 360° red edge or a gray value never snaps the thumb.
  */
 export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
     value,
@@ -37,34 +29,36 @@ export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
     onChange,
 }) => {
     const labels = typedDict<ColorPickerKey>(dict);
+
+    const [hue, setHue] = useState(() => hexToHue(value));
     const [hexInput, setHexInput] = useState(value);
 
-    useEffect(() => {
+    // Render-time adjust (React docs pattern, not an effect): an external
+    // value change retires drafts that no longer match it.
+    const [prevValue, setPrevValue] = useState(value);
+    if (value !== prevValue) {
+        setPrevValue(value);
         setHexInput(value);
-    }, [value]);
-
-    const handleHexChange = useCallback(
-        (e: React.ChangeEvent<HTMLInputElement>) => {
-            const raw = e.target.value;
-            setHexInput(raw);
-
-            const formatted = formatHex(raw);
-            if (isValidHex(formatted)) {
-                onChange(formatted);
-            }
-        },
-        [onChange],
-    );
-
-    const handleHexBlur = useCallback(() => {
-        const formatted = formatHex(hexInput);
-        if (isValidHex(formatted)) {
-            setHexInput(formatted);
-            onChange(formatted);
-        } else {
-            setHexInput(value);
+        if (value.toLowerCase() !== hueToHex(hue)) {
+            setHue(hexToHue(value));
         }
-    }, [hexInput, onChange, value]);
+    }
+
+    const handleHexChange = (raw: string): void => {
+        setHexInput(raw);
+        const normalized = normalizeHex(raw);
+        if (normalized) onChange(normalized);
+    };
+
+    const handleHexBlur = (): void => {
+        const normalized = normalizeHex(hexInput);
+        setHexInput(normalized ?? value);
+    };
+
+    const handleHueChange = (nextHue: number): void => {
+        setHue(nextHue);
+        onChange(hueToHex(nextHue));
+    };
 
     // Unique per instance: two pickers with the same label must not share
     // the slider id their InputLabel points at.
@@ -78,25 +72,24 @@ export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
                     className={styles.swatch}
                     style={{ backgroundColor: value }}
                 />
-                <input
-                    type="text"
-                    className={styles.hexInput}
+                <TextInput
+                    id={`${hueInputId}-hex`}
                     value={hexInput}
                     onChange={handleHexChange}
                     onBlur={handleHexBlur}
                     maxLength={7}
-                    aria-label={interpolate(labels["colorPicker.hexField"], {
+                    className={styles.hexInput}
+                    ariaLabel={interpolate(labels["colorPicker.hexField"], {
                         label,
                     })}
                 />
             </div>
             <ColorSlider
                 id={hueInputId}
-                value={value}
-                onChange={onChange}
+                value={hue}
+                onChange={handleHueChange}
                 label={interpolate(labels["colorPicker.hueField"], { label })}
             />
         </div>
     );
 };
-

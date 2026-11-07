@@ -27,6 +27,8 @@ const ELEMENT_SCOPED_VARS = new Set([
     "--icon", // set inline from Icon (JS), points at the --icon-<name> token
     "--depth", // set inline from the layer-tree BaseNode
     "--thumb-size", // local variable in .slider (SliderInput)
+    "--pos", // set inline from ColorSlider (JS), thumb position in %
+    "--thumb-w", // local variable in .thumb (ColorSlider)
 ]);
 
 const THEME_DEFS = new Set<string>();
