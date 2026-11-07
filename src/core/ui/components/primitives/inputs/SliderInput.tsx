@@ -11,6 +11,8 @@ export interface SliderInputProps {
     onChange: (value: number) => void;
     onCommit?: () => void;
     disabled?: boolean;
+    /** Accessible name for the slider when there is no visible label */
+    ariaLabel?: string;
     className?: string;
 }
 
@@ -34,6 +36,7 @@ export const SliderInput: (props: SliderInputProps) => React.ReactNode = ({
     onChange,
     onCommit,
     disabled,
+    ariaLabel,
     className,
 }) => {
     const raw = max > min ? ((value - min) / (max - min)) * 100 : 0;
@@ -50,6 +53,7 @@ export const SliderInput: (props: SliderInputProps) => React.ReactNode = ({
             max={max}
             step={step ?? 1}
             disabled={disabled}
+            aria-label={ariaLabel}
             onChange={(e) => onChange(Number(e.target.value))}
             onPointerUp={onCommit}
             onKeyUp={(e) => {

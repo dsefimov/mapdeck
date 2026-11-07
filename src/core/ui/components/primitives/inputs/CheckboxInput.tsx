@@ -7,6 +7,8 @@ export interface CheckboxInputProps {
     checked: boolean;
     onChange: (checked: boolean) => void;
     disabled?: boolean;
+    /** Accessible name for the checkbox when there is no visible label */
+    ariaLabel?: string;
     className?: string | undefined;
 }
 
@@ -15,6 +17,7 @@ export const CheckboxInput: (props: CheckboxInputProps) => React.ReactNode = ({
     checked,
     onChange,
     disabled,
+    ariaLabel,
     className,
 }) => {
     return (
@@ -24,6 +27,7 @@ export const CheckboxInput: (props: CheckboxInputProps) => React.ReactNode = ({
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
             disabled={disabled}
+            aria-label={ariaLabel}
             className={cn(styles.input, className)}
         />
     );

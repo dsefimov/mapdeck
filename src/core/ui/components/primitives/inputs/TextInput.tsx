@@ -7,6 +7,8 @@ export interface TextInputProps {
     value: string;
     onChange: (value: string) => void;
     disabled?: boolean;
+    /** Accessible name for the input when there is no visible label */
+    ariaLabel?: string;
     className?: string | undefined;
 }
 
@@ -15,6 +17,7 @@ export const TextInput: (props: TextInputProps) => React.ReactNode = ({
     value,
     onChange,
     disabled,
+    ariaLabel,
     className,
 }) => {
     return (
@@ -24,6 +27,7 @@ export const TextInput: (props: TextInputProps) => React.ReactNode = ({
             className={cn(styles.input, className)}
             value={value}
             disabled={disabled}
+            aria-label={ariaLabel}
             onChange={(e) => onChange(e.target.value)}
         />
     );

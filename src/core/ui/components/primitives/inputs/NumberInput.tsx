@@ -10,6 +10,8 @@ export interface NumberInputProps {
     step?: number | undefined;
     onChange: (value: number) => void;
     disabled?: boolean;
+    /** Accessible name for the input when there is no visible label */
+    ariaLabel?: string;
     className?: string | undefined;
 }
 
@@ -33,6 +35,7 @@ export const NumberInput: (props: NumberInputProps) => React.ReactNode = ({
     step,
     onChange,
     disabled,
+    ariaLabel,
     className,
 }) => {
     // null — no draft, the committed value is displayed.
@@ -71,6 +74,7 @@ export const NumberInput: (props: NumberInputProps) => React.ReactNode = ({
             max={max}
             step={step ?? 1}
             disabled={disabled}
+            aria-label={ariaLabel}
             onChange={handleChange}
         />
     );

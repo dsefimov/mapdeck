@@ -7,6 +7,8 @@ export interface SwitchInputProps {
     checked: boolean;
     onChange: (checked: boolean) => void;
     disabled?: boolean;
+    /** Accessible name for the switch when there is no visible label */
+    ariaLabel?: string;
     className?: string;
 }
 
@@ -15,6 +17,7 @@ export const SwitchInput: (props: SwitchInputProps) => React.ReactNode = ({
     checked,
     onChange,
     disabled,
+    ariaLabel,
     className,
 }) => {
     return (
@@ -34,6 +37,7 @@ export const SwitchInput: (props: SwitchInputProps) => React.ReactNode = ({
                 checked={checked}
                 onChange={(e) => onChange(e.target.checked)}
                 disabled={disabled}
+                aria-label={ariaLabel}
                 className={styles.input}
             />
             <span className={styles.track}>
