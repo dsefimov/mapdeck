@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { SelectInput } from "./SelectInput";
-import type { SelectGroup } from "./SelectInput";
+import type { SelectOption } from "./SelectInput";
 
 afterEach(cleanup);
 
@@ -55,18 +55,10 @@ async function openPanel(
     return screen.getByRole("listbox");
 }
 
-const GROUPED: SelectGroup[] = [
-    {
-        label: "Group A",
-        options: [
-            { value: "a1", label: "Alpha 1" },
-            { value: "a2", label: "Alpha 2" },
-        ],
-    },
-    {
-        label: "Group B",
-        options: [{ value: "b1", label: BETA_1 }],
-    },
+const GROUPED: SelectOption[] = [
+    { value: "a1", label: "Alpha 1", group: "Group A" },
+    { value: "a2", label: "Alpha 2", group: "Group A" },
+    { value: "b1", label: BETA_1, group: "Group B" },
 ];
 
 function renderGroupedSelect(
@@ -77,8 +69,7 @@ function renderGroupedSelect(
         <SelectInput
             id="sel"
             value=""
-            groups={GROUPED}
-            options={options}
+            options={[...GROUPED, ...options]}
             dict={DICT}
             onChange={onChange}
         />,

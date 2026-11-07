@@ -2,7 +2,7 @@ import { type ReactNode } from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/shell";
 import { Field, InlineError, SelectInput, Text } from "@core/ui/components";
-import type { SelectGroup, SelectOption } from "@core/ui/components";
+import type { SelectOption } from "@core/ui/components";
 import { DataTable } from "@core/ui/composites";
 import { AttributeTableStore, PAGE_SIZE } from "../store/AttributeTableStore";
 import type { AttributeLayerInfo } from "../utils/index";
@@ -10,25 +10,22 @@ import { groupLayersByTitle } from "../utils/groupLayersByTitle";
 import type { AttributeTableWidgetProps } from "../types";
 import styles from "./Widget.module.css";
 
-/** Flat/grouped select options built from the layer list. */
-function buildSelectOptions(layers: AttributeLayerInfo[]): {
-    groups: SelectGroup[];
-    options: SelectOption[];
-} {
+/** Select options built from the layer list; same-title layers form sections. */
+function buildSelectOptions(layers: AttributeLayerInfo[]): SelectOption[] {
     const { groups, ungrouped } = groupLayersByTitle(layers);
-    return {
-        groups: Array.from(groups.entries()).map(([groupTitle, groupLayers]) => ({
-            label: groupTitle,
-            options: groupLayers.map((layer) => ({
+    return [
+        ...Array.from(groups.entries()).flatMap(([groupTitle, groupLayers]) =>
+            groupLayers.map((layer) => ({
                 value: layer.id,
                 label: layer.title,
+                group: groupTitle,
             })),
-        })),
-        options: ungrouped.map((layer) => ({
+        ),
+        ...ungrouped.map((layer) => ({
             value: layer.id,
             label: layer.title,
         })),
-    };
+    ];
 }
 
 interface LayerSelectProps {
@@ -61,8 +58,7 @@ function LayerSelect({
             id={`${widgetId}-layer-select`}
             value={selectedLayerId ?? ""}
             dict={coreDict}
-            groups={selectOptions.groups}
-            options={selectOptions.options}
+            options={selectOptions}
             {...(dict["layerSelector.placeholder"] && {
                 placeholder: dict["layerSelector.placeholder"],
             })}

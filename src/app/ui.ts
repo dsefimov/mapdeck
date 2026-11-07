@@ -35,7 +35,6 @@ export {
     SelectInput,
     type SelectInputProps,
     type SelectOption,
-    type SelectGroup,
     CheckboxInput,
     type CheckboxInputProps,
     NumberInput,

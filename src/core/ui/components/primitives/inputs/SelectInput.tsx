@@ -16,26 +16,14 @@ import styles from "./SelectInput.module.css";
 export interface SelectOption {
     label: string;
     value: string;
-}
-
-export interface SelectGroup {
-    label: string;
-    options: SelectOption[];
-}
-
-interface SelectItem {
-    value: string;
-    label: string;
-    groupLabel?: string;
+    /** Consecutive options sharing a group render under one labeled section. */
+    group?: string;
 }
 
 export interface SelectInputProps {
     id: string;
     value: string;
-    /** Flat options (no groups) */
-    options?: SelectOption[];
-    /** Grouped options (rendered with group labels) */
-    groups?: SelectGroup[];
+    options: SelectOption[];
     /** Text shown when no value is selected (color --color-text-secondary) */
     placeholder?: string;
     disabled?: boolean;
@@ -65,30 +53,30 @@ function activeDescendantId(
 
 /** One flat item with its index — the keyboard model stays flat. */
 interface OptionEntry {
-    item: SelectItem;
+    item: SelectOption;
     index: number;
 }
 
-/** Consecutive items sharing a groupLabel render as one labeled group. */
+/** Consecutive items sharing a group render as one labeled group. */
 interface ListSection {
     label?: string | undefined;
     entries: OptionEntry[];
 }
 
 /**
- * Groups flat items into renderable sections: a run of options with the
- * same groupLabel becomes one `[role="group"]`, unlabeled runs stay direct
- * children of the listbox.
+ * Groups items into renderable sections: a run of options with the same
+ * group becomes one `[role="group"]`, ungrouped runs stay direct children
+ * of the listbox.
  */
-function buildSections(items: SelectItem[]): ListSection[] {
+function buildSections(items: SelectOption[]): ListSection[] {
     const sections: ListSection[] = [];
     items.forEach((item, index) => {
         const last = sections[sections.length - 1];
-        if (last && last.label === item.groupLabel) {
+        if (last && last.label === item.group) {
             last.entries.push({ item, index });
         } else {
             sections.push({
-                label: item.groupLabel,
+                label: item.group,
                 entries: [{ item, index }],
             });
         }
@@ -103,8 +91,7 @@ function buildSections(items: SelectItem[]): ListSection[] {
 export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
     id,
     value,
-    options,
-    groups,
+    options: items,
     placeholder,
     disabled,
     ariaLabel,
@@ -124,23 +111,6 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
         left: number;
         width: number;
     } | null>(null);
-
-    const items = useMemo<SelectItem[]>(() => {
-        const flat: SelectItem[] = [];
-        for (const group of groups ?? []) {
-            for (const option of group.options) {
-                flat.push({
-                    value: option.value,
-                    label: option.label,
-                    groupLabel: group.label,
-                });
-            }
-        }
-        for (const option of options ?? []) {
-            flat.push({ value: option.value, label: option.label });
-        }
-        return flat;
-    }, [groups, options]);
 
     const selected = items.find((item) => item.value === value);
 
@@ -170,7 +140,7 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
     }, [disabled, items, measure, value]);
 
     const selectItem = useCallback(
-        (item: SelectItem) => {
+        (item: SelectOption) => {
             onChange(item.value);
             setOpen(false);
         },
@@ -219,7 +189,7 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
 
     const renderOption = ({ item, index }: OptionEntry): React.ReactNode => (
         <div
-            key={`${item.groupLabel ?? ""}:${item.value}`}
+            key={`${item.group ?? ""}:${item.value}`}
             role="option"
             id={`${id}-option-${index}`}
             aria-selected={item.value === value}
