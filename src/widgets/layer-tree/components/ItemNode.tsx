@@ -90,14 +90,15 @@ const ItemMenu: (props: {
 }) => React.ReactNode = observer(({ node, tools, hasReports, onClose }) => {
     return (
         <CollapsibleMenu
-            items={tools}
             open={true}
             onClose={onClose}
             className={styles.layerTree__menuContainer}
             closeOnClickOutside={false}
             hideIfEmpty={!hasReports}
-            nodeId={node.id}
         >
+            {tools.map((tool) => (
+                <div key={tool.id}>{tool.component(node.id)}</div>
+            ))}
             {hasReports && <ReportDownloads nodeId={node.id} />}
         </CollapsibleMenu>
     );

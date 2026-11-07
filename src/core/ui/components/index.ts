@@ -34,7 +34,6 @@ export { LoadingScreen } from "./feedback/loading-screen/LoadingScreen";
 
 export {
     CollapsibleMenu,
-    type CollapsibleMenuItem,
     type CollapsibleMenuProps,
 } from "./layout/collapsible-menu/CollapsibleMenu";
 export { default as ContextMenu } from "./layout/context-menu/ContextMenu";

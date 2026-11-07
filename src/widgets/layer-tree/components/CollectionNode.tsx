@@ -101,7 +101,6 @@ const CollectionNode: (props: CollectionNodeProps) => React.ReactNode =
                             className={styles.layerTree__menuContainer}
                             closeOnClickOutside={false}
                             hideIfEmpty={false}
-                            nodeId={node.id}
                         >
                             <ReportDownloads nodeId={node.id} />
                         </CollapsibleMenu>

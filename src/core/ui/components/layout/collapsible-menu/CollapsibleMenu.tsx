@@ -3,13 +3,7 @@ import { useClickOutside, useMenuKeyboard } from "@core/ui/hooks";
 import { cn } from "@core/ui/utils/cn";
 import styles from "./CollapsibleMenu.module.css";
 
-export interface CollapsibleMenuItem {
-    id: string;
-    component: (nodeId: string) => React.ReactNode;
-}
-
 export interface CollapsibleMenuProps {
-    items?: CollapsibleMenuItem[];
     children?: React.ReactNode;
     open?: boolean;
     onClose?: () => void;
@@ -17,11 +11,9 @@ export interface CollapsibleMenuProps {
     panelClassName?: string | undefined;
     closeOnClickOutside?: boolean;
     hideIfEmpty?: boolean;
-    nodeId?: string;
 }
 
 export const CollapsibleMenu: (props: CollapsibleMenuProps) => React.ReactNode = (props) => {
-    const items = props.items ?? [];
     const open = props.open ?? false;
     const closeOnClickOutside = props.closeOnClickOutside ?? true;
     const hideIfEmpty = props.hideIfEmpty ?? false;
@@ -32,7 +24,7 @@ export const CollapsibleMenu: (props: CollapsibleMenuProps) => React.ReactNode =
     const panelNodeRef = useRef<HTMLDivElement | null>(null);
     const contentNodeRef = useRef<HTMLDivElement | null>(null);
 
-    const hidden = shouldHide(hideIfEmpty, items.length, props.children);
+    const hidden = hideIfEmpty && !props.children;
 
     // Stable callback ref: required to avoid remount on every render.
     const panelRef = useCallback(
@@ -107,39 +99,12 @@ export const CollapsibleMenu: (props: CollapsibleMenuProps) => React.ReactNode =
                     className={styles.menuContent}
                     ref={contentNodeRef}
                 >
-                    <MenuItems items={items} nodeId={props.nodeId}>
-                        {props.children}
-                    </MenuItems>
+                    {props.children}
                 </div>
             </div>
         </div>
     );
 };
-
-interface MenuItemsProps {
-    items: CollapsibleMenuItem[];
-    nodeId: string | undefined;
-    children?: React.ReactNode;
-}
-
-const MenuItems = ({ items, nodeId, children }: MenuItemsProps) => (
-    <>
-        {items.map((item) => (
-            <div key={item.id} className={styles.menuComponent}>
-                {item.component(nodeId ?? "")}
-            </div>
-        ))}
-        {children}
-    </>
-);
-
-function shouldHide(
-    hideIfEmpty: boolean,
-    itemsLength: number,
-    children?: React.ReactNode,
-): boolean {
-    return hideIfEmpty && itemsLength === 0 && !children;
-}
 
 function getPanelStyle(
     panelHeight: number,
