@@ -1,4 +1,5 @@
 import { useCallback, useReducer } from "react";
+import { logger } from "@core/lib/logger";
 import type { SortDirection, OnSortHandler } from "../types";
 
 interface SortState {
@@ -53,8 +54,11 @@ export function useSortMode(props: UseSortModeProps): UseSortModeResult {
                 );
                 try {
                     await props.onSort(next.column, next.direction);
-                } catch {
-                    // Parent sort handler error is non-critical — ignore
+                } catch (error) {
+                    logger.warn(
+                        "useSortMode: parent sort handler failed",
+                        error,
+                    );
                 }
             } else {
                 dispatch(column);

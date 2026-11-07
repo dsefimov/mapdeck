@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { logger } from "@core/lib/logger";
 import { useVirtualWindow } from "./useVirtualWindow";
 import { ROW_HEIGHT } from "../constants";
 
@@ -118,5 +119,36 @@ describe("useVirtualWindow fetchMore", () => {
         await vi.waitFor(() =>
             expect(fetchMore).toHaveBeenCalledWith(150),
         );
+    });
+
+    it("does not refetch when the fetch delivers nothing", async () => {
+        const fetchMore = vi.fn().mockResolvedValue(undefined);
+        render(
+            <Harness rowCount={10} totalRows={100} fetchMore={fetchMore} />,
+        );
+
+        await vi.waitFor(() => expect(fetchMore).toHaveBeenCalledTimes(1));
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        });
+
+        expect(fetchMore).toHaveBeenCalledTimes(1);
+    });
+
+    it("contains a rejected fetchMore and logs it", async () => {
+        const warn = vi
+            .spyOn(logger, "warn")
+            .mockImplementation(() => undefined);
+        const fetchMore = vi.fn().mockRejectedValue(new Error("network"));
+        render(
+            <Harness rowCount={10} totalRows={100} fetchMore={fetchMore} />,
+        );
+
+        await vi.waitFor(() => expect(fetchMore).toHaveBeenCalledTimes(1));
+        await act(async () => {
+            await new Promise((resolve) => setTimeout(resolve, 20));
+        });
+
+        expect(warn).toHaveBeenCalledTimes(1);
     });
 });

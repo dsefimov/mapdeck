@@ -12,6 +12,7 @@ import {
     PRELOAD_BUFFER_ROWS,
     ROW_HEIGHT,
 } from "../constants";
+import { logger } from "@core/lib/logger";
 import styles from "../AttributeTable.module.css";
 
 interface UseVirtualWindowOptions {
@@ -34,6 +35,25 @@ interface UseVirtualWindowResult {
     bottomPaddingHeight: number;
 }
 
+interface ViewportGeometry {
+    scrollTop: number;
+    containerHeight: number;
+    rowHeight: number;
+    rowCount: number;
+    pageSize: number | undefined;
+}
+
+/** Rows to request, or null when the viewport does not reach past the loaded window. */
+function fetchCount(view: ViewportGeometry): number | null {
+    const visibleEndRow =
+        Math.ceil((view.scrollTop + view.containerHeight) / view.rowHeight) +
+        PRELOAD_BUFFER_ROWS;
+    if (visibleEndRow <= view.rowCount) return null;
+    const minPage = view.pageSize ?? 50;
+    const shortage = Math.max(minPage, visibleEndRow - view.rowCount);
+    return Math.ceil(shortage / minPage) * minPage;
+}
+
 /**
  * Manages virtual scroll state: tracks scroll position via a ResizeObserver +
  * scroll handler, computes the visible window indices, and triggers fetchMore
@@ -48,6 +68,10 @@ export function useVirtualWindow(
     const containerRef = useRef<HTMLDivElement>(null);
     const containerHeightRef = useRef(DEFAULT_CONTAINER_HEIGHT);
     const isFetchingRef = useRef(false);
+    // "rowCount:totalRows" a request was already made for — a server that
+    // reports more rows than it delivers must not turn the effect into a
+    // refetch loop; a total change unlocks a retry.
+    const requestedFor = useRef<string | null>(null);
     const rowHeightMeasuredRef = useRef(false);
     const [rowHeight, setRowHeight] = useState(ROW_HEIGHT);
     const [scrollTop, setScrollTop] = useState(0);
@@ -105,21 +129,25 @@ export function useVirtualWindow(
             if (cancelled) return;
             if (!fetchMore || loading || isFetchingRef.current) return;
             if (rowCount >= effectiveTotal) return;
+            if (requestedFor.current === `${rowCount}:${effectiveTotal}`) {
+                return;
+            }
 
-            const visibleEndRow =
-                Math.ceil((scrollTop + containerHeight) / rowHeight) +
-                PRELOAD_BUFFER_ROWS;
-            const needMoreData = visibleEndRow > rowCount;
+            const count = fetchCount({
+                scrollTop,
+                containerHeight,
+                rowHeight,
+                rowCount,
+                pageSize,
+            });
+            if (count === null) return;
 
-            if (!needMoreData) return;
-
-            const minPage = pageSize ?? 50;
-            const shortage = Math.max(minPage, visibleEndRow - rowCount);
-            const count = Math.ceil(shortage / minPage) * minPage;
-
+            requestedFor.current = `${rowCount}:${effectiveTotal}`;
             isFetchingRef.current = true;
             try {
                 await fetchMore(count);
+            } catch (error) {
+                logger.warn("useVirtualWindow: fetchMore failed", error);
             } finally {
                 if (!cancelled) {
                     isFetchingRef.current = false;
