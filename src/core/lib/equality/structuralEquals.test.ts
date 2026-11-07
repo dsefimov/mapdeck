@@ -113,7 +113,7 @@ describe("structuralEquals — kind mismatches and built-ins", () => {
         expect(structuralEquals(a, b)).toBe(true);
     });
 
-    it("ignores keys inherited from the prototype chain", () => {
+    it("does not structurally compare objects with custom prototypes", () => {
         expect(structuralEquals({}, Object.create({ x: 1 }))).toBe(false);
     });
 
