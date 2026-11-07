@@ -8,27 +8,18 @@ export interface InputLabelProps {
     htmlFor: string;
     /** Label content (text, formatted messages, etc.) */
     children: React.ReactNode;
-    /** Visual variant: "default" for body text, "caption" for small uppercase */
-    variant?: "default" | "caption";
+    /** `Text` variant of the label content */
+    variant?: "body" | "caption" | undefined;
     className?: string;
 }
 
 export const InputLabel: (props: InputLabelProps) => React.ReactNode = ({
     htmlFor,
     children,
-    variant = "default",
+    variant = "body",
     className,
-}) => {
-    const content =
-        variant === "caption" ? (
-            <Text variant="caption">{children}</Text>
-        ) : (
-            <Text variant="body">{children}</Text>
-        );
-
-    return (
-        <label htmlFor={htmlFor} className={cn(styles.label, className)}>
-            {content}
-        </label>
-    );
-};
+}) => (
+    <label htmlFor={htmlFor} className={cn(styles.label, className)}>
+        <Text variant={variant}>{children}</Text>
+    </label>
+);

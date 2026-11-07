@@ -9,8 +9,8 @@ export interface FieldProps {
     label: React.ReactNode;
     /** Id of the control the label is bound to */
     htmlFor: string;
-    /** Label visual variant: "default" — body, "caption" — uppercase label */
-    labelVariant?: "default" | "caption";
+    /** `Text` variant of the label: "body" or "caption" */
+    labelVariant?: "body" | "caption";
     children: React.ReactNode;
     /** Extra hint below the control */
     hint?: React.ReactNode;
@@ -33,7 +33,7 @@ export const Field: (props: FieldProps) => React.ReactNode = ({
 }) => {
     return (
         <div className={cn(styles.field, className)}>
-            <InputLabel htmlFor={htmlFor} variant={labelVariant ?? "default"}>
+            <InputLabel htmlFor={htmlFor} variant={labelVariant}>
                 {label}
             </InputLabel>
             {children}
