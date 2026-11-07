@@ -1,8 +1,63 @@
 /* ═══════════════════════════════════════════
-   Vendor CSS overrides (MapLibre GL, etc.)
+   Vendor CSS overrides (MapLibre GL, react-grid-layout, etc.)
    ═══════════════════════════════════════════ */
 
 .maplibregl-ctrl-attrib.maplibregl-compact {
     margin: calc(var(--space-8) / 2) !important;
     margin-right: var(--space-8) !important;
+}
+
+.react-grid-item {
+    transition: none;
+}
+
+.react-grid-item.resizing,
+.react-grid-item.react-draggable-dragging {
+    /* Deliberately above everything in the workspace, including the
+       --z-floating (1000) layer — a dragged/resized window must not dip
+       behind widgets, panels or open dropdowns mid-gesture. */
+    z-index: var(--z-dragging);
+    transition: none;
+    user-select: none;
+}
+
+.react-grid-item.resizing *,
+.react-grid-item.react-draggable-dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+.react-resizable-handle {
+    position: absolute;
+    width: var(--space-16);
+    height: var(--space-16);
+    bottom: 0;
+    right: 0;
+    cursor: se-resize;
+    background: linear-gradient(
+        135deg,
+        transparent 50%,
+        var(--color-border) 50%
+    );
+}
+
+.react-resizable-handle:hover {
+    background: linear-gradient(
+        135deg,
+        transparent 50%,
+        var(--color-accent) 50%
+    );
+}
+
+.react-resizable-handle::after {
+    content: "";
+    position: absolute;
+    width: var(--space-8);
+    height: var(--space-8);
+    bottom: var(--space-8);
+    right: var(--space-8);
+    border-right: var(--border-md) solid var(--color-border);
+    border-bottom: var(--border-md) solid var(--color-border);
 }
