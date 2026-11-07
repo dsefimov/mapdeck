@@ -5,6 +5,7 @@
  * Reusable across all map tools and components.
  */
 import { hexToRgba } from "@core/lib/color";
+import { logger } from "@core/lib/logger";
 
 /** Semantic color tokens (see theme.css). */
 export const THEME_TEXT = "--color-text";
@@ -46,12 +47,11 @@ export const COLOR_ALPHA_FILL = 60;
 export const COLOR_ALPHA_STROKE = 200;
 export const COLOR_ALPHA_PREVIEW = 150;
 
-/** Measure colors resolved for deck.gl (RGBA) and maplibre paint (CSS). */
+/** Measure colors resolved for deck.gl (RGBA). */
 export interface MeasureColors {
     stroke: [number, number, number, number];
     fill: [number, number, number, number];
     preview: [number, number, number, number];
-    css: { stroke: string; fill: string };
 }
 
 /**
@@ -65,30 +65,24 @@ export function getMeasureColors(): MeasureColors {
             stroke: withAlpha(DEFAULT_COLOR_ACCENT, COLOR_ALPHA_STROKE),
             fill: withAlpha(DEFAULT_COLOR_ACCENT, COLOR_ALPHA_FILL),
             preview: withAlpha(DEFAULT_COLOR_ACCENT, COLOR_ALPHA_PREVIEW),
-            css: { stroke: DEFAULT_ACCENT_CSS, fill: DEFAULT_ACCENT_CSS },
         };
     }
-    const stroke = getThemeColor(
-        THEME_MEASURE_STROKE,
-        COLOR_ALPHA_STROKE,
-        DEFAULT_COLOR_ACCENT,
-    );
-    const fill = getThemeColor(
-        THEME_MEASURE_FILL,
-        COLOR_ALPHA_FILL,
-        DEFAULT_COLOR_ACCENT,
-    );
-    const preview = getThemeColor(
-        THEME_MEASURE_PREVIEW,
-        COLOR_ALPHA_PREVIEW,
-        DEFAULT_COLOR_ACCENT,
-    );
-    const cssStroke = getThemeValue(THEME_MEASURE_STROKE, DEFAULT_ACCENT_CSS);
     return {
-        stroke,
-        fill,
-        preview,
-        css: { stroke: cssStroke, fill: cssStroke },
+        stroke: getThemeColor(
+            THEME_MEASURE_STROKE,
+            COLOR_ALPHA_STROKE,
+            DEFAULT_COLOR_ACCENT,
+        ),
+        fill: getThemeColor(
+            THEME_MEASURE_FILL,
+            COLOR_ALPHA_FILL,
+            DEFAULT_COLOR_ACCENT,
+        ),
+        preview: getThemeColor(
+            THEME_MEASURE_PREVIEW,
+            COLOR_ALPHA_PREVIEW,
+            DEFAULT_COLOR_ACCENT,
+        ),
     };
 }
 
@@ -151,7 +145,13 @@ export function getThemeColor(
         return hexToRgba(value, alpha);
     }
 
-    return [0, 0, 0, alpha];
+    // Custom properties come back as written — a host override in rgb()/hsl()/
+    // color-mix() form is not a hex we can parse; degrade to the caller's
+    // fallback instead of a silent black.
+    logger.warn(
+        `Theme token ${cssVariable} is not a hex color ("${value}"), using the fallback`,
+    );
+    return withAlpha(fallback, alpha);
 }
 
 type ThemeListener = () => void;

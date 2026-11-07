@@ -10,7 +10,6 @@ const COLORS: MeasureColors = {
     stroke: [0, 81, 202, 200],
     fill: [0, 81, 202, 60],
     preview: [0, 81, 202, 150],
-    css: { stroke: "#0051ca", fill: "#0051ca" },
 };
 
 const geometry = (kind: Geometry["kind"], points: GeoPoint[]): Geometry => ({

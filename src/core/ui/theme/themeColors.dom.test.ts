@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi, afterEach } from "vitest";
+import { logger } from "@core/lib/logger";
 import {
     DEFAULT_COLOR_ACCENT,
+    THEME_ACCENT,
     getMeasureColors,
     getThemeColor,
     getThemeValue,
@@ -12,6 +14,10 @@ import {
 // happy-dom loads no stylesheets: every custom property is missing, so the
 // browser fallback branches are exercised (themeTokens.test.ts covers SSR).
 describe("getThemeColor browser fallbacks", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
     it("honors alpha on a missing variable", () => {
         expect(getThemeColor("--definitely-missing", 60)).toEqual([
             52, 58, 64, 60,
@@ -22,6 +28,19 @@ describe("getThemeColor browser fallbacks", () => {
         expect(
             getThemeColor("--definitely-missing", 200, DEFAULT_COLOR_ACCENT),
         ).toEqual([0, 81, 202, 200]);
+    });
+
+    it("falls back and warns on a non-hex token value", () => {
+        vi.spyOn(window, "getComputedStyle").mockImplementation(
+            () =>
+                ({
+                    getPropertyValue: () => "rgb(0, 81, 202)",
+                }) as unknown as CSSStyleDeclaration,
+        );
+        const warn = vi.spyOn(logger, "warn").mockImplementation(() => {});
+
+        expect(getThemeColor(THEME_ACCENT, 60)).toEqual([52, 58, 64, 60]);
+        expect(warn).toHaveBeenCalledTimes(1);
     });
 
     it("measure colors keep the accent fallback in the browser", () => {

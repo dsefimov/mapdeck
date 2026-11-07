@@ -5,8 +5,6 @@ import {
     getMeasureColors,
     getThemeColor,
     subscribeTheme,
-    THEME_ACCENT,
-    DEFAULT_ACCENT_CSS,
 } from "./themeColors";
 import { hexToRgba } from "@core/lib/color";
 
@@ -92,14 +90,15 @@ describe("theme tokens", () => {
         expect(offenders).toEqual([]);
     });
 
-    it("getThemeColor returns light defaults in SSR mode", () => {
-        // vitest without jsdom: no window → SSR branch
-        expect(getThemeColor(THEME_ACCENT, 255)).toEqual([52, 58, 64, 255]);
+    it("getThemeColor falls back to its default without a DOM", () => {
+        // vitest without jsdom: no window → the no-DOM branch
+        expect(getThemeColor("--missing-token", 255)).toEqual([
+            52, 58, 64, 255,
+        ]);
     });
 
     it("getMeasureColors returns accent measurement defaults in SSR mode", () => {
         const colors = getMeasureColors();
-        expect(colors.css.stroke).toBe(DEFAULT_ACCENT_CSS);
         expect(colors.stroke).toEqual([0, 81, 202, 200]);
         expect(colors.fill).toEqual([0, 81, 202, 60]);
     });
