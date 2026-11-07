@@ -1,18 +1,17 @@
 import React from "react";
 import { Text } from "@core/ui/components/primitives/text/Text";
-import styles from "./MeasurementPanel.module.css";
+import styles from "./SegmentsList.module.css";
 
 export interface Segment {
-    /** Left-side label (e.g. "Point 1 → 2"). Unique within the list — the React key. */
+    /** Left-side label */
     label: string;
-    /** Right-side formatted value (e.g. "12.3 m") */
+    /** Right-side formatted value */
     value: string;
-    /** Optional sub-rows (e.g. horizontal / vertical breakdown) */
+    /** Optional sub-rows rendered under the segment line */
     details?: SegmentDetail[];
 }
 
 export interface SegmentDetail {
-    /** Unique within the segment — the React key. */
     label: string;
     value: string;
 }
@@ -25,8 +24,7 @@ export interface SegmentsListProps {
 }
 
 /**
- * Scrollable list of measurement segments with optional detail rows.
- * Used by ruler-3d and area-measure to display per-edge distances.
+ * Scrollable list of label/value segments with optional detail rows.
  */
 export const SegmentsList: (props: SegmentsListProps) => React.ReactNode = ({
     title,
@@ -37,8 +35,8 @@ export const SegmentsList: (props: SegmentsListProps) => React.ReactNode = ({
             {title}
         </Text>
         <div className={styles.segmentsList}>
-            {segments.map((segment) => (
-                <div key={segment.label} className={styles.segmentItem}>
+            {segments.map((segment, index) => (
+                <div key={index} className={styles.segmentItem}>
                     <div className={styles.segmentMain}>
                         <Text variant="body" tone="secondary">
                             {segment.label}
@@ -53,9 +51,9 @@ export const SegmentsList: (props: SegmentsListProps) => React.ReactNode = ({
                     </div>
                     {segment.details && segment.details.length > 0 && (
                         <div className={styles.segmentComponents}>
-                            {segment.details.map((detail) => (
+                            {segment.details.map((detail, detailIndex) => (
                                 <div
-                                    key={detail.label}
+                                    key={detailIndex}
                                     className={styles.segmentComponent}
                                 >
                                     <Text variant="hint">

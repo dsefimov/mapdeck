@@ -57,12 +57,12 @@ export const Ruler3DComponent: (
                     {
                         label: dict["summary.horizontal"],
                         value: formatDistance(totalHorizontal),
-                        dot: "horizontal",
+                        marker: "muted",
                     },
                     {
                         label: dict["summary.vertical"],
                         value: formatDistance(totalVertical),
-                        dot: "vertical",
+                        marker: "accent",
                     },
                     {
                         label: dict["summary.points"],

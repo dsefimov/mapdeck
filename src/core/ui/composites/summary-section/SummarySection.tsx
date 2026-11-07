@@ -4,11 +4,10 @@ import { Text } from "@core/ui/components/primitives/text/Text";
 import styles from "./SummarySection.module.css";
 
 export interface SummaryItem {
-    /** Unique within the list — the React key. */
     label: string;
     value: string;
-    /** Colored dot left of the label (horizontal/vertical component) */
-    dot?: "horizontal" | "vertical";
+    /** Colored marker left of the label */
+    marker?: "muted" | "accent";
 }
 
 export interface SummarySectionProps {
@@ -17,8 +16,7 @@ export interface SummarySectionProps {
 }
 
 /**
- * Measurement summary card. Row: label on the left, value on the right
- * (accent).
+ * Summary card. Row: label on the left, value on the right (accent).
  */
 export const SummarySection: (props: SummarySectionProps) => React.ReactNode = ({
     items,
@@ -26,16 +24,16 @@ export const SummarySection: (props: SummarySectionProps) => React.ReactNode = (
 }) => {
     return (
         <div className={cn(styles.summary, className)}>
-            {items.map((item) => (
-                <div key={item.label} className={styles.item}>
+            {items.map((item, index) => (
+                <div key={index} className={styles.item}>
                     <Text variant="body" weight="bold" className={styles.label}>
-                        {item.dot && (
+                        {item.marker && (
                             <span
                                 className={cn(
-                                    styles.dot,
-                                    item.dot === "horizontal"
-                                        ? styles.dotHorizontal
-                                        : styles.dotVertical,
+                                    styles.marker,
+                                    item.marker === "muted"
+                                        ? styles.markerMuted
+                                        : styles.markerAccent,
                                 )}
                             />
                         )}

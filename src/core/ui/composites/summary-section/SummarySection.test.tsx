@@ -25,28 +25,28 @@ describe("SummarySection", () => {
         expect(screen.getByText("108 м²")).toBeInTheDocument();
     });
 
-    it("renders the colored dot only for items that ask for one", () => {
-        const HORIZONTAL = "Горизонтальная";
-        const VERTICAL = "Вертикальная";
+    it("renders the colored marker only for items that ask for one", () => {
+        const MUTED = "Приглушённая";
+        const ACCENT = "Акцентная";
         render(
             <SummarySection
                 items={[
-                    { label: HORIZONTAL, value: "1", dot: "horizontal" },
-                    { label: VERTICAL, value: "2", dot: "vertical" },
+                    { label: MUTED, value: "1", marker: "muted" },
+                    { label: ACCENT, value: "2", marker: "accent" },
                     { label: "Без маркера", value: "3" },
                 ]}
             />,
         );
 
-        // The dot is the empty span rendered inside the label's Text node.
-        const dotOf = (label: string): Element | null =>
+        // The marker is the empty span rendered inside the label's Text node.
+        const markerOf = (label: string): Element | null =>
             screen.getByText(label).querySelector("span");
 
-        expect(dotOf(HORIZONTAL)).not.toBeNull();
-        expect(dotOf(VERTICAL)).not.toBeNull();
-        expect(dotOf("Без маркера")).toBeNull();
-        expect(dotOf(HORIZONTAL)?.className).not.toBe(
-            dotOf(VERTICAL)?.className,
+        expect(markerOf(MUTED)).not.toBeNull();
+        expect(markerOf(ACCENT)).not.toBeNull();
+        expect(markerOf("Без маркера")).toBeNull();
+        expect(markerOf(MUTED)?.className).not.toBe(
+            markerOf(ACCENT)?.className,
         );
     });
 });
