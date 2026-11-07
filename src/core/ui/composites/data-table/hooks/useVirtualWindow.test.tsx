@@ -101,6 +101,19 @@ describe("useVirtualWindow row height", () => {
     });
 });
 
+describe("useVirtualWindow scroll reset", () => {
+    it("resets the window when the total shrinks below the scroll position", () => {
+        stubRowHeight(40);
+        const view = render(<Harness rowCount={1000} />);
+
+        // Deep scroll: floor(40000 / 40) = 1000 − buffer → far down.
+        expect(scrollAndRead(40000)).toEqual({ startIndex: 990, topPad: 990 * 40 });
+
+        view.rerender(<Harness rowCount={10} />);
+        expect(scrollAndRead(0)).toEqual({ startIndex: 0, topPad: 0 });
+    });
+});
+
 describe("useVirtualWindow fetchMore", () => {
     it("refetches when only totalRows changes", async () => {
         const fetchMore = vi.fn().mockResolvedValue(undefined);

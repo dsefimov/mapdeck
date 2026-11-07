@@ -151,7 +151,7 @@ const DataTableBody = React.memo<DataTableBodyProps>(
                 </thead>
                 <tbody>
                     {topPaddingHeight > 0 && (
-                        <tr className={styles.spacerRow}>
+                        <tr className={styles.spacerRow} data-spacer="">
                             <td
                                 colSpan={columnCount}
                                 style={{ height: topPaddingHeight }}
@@ -185,7 +185,7 @@ const DataTableBody = React.memo<DataTableBodyProps>(
                         />
                     )}
                     {bottomPaddingHeight > 0 && (
-                        <tr className={styles.spacerRow}>
+                        <tr className={styles.spacerRow} data-spacer="">
                             <td
                                 colSpan={columnCount}
                                 style={{

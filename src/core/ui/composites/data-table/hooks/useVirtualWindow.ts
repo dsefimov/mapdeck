@@ -13,7 +13,6 @@ import {
     ROW_HEIGHT,
 } from "../constants";
 import { logger } from "@core/lib/logger";
-import styles from "../AttributeTable.module.css";
 
 interface UseVirtualWindowOptions {
     rowCount: number;
@@ -55,9 +54,9 @@ function fetchCount(view: ViewportGeometry): number | null {
 }
 
 /**
- * Manages virtual scroll state: tracks scroll position via a ResizeObserver +
- * scroll handler, computes the visible window indices, and triggers fetchMore
- * when the user scrolls near the end of loaded data.
+ * Manages virtual scroll state: tracks scroll position and container size,
+ * computes the visible window indices, and triggers fetchMore when the
+ * user scrolls near the end of loaded data.
  */
 export function useVirtualWindow(
     options: UseVirtualWindowOptions,
@@ -66,11 +65,9 @@ export function useVirtualWindow(
     const effectiveTotal = totalRows ?? rowCount;
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const containerHeightRef = useRef(DEFAULT_CONTAINER_HEIGHT);
-    const isFetchingRef = useRef(false);
-    // "rowCount:totalRows" a request was already made for — a server that
-    // reports more rows than it delivers must not turn the effect into a
-    // refetch loop; a total change unlocks a retry.
+    // "rowCount:totalRows" a fetch was already requested for — a server
+    // that reports more rows than it delivers must not turn the effect
+    // into a refetch loop; a total change unlocks a retry.
     const requestedFor = useRef<string | null>(null);
     const rowHeightMeasuredRef = useRef(false);
     const [rowHeight, setRowHeight] = useState(ROW_HEIGHT);
@@ -78,7 +75,6 @@ export function useVirtualWindow(
     const [containerHeight, setContainerHeight] = useState(
         DEFAULT_CONTAINER_HEIGHT,
     );
-    const [fetchTrigger, setFetchTrigger] = useState(0);
 
     // Rows size themselves from CSS — measure one real row and let it
     // drive every formula below; the constant is only the first-frame
@@ -87,7 +83,7 @@ export function useVirtualWindow(
     useLayoutEffect(() => {
         if (rowHeightMeasuredRef.current) return;
         const row = containerRef.current?.querySelector(
-            `tbody tr:not(.${styles.spacerRow})`,
+            "tbody tr:not([data-spacer])",
         );
         const height = row?.getBoundingClientRect().height ?? 0;
         if (height > 0) {
@@ -96,15 +92,12 @@ export function useVirtualWindow(
         }
     }, [rowCount]);
 
-    // Track container height via ResizeObserver without triggering re-renders
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
         const ro = new ResizeObserver((entries) => {
             for (const entry of entries) {
-                const h = entry.contentRect.height;
-                containerHeightRef.current = h;
-                setContainerHeight(h);
+                setContainerHeight(entry.contentRect.height);
             }
         });
         ro.observe(el);
@@ -115,63 +108,35 @@ export function useVirtualWindow(
         const el = containerRef.current;
         if (!el) return;
         setScrollTop(el.scrollTop);
-        setContainerHeight(containerHeightRef.current);
     }, []);
 
-    // isFetchingRef prevents duplicate calls during the gap between
-    // fetchMore start and the loading flag update from the store.
-    // Cleanup resets isFetchingRef when dependencies change and the
-    // previous fetch is cancelled.
     useEffect(() => {
-        let cancelled = false;
+        if (!fetchMore || loading) return;
+        if (rowCount >= effectiveTotal) return;
+        if (requestedFor.current === `${rowCount}:${effectiveTotal}`) return;
 
-        const run = async () => {
-            if (cancelled) return;
-            if (!fetchMore || loading || isFetchingRef.current) return;
-            if (rowCount >= effectiveTotal) return;
-            if (requestedFor.current === `${rowCount}:${effectiveTotal}`) {
-                return;
-            }
+        const count = fetchCount({
+            scrollTop,
+            containerHeight,
+            rowHeight,
+            rowCount,
+            pageSize,
+        });
+        if (count === null) return;
 
-            const count = fetchCount({
-                scrollTop,
-                containerHeight,
-                rowHeight,
-                rowCount,
-                pageSize,
-            });
-            if (count === null) return;
-
-            requestedFor.current = `${rowCount}:${effectiveTotal}`;
-            isFetchingRef.current = true;
-            try {
-                await fetchMore(count);
-            } catch (error) {
-                logger.warn("useVirtualWindow: fetchMore failed", error);
-            } finally {
-                if (!cancelled) {
-                    isFetchingRef.current = false;
-                    setFetchTrigger((t) => t + 1);
-                }
-            }
-        };
-
-        run();
-
-        return () => {
-            cancelled = true;
-            isFetchingRef.current = false;
-        };
+        requestedFor.current = `${rowCount}:${effectiveTotal}`;
+        void Promise.resolve(fetchMore(count)).catch((error: unknown) => {
+            logger.warn("useVirtualWindow: fetchMore failed", error);
+        });
     }, [
         scrollTop,
-        rowCount,
-        effectiveTotal,
         containerHeight,
         rowHeight,
+        rowCount,
+        effectiveTotal,
         loading,
         fetchMore,
         pageSize,
-        fetchTrigger,
     ]);
 
     const rawStart = Math.floor(scrollTop / rowHeight);
