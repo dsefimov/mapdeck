@@ -20,6 +20,7 @@ const core = {
     "dataTable.hide": "Hide",
     "dataTable.clearFilters": "Clear filters",
     "dataTable.noData": "No data available",
+    "dataTable.noMatches": "Nothing matches the filters",
     "dataTable.loading": "Loading...",
     "dataTable.yes": "Yes",
     "dataTable.no": "No",

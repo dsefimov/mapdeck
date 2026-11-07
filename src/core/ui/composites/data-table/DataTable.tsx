@@ -171,6 +171,15 @@ const DataTableBody = React.memo<DataTableBodyProps>(
                             />
                         </tr>
                     )}
+                    {rowCount === 0 && !loading && (
+                        <tr>
+                            <td colSpan={columnCount}>
+                                <Text variant="body" tone="secondary">
+                                    {dict["dataTable.noMatches"]}
+                                </Text>
+                            </td>
+                        </tr>
+                    )}
                     {isColumnar ? (
                         <ColumnarVisibleRows
                             sortedData={sortedData}
@@ -285,7 +294,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         bottomPaddingHeight,
     } = useVirtualWindow({ rowCount, totalRows, fetchMore, loading, pageSize });
 
-    if (rowCount === 0 && !loading) {
+    if (rows.length === 0 && !loading) {
         return (
             <TableEmpty header={header} dict={dict} onRefresh={onRefresh} />
         );

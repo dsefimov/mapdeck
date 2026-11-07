@@ -30,6 +30,7 @@ const DICT: Record<string, string> = {
     "dataTable.filters": "фильтры",
     "dataTable.clearFilters": "Сбросить фильтры",
     "dataTable.noData": "Нет данных",
+    "dataTable.noMatches": "Ничего не найдено",
     "dataTable.retry": "Повторить",
     "dataTable.filterColumn": "Фильтр: {column}",
     "dataTable.yes": "Да",
@@ -58,6 +59,12 @@ const rowTexts = () =>
     Array.from(document.querySelectorAll("tbody tr"))
         .map((tr) => (tr.textContent ?? "").trim())
         .filter((text) => text.length > 0);
+
+const SHOW_FILTERS = "Показать фильтры";
+const CLEAR_FILTERS = "Сбросить фильтры";
+const NAME_FILTER_LABEL = "Фильтр: name";
+const NO_MATCHES = "Ничего не найдено";
+const NO_DATA = "Нет данных";
 
 const nameHeader = () => screen.getByRole("columnheader", { name: /name/ });
 
@@ -109,5 +116,61 @@ describe("DataTable sort cycle", () => {
         expect(nameHeader()).not.toHaveAttribute("aria-sort");
         expect(pointsHeader).toHaveAttribute("aria-sort", "ascending");
         expect(rowTexts()[0]).toContain("alpha");
+    });
+});
+
+describe("DataTable filter-to-zero", () => {
+    const filterByName = (value: string) => {
+        fireEvent.click(
+            screen.getByRole("button", { name: SHOW_FILTERS }),
+        );
+        fireEvent.change(screen.getByLabelText(NAME_FILTER_LABEL), {
+            target: { value },
+        });
+    };
+
+    it("keeps the controls and shows a no-matches row instead of the table", () => {
+        renderTable();
+        filterByName("zzz");
+
+        expect(
+            screen.getByRole("button", { name: CLEAR_FILTERS }),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText(NAME_FILTER_LABEL)).toBeInTheDocument();
+        expect(screen.getByText(NO_MATCHES)).toBeInTheDocument();
+        expect(screen.queryByText(NO_DATA)).toBeNull();
+    });
+
+    it("clearing the filters restores the rows", () => {
+        renderTable();
+        filterByName("zzz");
+        expect(screen.getByText(NO_MATCHES)).toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole("button", { name: CLEAR_FILTERS }),
+        );
+
+        expect(screen.queryByText(NO_MATCHES)).toBeNull();
+        expect(screen.getByText("bravo")).toBeInTheDocument();
+    });
+
+    it("empty input still shows the empty state", () => {
+        render(
+            <DataTable rows={[]} columns={["name", "points"]} dict={DICT} />,
+        );
+
+        expect(screen.getByText(NO_DATA)).toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: SHOW_FILTERS }),
+        ).toBeNull();
+    });
+
+    it("a matching filter narrows the table without empty state", () => {
+        renderTable();
+        filterByName("alph");
+
+        expect(screen.getByText("alpha")).toBeInTheDocument();
+        expect(screen.queryByText("bravo")).toBeNull();
+        expect(screen.queryByText(NO_MATCHES)).toBeNull();
     });
 });
