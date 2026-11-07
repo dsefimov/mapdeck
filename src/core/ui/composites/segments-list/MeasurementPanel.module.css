@@ -21,8 +21,7 @@
 
 .segmentItem {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
     border-bottom: 1px solid
         color-mix(in srgb, var(--color-border) 50%, transparent);
 }
@@ -31,9 +30,16 @@
     border-bottom: none;
 }
 
+.segmentMain {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .segmentComponents {
     display: flex;
     flex-direction: column;
+    margin-top: var(--space-4);
 }
 
 .segmentComponent {

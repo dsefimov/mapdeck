@@ -39,16 +39,18 @@ export const SegmentsList: (props: SegmentsListProps) => React.ReactNode = ({
         <div className={styles.segmentsList}>
             {segments.map((segment) => (
                 <div key={segment.label} className={styles.segmentItem}>
-                    <Text variant="body" tone="secondary">
-                        {segment.label}
-                    </Text>
-                    <Text
-                        variant="body"
-                        tone="accent"
-                        weight="semibold"
-                    >
-                        {segment.value}
-                    </Text>
+                    <div className={styles.segmentMain}>
+                        <Text variant="body" tone="secondary">
+                            {segment.label}
+                        </Text>
+                        <Text
+                            variant="body"
+                            tone="accent"
+                            weight="semibold"
+                        >
+                            {segment.value}
+                        </Text>
+                    </div>
                     {segment.details && segment.details.length > 0 && (
                         <div className={styles.segmentComponents}>
                             {segment.details.map((detail) => (
