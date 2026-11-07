@@ -73,6 +73,7 @@ export const FeatureInfoComponent: (
                     selectedIndex={selectedIndex}
                     totalGroups={totalGroups}
                     dict={dict}
+                    coreDict={coreDict}
                     onSelect={(index) => store.setSelectedIndex(index)}
                 />
 

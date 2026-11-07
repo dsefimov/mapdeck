@@ -76,6 +76,7 @@ const SettingItem: (props: SettingItemProps) => React.ReactNode = observer(
         const dict = typedDict<SettingsLocaleKey>(
             rootStore.localeStore.t(SETTINGS_ID),
         );
+        const coreDict = rootStore.localeStore.t("core");
         const [error, setError] = useState<string | undefined>();
         // The store replaces a setting's registration object on every write
         // (setSetting, resetOwnerSettings) — including a reset that restores
@@ -116,6 +117,7 @@ const SettingItem: (props: SettingItemProps) => React.ReactNode = observer(
                 <SettingInput
                     key={`${setting.id}-${rejectedEpoch}`}
                     setting={setting}
+                    coreDict={coreDict}
                     onChange={handleChange}
                 />
             </Field>
@@ -125,11 +127,12 @@ const SettingItem: (props: SettingItemProps) => React.ReactNode = observer(
 
 interface SettingInputProps {
     setting: RegisteredSetting;
+    coreDict: Record<string, string>;
     onChange: (value: unknown) => void;
 }
 
 /** The `switch` on the discriminated union narrows value and options. */
-const SettingInput = ({ setting, onChange }: SettingInputProps) => {
+const SettingInput = ({ setting, coreDict, onChange }: SettingInputProps) => {
     switch (setting.type) {
         case "string":
             return (
@@ -156,6 +159,7 @@ const SettingInput = ({ setting, onChange }: SettingInputProps) => {
                     id={setting.id}
                     value={setting.value}
                     options={setting.options}
+                    dict={coreDict}
                     onChange={onChange}
                 />
             );

@@ -36,6 +36,7 @@ interface LayerSelectProps {
     readonly layers: AttributeLayerInfo[];
     readonly selectedLayerId: string | null;
     readonly dict: Record<string, string | undefined>;
+    readonly coreDict: Record<string, string>;
     readonly onSelect: (layerId: string | null) => void;
 }
 
@@ -45,6 +46,7 @@ function LayerSelect({
     layers,
     selectedLayerId,
     dict,
+    coreDict,
     onSelect,
 }: LayerSelectProps): ReactNode {
     const selectOptions = buildSelectOptions(layers);
@@ -58,6 +60,7 @@ function LayerSelect({
         <SelectInput
             id={`${widgetId}-layer-select`}
             value={selectedLayerId ?? ""}
+            dict={coreDict}
             groups={selectOptions.groups}
             options={selectOptions.options}
             {...(dict["layerSelector.placeholder"] && {
@@ -106,6 +109,7 @@ const AttributeTableWidget = observer<AttributeTableWidgetProps>(
                             layers={attributeLayers}
                             selectedLayerId={store.selectedLayerId}
                             dict={dict}
+                            coreDict={coreDict}
                             onSelect={(layerId) => store.selectLayer(layerId)}
                         />
                     </Field>

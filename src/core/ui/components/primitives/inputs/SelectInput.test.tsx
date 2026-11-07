@@ -20,6 +20,8 @@ const LONG_LIST = Array.from({ length: 30 }, (_, i) => ({
 
 const ARROW_DOWN = "{ArrowDown}";
 
+const DICT = { "select.noOptions": "No options" };
+
 const BETA_1 = "Beta 1";
 
 /** DOM id of the flat option at `index` (SelectInput's own scheme). */
@@ -39,6 +41,7 @@ function renderSelect(
             id="sel"
             value=""
             options={options}
+            dict={DICT}
             onChange={onChange}
         />,
     );
@@ -76,6 +79,7 @@ function renderGroupedSelect(
             value=""
             groups={GROUPED}
             options={options}
+            dict={DICT}
             onChange={onChange}
         />,
     );

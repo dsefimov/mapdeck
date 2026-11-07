@@ -8,15 +8,25 @@ import { ColorPicker } from "./ColorPicker";
 
 afterEach(cleanup);
 
+const DICT = {
+    "colorPicker.hexField": "{label} — hex value",
+    "colorPicker.hueField": "{label} — hue",
+};
+
 function renderPicker(label: string): void {
     render(
-        <ColorPicker label={label} value="#33aa55" onChange={vi.fn()} />,
+        <ColorPicker
+            label={label}
+            dict={DICT}
+            value="#33aa55"
+            onChange={vi.fn()}
+        />,
     );
 }
 
 function hexField(label: string): HTMLInputElement {
     return screen.getByRole("textbox", {
-        name: `${label} hex value`,
+        name: `${label} — hex value`,
     }) as HTMLInputElement;
 }
 
@@ -35,6 +45,7 @@ function StatefulPicker({
     return (
         <ColorPicker
             label="Accent"
+            dict={DICT}
             value={value}
             onChange={(color) => {
                 commits(color);
@@ -144,11 +155,21 @@ describe("ColorPicker hex field", () => {
 
     it("re-syncs the field when the value prop changes externally", () => {
         const { rerender } = render(
-            <ColorPicker label="Accent" value="#33aa55" onChange={vi.fn()} />,
+            <ColorPicker
+                label="Accent"
+                dict={DICT}
+                value="#33aa55"
+                onChange={vi.fn()}
+            />,
         );
 
         rerender(
-            <ColorPicker label="Accent" value="#0051ca" onChange={vi.fn()} />,
+            <ColorPicker
+                label="Accent"
+                dict={DICT}
+                value="#0051ca"
+                onChange={vi.fn()}
+            />,
         );
 
         expect(hexField("Accent")).toHaveValue("#0051ca");

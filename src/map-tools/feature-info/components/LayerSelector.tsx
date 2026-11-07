@@ -14,12 +14,15 @@ export interface LayerSelectorProps {
     readonly selectedIndex: number;
     readonly totalGroups: number;
     readonly dict: LayerSelectorDict;
+    /** Core dictionary (SelectInput's empty-state key). */
+    readonly coreDict: Record<string, string>;
     readonly onSelect: (index: number) => void;
 }
 
 /** Layer dropdown of the feature-info panel. */
 export function LayerSelector(props: LayerSelectorProps): React.ReactNode {
-    const { groups, selectedIndex, totalGroups, dict, onSelect } = props;
+    const { groups, selectedIndex, totalGroups, dict, coreDict, onSelect } =
+        props;
 
     const options: SelectOption[] = groups.map((group, index) => ({
         value: String(index),
@@ -35,6 +38,7 @@ export function LayerSelector(props: LayerSelectorProps): React.ReactNode {
                 id="feature-info-layer-select"
                 value={String(selectedIndex)}
                 options={options}
+                dict={coreDict}
                 disabled={groups.length === 0}
                 {...(dict["select.placeholder"] && {
                     placeholder: dict["select.placeholder"],

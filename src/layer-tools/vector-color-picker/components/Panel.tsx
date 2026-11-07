@@ -36,6 +36,7 @@ export const VectorColorPickerComponent: (
 ) => React.ReactNode = observer(({ nodeId }) => {
     const rootStore = useRootStore();
     const dict = rootStore.localeStore.t(VECTOR_COLOR_PICKER_ID);
+    const coreDict = rootStore.localeStore.t("core");
     const node = rootStore.treeStore.node(nodeId);
 
     if (!node || !isLayerNode(node)) {
@@ -60,6 +61,7 @@ export const VectorColorPickerComponent: (
                 the swatch shows that same color until the user picks one */}
             <ColorPicker
                 label={labelOf(dict, "label.color", "Color")}
+                dict={coreDict}
                 value={(paint["fill-color"] as string) ?? DEFAULT_ACCENT_CSS}
                 onChange={(color) =>
                     rootStore.treeStore.updateLayerStyle(
@@ -70,6 +72,7 @@ export const VectorColorPickerComponent: (
             />
             <ColorPicker
                 label={labelOf(dict, "label.border-color", "Border color")}
+                dict={coreDict}
                 value={(paint["line-color"] as string) ?? DEFAULT_ACCENT_CSS}
                 onChange={(color) =>
                     rootStore.treeStore.updateLayerStyle(

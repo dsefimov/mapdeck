@@ -62,6 +62,7 @@ export const PointColorSchemeComponent: (
                 id="point-color-scheme"
                 value={currentScheme}
                 options={availableSchemes}
+                dict={rootStore.localeStore.t("core")}
                 {...(dict["aria.colorScheme"] && {
                     ariaLabel: dict["aria.colorScheme"],
                 })}

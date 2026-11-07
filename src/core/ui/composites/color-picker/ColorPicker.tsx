@@ -1,11 +1,17 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { interpolate, typedDict } from "@core/lib/text";
 import { InputLabel } from "@core/ui/components/primitives/inputs";
 import { ColorSlider } from "@core/ui/components/primitives/color-slider/ColorSlider";
 import styles from "./ColorPicker.module.css";
 
+/** Core-namespace keys the picker reads (typed view, no fallbacks). */
+type ColorPickerKey = "colorPicker.hexField" | "colorPicker.hueField";
+
 export interface ColorPickerProps {
     value: string;
     label: string;
+    /** Core dictionary carrying `colorPicker.hexField` / `colorPicker.hueField` */
+    dict: Record<string, string>;
     onChange: (color: string) => void;
 }
 
@@ -27,8 +33,10 @@ function formatHex(value: string): string {
 export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
     value,
     label,
+    dict,
     onChange,
 }) => {
+    const labels = typedDict<ColorPickerKey>(dict);
     const [hexInput, setHexInput] = useState(value);
 
     useEffect(() => {
@@ -77,15 +85,16 @@ export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
                     onChange={handleHexChange}
                     onBlur={handleHexBlur}
                     maxLength={7}
-                    placeholder="#000000"
-                    aria-label={`${label} hex value`}
+                    aria-label={interpolate(labels["colorPicker.hexField"], {
+                        label,
+                    })}
                 />
             </div>
             <ColorSlider
                 id={hueInputId}
                 value={value}
                 onChange={onChange}
-                label={`${label} hue`}
+                label={interpolate(labels["colorPicker.hueField"], { label })}
             />
         </div>
     );

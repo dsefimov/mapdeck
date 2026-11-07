@@ -6,6 +6,7 @@ import React, {
     useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { typedDict } from "@core/lib/text";
 import { Icon } from "@core/ui/components/primitives/icon/Icon";
 import { Text } from "@core/ui/components/primitives/text/Text";
 import { useClickOutside } from "@core/ui/hooks/useClickOutside";
@@ -37,19 +38,17 @@ export interface SelectInputProps {
     groups?: SelectGroup[];
     /** Text shown when no value is selected (color --color-text-secondary) */
     placeholder?: string;
-    /** Text shown when the option list is empty */
-    emptyText?: string;
     disabled?: boolean;
     /** Accessible name for the trigger when there is no visible label */
     ariaLabel?: string;
+    /** Core dictionary carrying `select.noOptions` */
+    dict: Record<string, string>;
     onChange: (value: string) => void;
     className?: string;
 }
 
 /** Panel offset from the trigger, px */
 const PANEL_OFFSET = 4;
-
-const DEFAULT_EMPTY_TEXT = "No options";
 
 /**
  * id the trigger's aria-activedescendant points at — the currently
@@ -107,12 +106,15 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
     options,
     groups,
     placeholder,
-    emptyText = DEFAULT_EMPTY_TEXT,
     disabled,
     ariaLabel,
+    dict,
     onChange,
     className,
 }) => {
+    const emptyText = typedDict<"select.noOptions">(dict)[
+        "select.noOptions"
+    ];
     const triggerRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
     const [open, setOpen] = useState(false);

@@ -15,6 +15,10 @@ const core = {
     // SelectInput empty state
     "select.noOptions": "No options",
 
+    // ColorPicker control names ({label} is the caller's label)
+    "colorPicker.hexField": "{label} — hex value",
+    "colorPicker.hueField": "{label} — hue",
+
     // DataTable — the generic kit's own vocabulary
     "dataTable.show": "Show",
     "dataTable.hide": "Hide",
