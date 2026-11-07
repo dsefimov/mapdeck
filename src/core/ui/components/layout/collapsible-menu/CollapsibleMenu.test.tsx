@@ -1,43 +1,54 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { CollapsibleMenu } from "./CollapsibleMenu";
 
-// The re-measure path is driven by ResizeObserver — capture its callback.
-let observerCallback: (() => void) | null = null;
+afterEach(cleanup);
 
-class ResizeObserverStub {
-    constructor(callback: () => void) {
-        observerCallback = callback;
-    }
-    observe(): void {}
-    disconnect(): void {}
-}
-
-vi.stubGlobal("ResizeObserver", ResizeObserverStub);
-
-afterEach(() => {
-    observerCallback = null;
-    cleanup();
-});
-
-describe("CollapsibleMenu re-measure", () => {
-    it("grows the clamp when the content grows while open", async () => {
+describe("CollapsibleMenu", () => {
+    it("renders its content inside a focusable group panel", () => {
         render(
             <CollapsibleMenu open>
                 <button type="button">report</button>
             </CollapsibleMenu>,
         );
-        const panel = screen.getByRole("menu");
-        expect(panel.style.maxHeight).toBe("0px"); // happy-dom: scrollHeight 0
 
-        // Async content arrives — scrollHeight jumps.
-        Object.defineProperty(panel, "scrollHeight", { value: 250 });
-        await act(async () => {
-            observerCallback?.();
+        const panel = screen.getByRole("group");
+        expect(panel).toHaveAttribute("tabindex", "-1");
+        expect(screen.getByRole("button", { name: "report" })).toBeInTheDocument();
+    });
+
+    it("moves focus into the panel when open", async () => {
+        render(
+            <CollapsibleMenu open>
+                <button type="button">report</button>
+            </CollapsibleMenu>,
+        );
+
+        await waitFor(() => {
+            expect(document.activeElement).toBe(screen.getByRole("group"));
+        });
+    });
+
+    it("closes on Escape", () => {
+        const onClose = vi.fn();
+        render(
+            <CollapsibleMenu open onClose={onClose}>
+                <button type="button">report</button>
+            </CollapsibleMenu>,
+        );
+
+        fireEvent.keyDown(screen.getByTestId("collapsible-menu"), {
+            key: "Escape",
         });
 
-        expect(panel.style.maxHeight).toBe("250px");
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it("renders nothing when hideIfEmpty and no children", () => {
+        render(<CollapsibleMenu hideIfEmpty />);
+
+        expect(screen.queryByTestId("collapsible-menu")).toBeNull();
     });
 });

@@ -26,13 +26,6 @@ export interface MenuKeyboardEvent {
     preventDefault(): void;
 }
 
-/** The menu panel a container points at: itself, or the first nested one. */
-function menuPanelOf(container: HTMLElement | null): HTMLElement | null {
-    if (!container) return null;
-    if (container.getAttribute("role") === "menu") return container;
-    return container.querySelector<HTMLElement>('[role="menu"]');
-}
-
 /** Focusable, enabled elements of the menu panel, in DOM order. */
 function focusablesOf(panel: HTMLElement | null): HTMLElement[] {
     if (!panel) return [];
@@ -47,7 +40,7 @@ function focusablesOf(panel: HTMLElement | null): HTMLElement[] {
  * WAI-ARIA menu keys walk live DOM instead of a static item list.
  */
 export function useMenuKeyboard(
-    containerRef: React.RefObject<HTMLElement | null>,
+    panelRef: React.RefObject<HTMLElement | null>,
     open: boolean,
     onClose: () => void,
 ): (event: MenuKeyboardEvent) => void {
@@ -60,7 +53,7 @@ export function useMenuKeyboard(
             }
             if (!NAVIGATION_KEYS.has(event.key)) return;
 
-            const focusables = focusablesOf(menuPanelOf(containerRef.current));
+            const focusables = focusablesOf(panelRef.current);
             if (focusables.length === 0) return;
 
             event.preventDefault();
@@ -70,7 +63,7 @@ export function useMenuKeyboard(
                 nextFocusIndex(event.key, idx, focusables.length)
             ]?.focus();
         },
-        [containerRef, open, onClose],
+        [panelRef, open, onClose],
     );
 }
 
