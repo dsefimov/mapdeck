@@ -13,11 +13,17 @@ export interface NumberInputProps {
     className?: string | undefined;
 }
 
+/** `Number("")` is 0 — an empty buffer must parse to null instead. */
+const parseDraft = (draft: string): number | null =>
+    draft === "" ? null : Number(draft);
+
 /**
  * Controlled number field with an editing draft: the field can be cleared
  * and mid-edit text (`"1e"`) is left alone instead of snapping to `0` —
- * `onChange` fires only on a complete, finite input. An external `value`
- * change (store write, settings reset) retires the draft.
+ * `onChange` fires only on a complete, finite input. `min`/`max`/`step`
+ * are pass-through hints for the browser's stepper; range validation
+ * belongs to the consumer. An external `value` change (store write,
+ * settings reset) retires the draft.
  */
 export const NumberInput: (props: NumberInputProps) => React.ReactNode = ({
     id,
@@ -37,7 +43,7 @@ export const NumberInput: (props: NumberInputProps) => React.ReactNode = ({
     const [prevValue, setPrevValue] = useState(value);
     if (value !== prevValue) {
         setPrevValue(value);
-        if (draft !== null && Number(draft) !== value) {
+        if (draft !== null && parseDraft(draft) !== value) {
             setDraft(null);
         }
     }

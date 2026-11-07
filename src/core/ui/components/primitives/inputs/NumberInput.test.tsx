@@ -62,4 +62,35 @@ describe("NumberInput draft", () => {
         rerender(<NumberInput id="n" value={5} onChange={onChange} />);
         expect(input).toHaveValue(5);
     });
+
+    it("retires an empty draft when the external value becomes 0", () => {
+        const onChange = vi.fn();
+        const { getByRole, rerender } = render(
+            <NumberInput id="n" value={5} onChange={onChange} />,
+        );
+        const input = getByRole("spinbutton");
+
+        fireEvent.change(input, { target: { value: "" } });
+        rerender(<NumberInput id="n" value={0} onChange={onChange} />);
+
+        expect(input).toHaveValue(0);
+    });
+
+    it("passes a typed out-of-range value through", () => {
+        const onChange = vi.fn();
+        const { getByRole } = render(
+            <NumberInput
+                id="n"
+                value={5}
+                min={0}
+                max={10}
+                onChange={onChange}
+            />,
+        );
+        const input = getByRole("spinbutton");
+
+        fireEvent.change(input, { target: { value: "999" } });
+
+        expect(onChange).toHaveBeenCalledWith(999);
+    });
 });
