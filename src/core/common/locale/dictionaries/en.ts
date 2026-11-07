@@ -33,8 +33,6 @@ const core = {
     "dataTable.nullValue": "—",
     "dataTable.retry": "Retry",
     "dataTable.filters": "filters",
-    "dataTable.filterAttributes": "Filter attributes...",
-    "dataTable.filterValues": "Filter values...",
     "dataTable.filterColumn": "Filter {column}...",
     "dataTable.zoomToObject": "Zoom to object",
     "dataTable.rowNumber": "#",

@@ -4,11 +4,8 @@ import type { SortDirection } from "./types";
 /** Localized strings — structural, so callers may pass any dictionary. */
 type Dict = Record<string, string>;
 
-
-function formatNumber(value: number): string {
-    if (Math.abs(value) >= 1_000_000) return value.toExponential(4);
-    return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
-}
+/** One comparison locale for the whole module — not per pair. */
+const COLLATOR = new Intl.Collator();
 
 /** Keys formatValue reads — typed view, no fallbacks (ADR-0015). */
 type FormatKey = "dataTable.nullValue" | "dataTable.yes" | "dataTable.no";
@@ -20,9 +17,13 @@ function formatBoolean(
     return value ? labels["dataTable.yes"] : labels["dataTable.no"];
 }
 
+function formatNumber(value: number): string {
+    return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
+}
+
 /**
  * Render a cell value for display: booleans and nulls localized through the
- * dictionary, large numbers exponentiated, arrays joined, objects JSON-pretty-printed.
+ * dictionary, arrays joined, objects JSON-serialized.
  */
 export function formatValue(value: unknown, dict: Dict): string {
     const labels = typedDict<FormatKey>(dict);
@@ -31,7 +32,7 @@ export function formatValue(value: unknown, dict: Dict): string {
     if (typeof value === "number") return formatNumber(value);
     if (typeof value === "string") return value;
     if (Array.isArray(value)) return `[${value.join(", ")}]`;
-    if (typeof value === "object") return JSON.stringify(value, null, 2);
+    if (typeof value === "object") return JSON.stringify(value);
     return String(value);
 }
 
@@ -54,19 +55,15 @@ export function getAriaSort(
     return direction === "asc" ? "ascending" : "descending";
 }
 
-
-/**
- * Total-order comparison for mixed cell values: nulls sort last, numbers
- * numerically, everything else by localized string.
- */
+/** Total-order comparison for mixed cell values: nulls sort last, numbers
+ * numerically, everything else by one shared collator. */
 export function compareValues(a: unknown, b: unknown): number {
     if (a === b) return 0;
     if (a == null) return 1;
     if (b == null) return -1;
     if (typeof a === "number" && typeof b === "number") return a - b;
-    return String(a).localeCompare(String(b));
+    return COLLATOR.compare(String(a), String(b));
 }
-
 
 /**
  * Whether a row passes the active per-column filters (case-insensitive
@@ -84,32 +81,21 @@ export function applyRowFilters(
         );
 }
 
+/** Column names of the key-value view. */
+export const KV_COLUMNS = ["attribute", "value"] as const;
+
+export type KvRow = { attribute: string; value: unknown };
 
 /**
- * Flatten rows into `[attribute, value]` pairs (reserved `_`-keys dropped)
- * and sort them: alphabetically by attribute, or by the selected column
- * when a key-value sort is active.
+ * Flatten rows into key/value rows (reserved `_`-keys dropped), sorted
+ * alphabetically by attribute — the KV view's default order. The `_`
+ * prefix is the FeatureRow reserved-key convention — ui cannot import
+ * the contract, so the convention is restated here.
  */
-export function applyKvSorting(
-    rows: Record<string, unknown>[],
-    sortColumn?: string | null,
-    sortDirection?: SortDirection,
-): [string, unknown][] {
-    // flatMap + filter already produces a new array — no extra copy needed.
-    // The `_` prefix is the FeatureRow reserved-key convention —
-    // ui cannot import the contract, so the convention is restated here.
-    const entries = rows
-        .flatMap(Object.entries)
-        .filter(([key]) => !key.startsWith("_"));
-
-    if (!sortColumn || !sortDirection) {
-        return entries.sort((a, b) => a[0].localeCompare(b[0]));
-    }
-
-    return entries.sort((a, b) => {
-        const aVal = sortColumn === "attribute" ? a[0] : a[1];
-        const bVal = sortColumn === "attribute" ? b[0] : b[1];
-        const result = compareValues(aVal, bVal);
-        return sortDirection === "desc" ? -result : result;
-    });
+export function toKvRows(rows: Record<string, unknown>[]): KvRow[] {
+    return rows
+        .flatMap((row) => Object.entries(row))
+        .filter(([key]) => !key.startsWith("_"))
+        .map(([attribute, value]) => ({ attribute, value }))
+        .sort((a, b) => COLLATOR.compare(a.attribute, b.attribute));
 }

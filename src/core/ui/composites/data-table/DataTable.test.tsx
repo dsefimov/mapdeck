@@ -25,6 +25,8 @@ afterEach(() => {
 
 const DICT: Record<string, string> = {
     "dataTable.rowNumber": "№",
+    "dataTable.attribute": "attribute",
+    "dataTable.value": "value",
     "dataTable.show": "Показать",
     "dataTable.hide": "Скрыть",
     "dataTable.filters": "фильтры",
@@ -169,5 +171,53 @@ describe("DataTable filter-to-zero", () => {
         expect(screen.getByText("alpha")).toBeInTheDocument();
         expect(screen.queryByText("bravo")).toBeNull();
         expect(screen.queryByText(NO_MATCHES)).toBeNull();
+    });
+});
+
+describe("DataTable key-value view", () => {
+    const KV_ROWS = [
+        { name: "bravo", points: 2, _bbox: [0, 0, 1, 1] },
+        { name: "alpha", points: 10, _bbox: [0, 0, 1, 1] },
+    ];
+
+    function renderKvTable() {
+        render(<DataTable rows={KV_ROWS} dict={DICT} />);
+    }
+
+    function filterBy(label: string, value: string) {
+        fireEvent.click(
+            screen.getByRole("button", { name: SHOW_FILTERS }),
+        );
+        fireEvent.change(screen.getByLabelText(label), {
+            target: { value },
+        });
+    }
+
+    it("flattens rows into attribute/value rows sorted by attribute", () => {
+        renderKvTable();
+
+        expect(
+            screen.getByRole("columnheader", { name: "attribute" }),
+        ).toBeInTheDocument();
+        const texts = rowTexts();
+        expect(texts[0]).toContain("name");
+        expect(texts[2]).toContain("points");
+    });
+
+    it("the attribute filter matches attribute names", () => {
+        renderKvTable();
+        filterBy("Фильтр: attribute", "poin");
+
+        expect(screen.getAllByText("points")).toHaveLength(2);
+        expect(screen.queryByText("name")).toBeNull();
+        expect(screen.queryByText(NO_MATCHES)).toBeNull();
+    });
+
+    it("the value filter matches formatted values", () => {
+        renderKvTable();
+        filterBy("Фильтр: value", "10");
+
+        expect(screen.getByText("10")).toBeInTheDocument();
+        expect(screen.queryByText("2")).toBeNull();
     });
 });

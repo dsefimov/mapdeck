@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-    applyKvSorting,
     applyRowFilters,
     compareValues,
     formatValue,
+    toKvRows,
 } from "./utils";
 
 const DICT: Record<string, string> = {};
@@ -58,19 +58,20 @@ describe("applyRowFilters", () => {
     });
 });
 
-describe("applyKvSorting", () => {
+describe("toKvRows", () => {
     const rows = [
         { name: "bravo", points: 2, _bbox: [0, 0, 1, 1] },
         { name: "alpha", points: 10, _bbox: [0, 0, 1, 1] },
     ];
 
-    it("drops reserved underscore-prefixed keys from the entries", () => {
-        const entries = applyKvSorting(rows);
-        expect(entries.map(([k]) => k).includes("_bbox")).toBe(false);
+    it("drops reserved underscore-prefixed keys", () => {
+        expect(toKvRows(rows).map((r) => r.attribute).includes("_bbox")).toBe(
+            false,
+        );
     });
 
-    it("sorts by attribute name by default", () => {
-        expect(applyKvSorting(rows).map(([k]) => k)).toEqual([
+    it("sorts by attribute name", () => {
+        expect(toKvRows(rows).map((r) => r.attribute)).toEqual([
             "name",
             "name",
             "points",
@@ -78,37 +79,7 @@ describe("applyKvSorting", () => {
         ]);
     });
 
-    it("sorts by attribute column name in the requested direction", () => {
-        const asc = applyKvSorting(rows, "attribute", "asc");
-        const desc = applyKvSorting(rows, "attribute", "desc");
-        expect(asc).toEqual([
-            ["name", "bravo"],
-            ["name", "alpha"],
-            ["points", 2],
-            ["points", 10],
-        ]);
-        expect(desc).toEqual([
-            ["points", 2],
-            ["points", 10],
-            ["name", "bravo"],
-            ["name", "alpha"],
-        ]);
-    });
-
-    it("sorts by cell value in the requested direction", () => {
-        const asc = applyKvSorting(rows, "value", "asc");
-        const desc = applyKvSorting(rows, "value", "desc");
-        expect(asc).toEqual([
-            ["points", 2],
-            ["points", 10],
-            ["name", "alpha"],
-            ["name", "bravo"],
-        ]);
-        expect(desc).toEqual([
-            ["name", "bravo"],
-            ["name", "alpha"],
-            ["points", 10],
-            ["points", 2],
-        ]);
+    it("keeps the value with its attribute", () => {
+        expect(toKvRows([{ a: 1 }])).toEqual([{ attribute: "a", value: 1 }]);
     });
 });

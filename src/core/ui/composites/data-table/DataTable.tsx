@@ -1,233 +1,25 @@
-import React, { useMemo, type ReactNode } from "react";
+import React, { useMemo } from "react";
 import { LoadingScreen } from "@core/ui/components";
 import { Text } from "@core/ui/components/primitives/text/Text";
-import { formatValue } from "./utils";
+import { KV_COLUMNS, toKvRows } from "./utils";
 import { useSortMode } from "./hooks/useSortMode";
 import { useFilterState } from "./hooks/useFilterState";
 import { useDataPipeline } from "./hooks/useDataPipeline";
 import { useVirtualWindow } from "./hooks/useVirtualWindow";
-import { EmptyState } from "@core/ui/components/feedback/empty-state/EmptyState";
 import { TableControls } from "./components/TableControls";
-import { ColumnarHeaderRow } from "./components/ColumnarHeaderRow";
-import { ColumnarRow } from "./components/ColumnarRow";
-import { KvHeaderRow } from "./components/KvHeaderRow";
-import type { DataTableProps, GeometryColumnConfig } from "./types";
+import { DataTableBody } from "./components/DataTableBody";
+import { TableEmpty } from "./components/TableEmpty";
+import type { DataTableProps } from "./types";
 import styles from "./AttributeTable.module.css";
 
 export { type DataTableProps, type GeometryColumnConfig } from "./types";
 
-
-interface ColumnarVisibleRowsProps {
-    sortedData: Record<string, unknown>[];
-    startIndex: number;
-    endIndex: number;
-    displayColumns: string[];
-    geometryColumn: GeometryColumnConfig | undefined;
-    dict: Record<string, string>;
-}
-
-const ColumnarVisibleRows = React.memo<ColumnarVisibleRowsProps>(
-    ({ sortedData, startIndex, endIndex, displayColumns, geometryColumn, dict }) => {
-        const sliced = sortedData.slice(startIndex, endIndex);
-        return sliced.map((row, index) => {
-            const globalIdx = startIndex + index;
-            return (
-                <ColumnarRow
-                    key={`row-${globalIdx}`}
-                    row={row}
-                    globalIdx={globalIdx}
-                    columns={displayColumns}
-                    geometryColumn={geometryColumn}
-                    dict={dict}
-                />
-            );
-        });
-    },
-);
-ColumnarVisibleRows.displayName = "ColumnarVisibleRows";
-
-
-interface KvVisibleRowsProps {
-    sortedKvEntries: [string, unknown][];
-    startIndex: number;
-    endIndex: number;
-    dict: Record<string, string>;
-}
-
-const KvVisibleRows = React.memo<KvVisibleRowsProps>(
-    ({ sortedKvEntries, startIndex, endIndex, dict }) => {
-        const sliced = sortedKvEntries.slice(startIndex, endIndex);
-        return sliced.map(([key, value], index) => (
-            <tr key={`${key}-${startIndex + index}`}>
-                <td>
-                    <Text variant="body">{key}</Text>
-                </td>
-                <td>
-                    <Text variant="body">{formatValue(value, dict)}</Text>
-                </td>
-            </tr>
-        ));
-    },
-);
-KvVisibleRows.displayName = "KvVisibleRows";
-
-
-interface DataTableBodyProps {
-    isColumnar: boolean;
-    displayColumns: string[];
-    geometryColumn: GeometryColumnConfig | undefined;
-    sortColumn: string | null;
-    sortDirection: "asc" | "desc" | null;
-    handleSort: (column: string) => void;
-    showFilters: boolean;
-    filters: Record<string, string>;
-    handleFilterChange: (column: string, value: string) => void;
-    sortedData: Record<string, unknown>[];
-    sortedKvEntries: [string, unknown][];
-    startIndex: number;
-    endIndex: number;
-    rowCount: number;
-    topPaddingHeight: number;
-    bottomPaddingHeight: number;
-    loading: boolean;
-    dict: Record<string, string>;
-}
-
-const DataTableBody = React.memo<DataTableBodyProps>(
-    ({
-        isColumnar,
-        displayColumns,
-        geometryColumn,
-        sortColumn,
-        sortDirection,
-        handleSort,
-        showFilters,
-        filters,
-        handleFilterChange,
-        sortedData,
-        sortedKvEntries,
-        startIndex,
-        endIndex,
-        rowCount,
-        topPaddingHeight,
-        bottomPaddingHeight,
-        loading,
-        dict,
-    }) => {
-        const geometryOffset = geometryColumn ? 1 : 0;
-        const columnCount = isColumnar
-            ? 1 + geometryOffset + displayColumns.length
-            : 2;
-
-        return (
-            <table
-                className={styles.dataTable}
-                data-mode={isColumnar ? "columnar" : "kv"}
-            >
-                <thead>
-                    {isColumnar ? (
-                        <ColumnarHeaderRow
-                            columns={displayColumns}
-                            sortColumn={sortColumn}
-                            sortDirection={sortDirection}
-                            onSort={handleSort}
-                            showFilters={showFilters}
-                            filters={filters}
-                            onFilterChange={handleFilterChange}
-                            geometryColumn={geometryColumn}
-                            dict={dict}
-                        />
-                    ) : (
-                        <KvHeaderRow
-                            sortColumn={sortColumn}
-                            sortDirection={sortDirection}
-                            onSort={handleSort}
-                            showFilters={showFilters}
-                            filters={filters}
-                            onFilterChange={handleFilterChange}
-                            dict={dict}
-                        />
-                    )}
-                </thead>
-                <tbody>
-                    {topPaddingHeight > 0 && (
-                        <tr className={styles.spacerRow} data-spacer="">
-                            <td
-                                colSpan={columnCount}
-                                style={{ height: topPaddingHeight }}
-                            />
-                        </tr>
-                    )}
-                    {rowCount === 0 && !loading && (
-                        <tr>
-                            <td colSpan={columnCount}>
-                                <Text variant="body" tone="secondary">
-                                    {dict["dataTable.noMatches"]}
-                                </Text>
-                            </td>
-                        </tr>
-                    )}
-                    {isColumnar ? (
-                        <ColumnarVisibleRows
-                            sortedData={sortedData}
-                            startIndex={startIndex}
-                            endIndex={endIndex}
-                            displayColumns={displayColumns}
-                            geometryColumn={geometryColumn}
-                            dict={dict}
-                        />
-                    ) : (
-                        <KvVisibleRows
-                            sortedKvEntries={sortedKvEntries}
-                            startIndex={startIndex}
-                            endIndex={endIndex}
-                            dict={dict}
-                        />
-                    )}
-                    {bottomPaddingHeight > 0 && (
-                        <tr className={styles.spacerRow} data-spacer="">
-                            <td
-                                colSpan={columnCount}
-                                style={{
-                                    height: bottomPaddingHeight,
-                                }}
-                            />
-                        </tr>
-                    )}
-                </tbody>
-            </table>
-        );
-    },
-);
-DataTableBody.displayName = "DataTableBody";
-
-interface TableEmptyProps {
-    readonly header?: string | undefined;
-    readonly dict: Record<string, string>;
-    readonly onRefresh: (() => void) | (() => Promise<void>) | undefined;
-}
-
-/** Empty-table placeholder with an optional retry action. */
-function TableEmpty({ header, dict, onRefresh }: TableEmptyProps): ReactNode {
-    return (
-        <>
-            {header && <Text variant="title">{header}</Text>}
-            <div className={styles.tableContainer}>
-                <EmptyState
-                    message={dict["dataTable.noData"]}
-                    {...(onRefresh &&
-                        dict["dataTable.retry"] && {
-                            action: {
-                                label: dict["dataTable.retry"],
-                                onClick: onRefresh,
-                            },
-                        })}
-                />
-            </div>
-        </>
-    );
-}
-
+/**
+ * Data table with a virtualized window. `columns` selects the columnar
+ * view; without it the rows flatten into the key-value view (attribute /
+ * value) — one pipeline: flatten → filter → sort. The key-value view
+ * starts sorted by attribute and shows no row numbers or zoom column.
+ */
 export const DataTable = React.memo<DataTableProps>((props) => {
     const {
         rows,
@@ -242,6 +34,8 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         dict,
     } = props;
 
+    const isColumnar = columns !== undefined;
+
     const { sortColumn, sortDirection, handleSort } = useSortMode(props);
 
     const {
@@ -253,22 +47,28 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         hasActiveFilters,
     } = useFilterState();
 
-    const isColumnar = columns !== undefined;
-
     const displayColumns = useMemo(
-        () => columns?.filter((col) => col !== geometryColumn?.key) ?? [],
-        [columns, geometryColumn],
+        () =>
+            isColumnar
+                ? columns.filter((col) => col !== geometryColumn?.key)
+                : [...KV_COLUMNS],
+        [isColumnar, columns, geometryColumn],
     );
 
-    const { sortedData, sortedKvEntries } = useDataPipeline({
-        rows,
+    const sourceRows = useMemo(
+        () => (isColumnar ? rows : toKvRows(rows)),
+        [isColumnar, rows],
+    );
+
+    const { sortedData } = useDataPipeline({
+        rows: sourceRows,
         filters,
         sortColumn,
         sortDirection,
         dict,
     });
 
-    const rowCount = isColumnar ? sortedData.length : sortedKvEntries.length;
+    const rowCount = sortedData.length;
 
     const {
         containerRef,
@@ -313,10 +113,8 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                         filters={filters}
                         handleFilterChange={handleFilterChange}
                         sortedData={sortedData}
-                        sortedKvEntries={sortedKvEntries}
                         startIndex={startIndex}
                         endIndex={endIndex}
-                        rowCount={rowCount}
                         topPaddingHeight={topPaddingHeight}
                         bottomPaddingHeight={bottomPaddingHeight}
                         loading={loading}

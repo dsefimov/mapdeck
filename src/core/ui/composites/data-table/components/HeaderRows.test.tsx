@@ -5,14 +5,12 @@ import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import type { SortDirection } from "../types";
 import { ColumnarHeaderRow } from "./ColumnarHeaderRow";
-import { KvHeaderRow } from "./KvHeaderRow";
 
 afterEach(cleanup);
 
 const DICT: Record<string, string> = {
+    "dataTable.rowNumber": "#",
     "dataTable.filterColumn": "Filter {column}...",
-    "dataTable.filterAttributes": "Filter attributes...",
-    "dataTable.filterValues": "Filter values...",
     "dataTable.attribute": "Attribute",
     "dataTable.value": "Value",
 };
@@ -20,38 +18,20 @@ const DICT: Record<string, string> = {
 interface ColumnarOverrides {
     sortColumn?: string | null;
     sortDirection?: SortDirection;
+    showRowNumbers?: boolean;
 }
 
 function renderColumnar({
     sortColumn = null,
     sortDirection = "asc",
+    showRowNumbers = true,
 }: ColumnarOverrides = {}) {
     render(
         <table>
             <thead>
                 <ColumnarHeaderRow
                     columns={["name", "size"]}
-                    sortColumn={sortColumn}
-                    sortDirection={sortDirection}
-                    onSort={vi.fn()}
-                    showFilters
-                    filters={{}}
-                    onFilterChange={vi.fn()}
-                    dict={DICT}
-                />
-            </thead>
-        </table>,
-    );
-}
-
-function renderKv({
-    sortColumn = null,
-    sortDirection = "asc",
-}: ColumnarOverrides = {}) {
-    render(
-        <table>
-            <thead>
-                <KvHeaderRow
+                    showRowNumbers={showRowNumbers}
                     sortColumn={sortColumn}
                     sortDirection={sortDirection}
                     onSort={vi.fn()}
@@ -135,39 +115,10 @@ describe("ColumnarHeaderRow sort headers", () => {
             screen.getByRole("textbox", { name: "Filter size..." }),
         ).toBeInTheDocument();
     });
-});
 
-describe("KvHeaderRow sort headers", () => {
-    it("renders keyboard-operable buttons for both columns", () => {
-        renderKv();
+    it("omits the row-number column on request", () => {
+        renderColumnar({ showRowNumbers: false });
 
-        expect(
-            screen.getByRole("button", { name: "Attribute" }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole("button", { name: "Value" }),
-        ).toBeInTheDocument();
-    });
-
-    it("exposes aria-sort only on the active column", () => {
-        renderKv({ sortColumn: "value", sortDirection: "desc" });
-
-        expect(
-            screen.getByRole("columnheader", { name: "Value" }),
-        ).toHaveAttribute("aria-sort", "descending");
-        expect(
-            screen.getByRole("columnheader", { name: "Attribute" }),
-        ).not.toHaveAttribute("aria-sort");
-    });
-
-    it("names filter inputs beyond the placeholder", () => {
-        renderKv();
-
-        expect(
-            screen.getByRole("textbox", { name: "Filter attributes..." }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole("textbox", { name: "Filter values..." }),
-        ).toBeInTheDocument();
+        expect(screen.queryByText("#")).not.toBeInTheDocument();
     });
 });

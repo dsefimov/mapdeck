@@ -8,6 +8,7 @@ import styles from "../AttributeTable.module.css";
 
 interface ColumnarHeaderRowProps {
     columns: string[];
+    showRowNumbers?: boolean;
     sortColumn: string | null;
     sortDirection: SortDirection;
     onSort: (column: string) => void;
@@ -21,6 +22,7 @@ interface ColumnarHeaderRowProps {
 export const ColumnarHeaderRow = React.memo<ColumnarHeaderRowProps>(
     ({
         columns,
+        showRowNumbers = true,
         sortColumn,
         sortDirection,
         onSort,
@@ -32,11 +34,13 @@ export const ColumnarHeaderRow = React.memo<ColumnarHeaderRowProps>(
     }) => (
         <>
             <tr>
-                <th className={styles.rowNumberHeader}>
-                    <Text variant="caption">
-                        {dict["dataTable.rowNumber"]}
-                    </Text>
-                </th>
+                {showRowNumbers && (
+                    <th className={styles.rowNumberHeader}>
+                        <Text variant="caption">
+                            {dict["dataTable.rowNumber"]}
+                        </Text>
+                    </th>
+                )}
                 {geometryColumn && (
                     <th
                         className={styles.zoomColumnHeader}
@@ -77,7 +81,7 @@ export const ColumnarHeaderRow = React.memo<ColumnarHeaderRowProps>(
             </tr>
             {showFilters && (
                 <tr>
-                    <th />
+                    {showRowNumbers && <th />}
                     {geometryColumn && <th />}
                     {columns.map((col) => (
                         <th key={col}>
