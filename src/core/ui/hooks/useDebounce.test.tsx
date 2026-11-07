@@ -84,4 +84,37 @@ describe("useDebounce", () => {
 
         expect(cb).not.toHaveBeenCalled();
     });
+
+    it("flush after the timer fired does not re-invoke with stale args", () => {
+        vi.useFakeTimers();
+        const cb = vi.fn<(...args: unknown[]) => void>();
+        const { result } = renderHook(() => useDebounce(cb, 100));
+
+        act(() => result.current.call("a"));
+        act(() => vi.advanceTimersByTime(100));
+        expect(cb).toHaveBeenCalledTimes(1);
+
+        // Nothing is pending anymore — a later flush must stay silent.
+        act(() => result.current.flush());
+
+        expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it("applies a delay change to subsequent calls", () => {
+        vi.useFakeTimers();
+        const cb = vi.fn<(...args: unknown[]) => void>();
+        const { result, rerender } = renderHook(
+            ({ delay }) => useDebounce(cb, delay),
+            { initialProps: { delay: 100 } },
+        );
+
+        rerender({ delay: 300 });
+        act(() => result.current.call("a"));
+        act(() => vi.advanceTimersByTime(100));
+        expect(cb).not.toHaveBeenCalled();
+
+        act(() => vi.advanceTimersByTime(200));
+        expect(cb).toHaveBeenCalledTimes(1);
+        expect(cb).toHaveBeenCalledWith("a");
+    });
 });

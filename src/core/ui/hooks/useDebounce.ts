@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { debounce } from "@core/lib/async";
 
 type Callback<T extends unknown[]> = (...args: T) => void;
@@ -20,8 +20,8 @@ export interface UseDebounceResult<T extends unknown[]> {
  * `flush()`, and automatic cleanup on unmount.
  *
  * @param callback - The function to debounce (may change between renders)
- * @param delay - Delay in milliseconds; fixed when the hook mounts — a
- *                `delay` change between renders is ignored until remount
+ * @param delay - Delay in milliseconds; the debounced instance is recreated
+ *                when it changes, dropping the pending call of the old one
  */
 export function useDebounce<T extends unknown[]>(
     callback: Callback<T>,
@@ -33,43 +33,47 @@ export function useDebounce<T extends unknown[]>(
     const argsRef = useRef<T | null>(null);
     const [isPending, setIsPending] = useState(false);
 
-    // Single debounced instance — delegates to the infra shared debounce.
-    // The inner wrapper reads callbackRef.current at invocation time,
-    // so it always calls the latest version without recreating the debounce.
-    const debouncedRef = useRef(
-        debounce<T>((...args: T) => {
-            setIsPending(false);
-            callbackRef.current(...args);
-        }, delay),
+    // Single debounced instance per delay. The inner wrapper reads
+    // callbackRef.current at invocation time, so it always calls the
+    // latest version without recreating the debounce.
+    const debounced = useMemo(
+        () =>
+            debounce<T>((...args: T) => {
+                argsRef.current = null;
+                setIsPending(false);
+                callbackRef.current(...args);
+            }, delay),
+        [delay],
     );
 
     useEffect(() => {
-        return () => debouncedRef.current.cancel?.();
-    }, []);
+        return () => debounced.cancel();
+    }, [debounced]);
 
     const call = useCallback(
         (...args: T) => {
             argsRef.current = args;
             setIsPending(true);
-            debouncedRef.current(...args);
+            debounced(...args);
         },
-        [setIsPending],
+        [debounced],
     );
 
     const flush = useCallback(() => {
-        debouncedRef.current.cancel?.();
+        debounced.cancel();
         if (argsRef.current !== null) {
-            setIsPending(false);
-            callbackRef.current(...argsRef.current);
+            const args = argsRef.current;
             argsRef.current = null;
+            setIsPending(false);
+            callbackRef.current(...args);
         }
-    }, [setIsPending]);
+    }, [debounced]);
 
     const cancel = useCallback(() => {
-        debouncedRef.current.cancel?.();
+        debounced.cancel();
         argsRef.current = null;
         setIsPending(false);
-    }, [setIsPending]);
+    }, [debounced]);
 
     return { call, isPending, flush, cancel };
 }
