@@ -58,8 +58,11 @@ export class FeatureInfoController {
 
         deps.map.off("click", this.handleMapClick);
         removeClickMarker(deps.overlayManager);
-        this.abort?.abort();
-        this.abort = null;
+        if (this.abort) {
+            this.abort.abort();
+            this.abort = null;
+            deps.store.setLoading(false);
+        }
         this.disposePending?.();
         this.disposePending = null;
         this.deps = null;
