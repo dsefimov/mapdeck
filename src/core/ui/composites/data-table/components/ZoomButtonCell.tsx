@@ -7,13 +7,12 @@ import styles from "../AttributeTable.module.css";
 
 interface ZoomButtonCellProps {
     bbox: unknown;
-    isLoaded: boolean;
     onZoom: (bbox: Bbox) => void;
     dict: Record<string, string>;
 }
 
 export const ZoomButtonCell = React.memo<ZoomButtonCellProps>(
-    ({ bbox, isLoaded, onZoom, dict }) => {
+    ({ bbox, onZoom, dict }) => {
         const handleClick = useCallback(() => {
             if (bbox instanceof BboxClass) onZoom(bbox);
         }, [bbox, onZoom]);
@@ -27,7 +26,7 @@ export const ZoomButtonCell = React.memo<ZoomButtonCellProps>(
                 <IconButton
                     icon="zoom"
                     label={labels["dataTable.zoomToObject"]}
-                    disabled={!isLoaded || bbox == null}
+                    disabled={bbox == null}
                     onClick={handleClick}
                 />
             </td>

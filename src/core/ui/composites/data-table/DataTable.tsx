@@ -21,24 +21,13 @@ interface ColumnarVisibleRowsProps {
     sortedData: Record<string, unknown>[];
     startIndex: number;
     endIndex: number;
-    rowCount: number;
     displayColumns: string[];
-    loading: boolean;
     geometryColumn: GeometryColumnConfig | undefined;
     dict: Record<string, string>;
 }
 
 const ColumnarVisibleRows = React.memo<ColumnarVisibleRowsProps>(
-    ({
-        sortedData,
-        startIndex,
-        endIndex,
-        rowCount,
-        displayColumns,
-        loading,
-        geometryColumn,
-        dict,
-    }) => {
+    ({ sortedData, startIndex, endIndex, displayColumns, geometryColumn, dict }) => {
         const sliced = sortedData.slice(startIndex, endIndex);
         return sliced.map((row, index) => {
             const globalIdx = startIndex + index;
@@ -47,9 +36,7 @@ const ColumnarVisibleRows = React.memo<ColumnarVisibleRowsProps>(
                     key={`row-${globalIdx}`}
                     row={row}
                     globalIdx={globalIdx}
-                    isLoaded={globalIdx < rowCount}
                     columns={displayColumns}
-                    loading={loading}
                     geometryColumn={geometryColumn}
                     dict={dict}
                 />
@@ -185,9 +172,7 @@ const DataTableBody = React.memo<DataTableBodyProps>(
                             sortedData={sortedData}
                             startIndex={startIndex}
                             endIndex={endIndex}
-                            rowCount={rowCount}
                             displayColumns={displayColumns}
-                            loading={loading}
                             geometryColumn={geometryColumn}
                             dict={dict}
                         />

@@ -53,11 +53,6 @@ describe("applyRowFilters", () => {
         ).toBe(false);
     });
 
-    it("matches the global filter against any formatted value", () => {
-        expect(applyRowFilters(row, { _global: grouped }, DICT)).toBe(true);
-        expect(applyRowFilters(row, { _global: "zzz" }, DICT)).toBe(false);
-    });
-
     it("an empty column filter value does not constrain the row", () => {
         expect(applyRowFilters(row, { name: "" }, DICT)).toBe(true);
     });

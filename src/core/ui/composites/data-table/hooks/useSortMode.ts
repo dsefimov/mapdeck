@@ -8,10 +8,11 @@ interface SortState {
 
 /** Cycles: different column → asc; same + asc → desc; same + desc → reset. */
 function sortReducer(state: SortState, column: string): SortState {
-    if (state.column !== column) return { column, direction: "asc" };
+    if (state.direction === null || state.column !== column) {
+        return { column, direction: "asc" };
+    }
     if (state.direction === "asc") return { column, direction: "desc" };
-    if (state.direction === "desc") return { column: null, direction: null };
-    return { column, direction: "asc" };
+    return { column: null, direction: null };
 }
 
 interface UseSortModeProps {

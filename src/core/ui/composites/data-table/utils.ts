@@ -1,5 +1,4 @@
 import type { SortDirection } from "./types";
-import { GLOBAL_FILTER_KEY } from "./constants";
 
 /** Localized strings — structural, so callers may pass any dictionary. */
 type Dict = Record<string, string>;
@@ -64,30 +63,19 @@ export function compareValues(a: unknown, b: unknown): number {
 
 
 /**
- * Whether a row passes the active filters: a global filter matches any cell;
- * per-column filters match their own cell (case-insensitive substrings).
+ * Whether a row passes the active per-column filters (case-insensitive
+ * substrings over the formatted cell values).
  */
 export function applyRowFilters(
     row: Record<string, unknown>,
     filters: Record<string, string>,
     dict: Dict,
 ): boolean {
-    const globalFilter = filters[GLOBAL_FILTER_KEY]?.toLowerCase();
-
-    if (globalFilter !== undefined) {
-        return Object.values(row).some((val) =>
-            formatValue(val, dict).toLowerCase().includes(globalFilter),
-        );
-    }
-
     return Object.entries(filters)
-        .filter(([col]) => col !== GLOBAL_FILTER_KEY)
-        .every(([col, filterVal]) => {
-            if (!filterVal) return true;
-            return formatValue(row[col], dict)
-                .toLowerCase()
-                .includes(filterVal.toLowerCase());
-        });
+        .filter(([, filterVal]) => filterVal.length > 0)
+        .every(([col, filterVal]) =>
+            formatValue(row[col], dict).toLowerCase().includes(filterVal.toLowerCase()),
+        );
 }
 
 
