@@ -6,7 +6,7 @@ interface ErrorBoundaryProps {
     children: ReactNode;
     /** Locale dictionary carrying error.renderTitle / error.retry. */
     dict: Record<string, string>;
-    /** Replaces the default recovery — a remount of the children. */
+    /** Runs before the built-in recovery (subtree remount). */
     onRetry?: () => void;
 }
 
@@ -19,7 +19,7 @@ interface ErrorBoundaryState {
 /**
  * Contains a render failure to its subtree: a crashing widget degrades to
  * an error card instead of unmounting the whole workspace. Recovery is a
- * remount of the subtree (or a caller-supplied reset) — not a page reload.
+ * remount of the subtree — not a page reload.
  */
 export class ErrorBoundary extends Component<
     ErrorBoundaryProps,
@@ -40,6 +40,7 @@ export class ErrorBoundary extends Component<
     }
 
     private readonly _retry = (): void => {
+        this.props.onRetry?.();
         this.setState((state) => ({ error: null, nonce: state.nonce + 1 }));
     };
 
@@ -51,7 +52,7 @@ export class ErrorBoundary extends Component<
                     message={error.message}
                     dict={this.props.dict}
                     titleKey="error.renderTitle"
-                    onRetry={this.props.onRetry ?? this._retry}
+                    onRetry={this._retry}
                 />
             );
         }
