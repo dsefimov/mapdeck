@@ -118,4 +118,122 @@ describe("VectorAdapter.updateConfig paint application", () => {
             0.7,
         );
     });
+
+    it("paints the polygon outline with the border color", () => {
+        const { map, ctx } = mapCtx();
+        map.getLayer.mockReturnValue({});
+        const adapter = new VectorAdapter();
+
+        adapter.updateConfig(
+            renderUnit({
+                layerType: "fill",
+                paint: { "line-color": "#654321" },
+            }),
+            ctx,
+        );
+
+        expect(map.setPaintProperty).toHaveBeenCalledWith(
+            "layer-1",
+            "fill-outline-color",
+            "#654321",
+        );
+    });
+
+    it("paints points with the border color when circle-color is unset", () => {
+        const { map, ctx } = mapCtx();
+        map.getLayer.mockReturnValue({});
+        const adapter = new VectorAdapter();
+
+        adapter.updateConfig(
+            renderUnit({
+                layerType: "circle",
+                paint: { "line-color": "#987654" },
+            }),
+            ctx,
+        );
+
+        expect(map.setPaintProperty).toHaveBeenCalledWith(
+            "layer-1",
+            "circle-color",
+            "#987654",
+        );
+        expect(map.setPaintProperty).toHaveBeenCalledWith(
+            "layer-1",
+            "circle-stroke-color",
+            "#987654",
+        );
+        expect(map.setPaintProperty).toHaveBeenCalledWith(
+            "layer-1",
+            "circle-stroke-width",
+            1,
+        );
+    });
+
+    it("prefers the fill color over the border color for point interiors", () => {
+        const { map, ctx } = mapCtx();
+        map.getLayer.mockReturnValue({});
+        const adapter = new VectorAdapter();
+
+        adapter.updateConfig(
+            renderUnit({
+                layerType: "circle",
+                paint: { "fill-color": "#111111", "line-color": "#987654" },
+            }),
+            ctx,
+        );
+
+        expect(map.setPaintProperty).toHaveBeenCalledWith(
+            "layer-1",
+            "circle-color",
+            "#111111",
+        );
+    });
+});
+
+describe("VectorAdapter layer specs", () => {
+    it("carries fill-outline-color from line-color into the fill spec", () => {
+        const { map, ctx } = mapCtx();
+        new VectorAdapter().addToMap(
+            "layer-1",
+            descriptor({
+                layerType: "fill",
+                paint: { "line-color": "#654321" },
+            }),
+            ctx,
+        );
+        const spec = map.addLayer.mock.calls[0]![0];
+        expect(spec.paint["fill-outline-color"]).toBe("#654321");
+    });
+
+    it("derives circle-color from line-color in the circle spec", () => {
+        const { map, ctx } = mapCtx();
+        new VectorAdapter().addToMap(
+            "layer-2",
+            descriptor({
+                layerType: "circle",
+                paint: { "line-color": "#987654" },
+            }),
+            ctx,
+        );
+        const spec = map.addLayer.mock.calls[0]![0];
+        expect(spec.paint["circle-color"]).toBe("#987654");
+    });
+
+    it("lets an explicit circle-color win over the panel fallbacks", () => {
+        const { map, ctx } = mapCtx();
+        new VectorAdapter().addToMap(
+            "layer-3",
+            descriptor({
+                layerType: "circle",
+                paint: {
+                    "circle-color": "#222222",
+                    "fill-color": "#111111",
+                    "line-color": "#987654",
+                },
+            }),
+            ctx,
+        );
+        const spec = map.addLayer.mock.calls[0]![0];
+        expect(spec.paint["circle-color"]).toBe("#222222");
+    });
 });

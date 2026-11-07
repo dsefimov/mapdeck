@@ -162,6 +162,10 @@ function createFillSpec(
         source: layerId,
         paint: {
             "fill-color": styleColor(paint["fill-color"], DEFAULT_ACCENT_CSS),
+            "fill-outline-color": styleColor(
+                paint["line-color"],
+                DEFAULT_ACCENT_CSS,
+            ),
             "fill-opacity": styleNumber(paint["fill-opacity"], opacity),
         },
     };
@@ -189,17 +193,29 @@ function createCircleSpec(
     paint: Record<string, unknown>,
     opacity: number,
 ): LayerSpecification {
+    const strokeColor = styleColor(paint["line-color"], "");
     return {
         id: layerId,
         type: "circle",
         source: layerId,
         paint: {
-            "circle-color": styleColor(paint["circle-color"], DEFAULT_ACCENT_CSS),
+            // deck.gl paints point interiors from fill-color — keep the
+            // same fallback chain so one panel drives both renderers
+            "circle-color": styleColor(
+                paint["circle-color"] ?? paint["fill-color"] ?? paint["line-color"],
+                DEFAULT_ACCENT_CSS,
+            ),
             "circle-radius": styleNumber(
                 paint["circle-radius"],
                 DEFAULT_POINT_RADIUS_PX,
             ),
             "circle-opacity": styleNumber(paint["circle-opacity"], opacity),
+            ...(strokeColor
+                ? {
+                      "circle-stroke-color": strokeColor,
+                      "circle-stroke-width": 1,
+                  }
+                : {}),
         },
     };
 }
@@ -237,6 +253,7 @@ function applyVectorPaint(
     switch (layerType) {
         case "fill":
             set("fill-color", paint["fill-color"]);
+            set("fill-outline-color", paint["line-color"]);
             set("fill-opacity", paint["fill-opacity"]);
             break;
         case "line":
@@ -244,11 +261,20 @@ function applyVectorPaint(
             set("line-width", paint["line-width"]);
             set("line-opacity", paint["line-opacity"]);
             break;
-        case "circle":
-            set("circle-color", paint["circle-color"]);
+        case "circle": {
+            set(
+                "circle-color",
+                paint["circle-color"] ??
+                    paint["fill-color"] ??
+                    paint["line-color"],
+            );
+            const strokeColor = styleColor(paint["line-color"], "");
+            set("circle-stroke-color", strokeColor || undefined);
+            set("circle-stroke-width", strokeColor ? 1 : undefined);
             set("circle-radius", paint["circle-radius"]);
             set("circle-opacity", paint["circle-opacity"]);
             break;
+        }
         case "symbol":
             set("text-color", paint["text-color"]);
             set("text-opacity", paint["text-opacity"]);
