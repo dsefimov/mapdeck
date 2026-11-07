@@ -9,11 +9,21 @@ export interface SliderInputProps {
     max: number;
     step?: number;
     onChange: (value: number) => void;
-    /** Fires when the user finishes a pointer drag — the value is final. */
     onCommit?: () => void;
     disabled?: boolean;
     className?: string;
 }
+
+const VALUE_KEYS: ReadonlySet<string> = new Set([
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+]);
 
 export const SliderInput: (props: SliderInputProps) => React.ReactNode = ({
     id,
@@ -26,7 +36,8 @@ export const SliderInput: (props: SliderInputProps) => React.ReactNode = ({
     disabled,
     className,
 }) => {
-    const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    const raw = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    const percent = Math.min(100, Math.max(0, raw));
 
     return (
         <input
@@ -41,6 +52,10 @@ export const SliderInput: (props: SliderInputProps) => React.ReactNode = ({
             disabled={disabled}
             onChange={(e) => onChange(Number(e.target.value))}
             onPointerUp={onCommit}
+            onKeyUp={(e) => {
+                if (VALUE_KEYS.has(e.key)) onCommit?.();
+            }}
+            onBlur={onCommit}
         />
     );
 };

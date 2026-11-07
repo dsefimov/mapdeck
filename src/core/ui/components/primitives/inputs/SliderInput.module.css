@@ -5,8 +5,11 @@
     appearance: none;
     outline: none;
     cursor: pointer;
-    margin-bottom: var(--space-8);
     background: transparent;
+}
+
+.slider:focus-visible {
+    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
 }
 
 .slider::-webkit-slider-runnable-track {

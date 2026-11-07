@@ -29,9 +29,9 @@ describe("SliderInput fill", () => {
         expect(fillOf(getSlider())).toBe(expected);
     });
 
-    it("does not clamp an out-of-range value into the fill", () => {
+    it("clamps an out-of-range value into the fill", () => {
         renderSlider(15);
-        expect(fillOf(getSlider())).toBe("150%");
+        expect(fillOf(getSlider())).toBe("100%");
     });
 
     it("falls back to 0% on a degenerate range (max <= min), not NaN", () => {
@@ -83,5 +83,59 @@ describe("SliderInput onCommit", () => {
         expect(() =>
             fireEvent.pointerUp(getSlider()),
         ).not.toThrow();
+    });
+
+    it("fires onCommit when a value key is released", () => {
+        const onCommit = vi.fn();
+        render(
+            <SliderInput
+                id="s"
+                min={0}
+                max={10}
+                value={5}
+                onChange={vi.fn()}
+                onCommit={onCommit}
+            />,
+        );
+
+        fireEvent.keyUp(getSlider(), { key: "ArrowRight" });
+        expect(onCommit).toHaveBeenCalledTimes(1);
+
+        fireEvent.keyUp(getSlider(), { key: "End" });
+        expect(onCommit).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not fire onCommit for unrelated keys", () => {
+        const onCommit = vi.fn();
+        render(
+            <SliderInput
+                id="s"
+                min={0}
+                max={10}
+                value={5}
+                onChange={vi.fn()}
+                onCommit={onCommit}
+            />,
+        );
+
+        fireEvent.keyUp(getSlider(), { key: "Shift" });
+        expect(onCommit).not.toHaveBeenCalled();
+    });
+
+    it("fires onCommit on blur", () => {
+        const onCommit = vi.fn();
+        render(
+            <SliderInput
+                id="s"
+                min={0}
+                max={10}
+                value={5}
+                onChange={vi.fn()}
+                onCommit={onCommit}
+            />,
+        );
+
+        fireEvent.blur(getSlider());
+        expect(onCommit).toHaveBeenCalledTimes(1);
     });
 });
