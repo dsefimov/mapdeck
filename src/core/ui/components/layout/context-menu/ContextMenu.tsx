@@ -32,7 +32,7 @@ export interface ContextMenuProps {
 /** Gap between cursor and menu when the CSS padding cannot be parsed. */
 const MENU_MARGIN_FALLBACK_PX = 8;
 
-const ContextMenuComponent = ({
+export const ContextMenu = ({
     position,
     items,
     activeItemId,
@@ -172,4 +172,3 @@ const ContextMenuComponent = ({
     );
 };
 
-export default ContextMenuComponent;

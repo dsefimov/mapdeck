@@ -51,4 +51,3 @@ export const Text: (props: TextProps) => React.ReactNode = ({
     </span>
 );
 
-export default Text;

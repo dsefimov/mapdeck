@@ -4,7 +4,6 @@ export {
     type IconName,
     isIconName,
 } from "./primitives/icon/Icon";
-export { Icon as default } from "./primitives/icon/Icon";
 export { Spinner, type SpinnerProps } from "./primitives/spinner/Spinner";
 export * from "./primitives/inputs";
 export { Button, type ButtonProps } from "./primitives/button/Button";
@@ -36,7 +35,7 @@ export {
     CollapsibleMenu,
     type CollapsibleMenuProps,
 } from "./layout/collapsible-menu/CollapsibleMenu";
-export { default as ContextMenu } from "./layout/context-menu/ContextMenu";
+export { ContextMenu } from "./layout/context-menu/ContextMenu";
 export type { ContextMenuItem } from "./layout/context-menu/ContextMenu";
 export {
     useContextMenu,

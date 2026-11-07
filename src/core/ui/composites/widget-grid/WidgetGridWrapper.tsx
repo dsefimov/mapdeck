@@ -8,9 +8,8 @@ export interface WidgetGridWrapperProps {
     children: React.ReactNode;
 }
 
-const WidgetGridWrapper: (props: WidgetGridWrapperProps) => React.ReactNode = ({
+export const WidgetGridWrapper: (props: WidgetGridWrapperProps) => React.ReactNode = ({
     className = "",
     children,
 }) => <div className={`${styles.wrapper} ${className}`.trim()}>{children}</div>;
 
-export default WidgetGridWrapper;

@@ -266,6 +266,19 @@ export default [
                     ],
                 },
             ],
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector: "ExportDefaultDeclaration",
+                    message:
+                        "The ui kit exports named symbols only — no default exports.",
+                },
+                {
+                    selector: "ExportSpecifier[exported.name='default'], ExportSpecifier[exported='default']",
+                    message:
+                        "The ui kit exports named symbols only — no default re-exports.",
+                },
+            ],
         },
     },
 

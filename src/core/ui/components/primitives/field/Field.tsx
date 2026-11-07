@@ -51,4 +51,3 @@ export const Field: (props: FieldProps) => React.ReactNode = ({
     );
 };
 
-export default Field;

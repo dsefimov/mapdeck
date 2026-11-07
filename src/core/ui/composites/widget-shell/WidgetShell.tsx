@@ -50,4 +50,3 @@ export const WidgetShell: (props: WidgetShellProps) => React.ReactNode = ({
     );
 };
 
-export default WidgetShell;

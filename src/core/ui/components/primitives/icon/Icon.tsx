@@ -66,4 +66,3 @@ export const Icon: (props: IconProps) => React.ReactNode = ({
     );
 };
 
-export default Icon;

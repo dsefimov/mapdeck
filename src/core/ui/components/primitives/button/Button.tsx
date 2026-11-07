@@ -48,4 +48,3 @@ export const Button: (props: ButtonProps) => React.ReactNode = ({
     );
 };
 
-export default Button;

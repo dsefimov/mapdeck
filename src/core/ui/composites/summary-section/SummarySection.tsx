@@ -48,4 +48,3 @@ export const SummarySection: (props: SummarySectionProps) => React.ReactNode = (
     );
 };
 
-export default SummarySection;

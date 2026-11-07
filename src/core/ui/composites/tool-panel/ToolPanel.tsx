@@ -43,4 +43,3 @@ export const ToolPanel: (props: ToolPanelProps) => React.ReactNode = ({
     );
 };
 
-export default ToolPanel;

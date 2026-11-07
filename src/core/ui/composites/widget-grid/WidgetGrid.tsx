@@ -106,7 +106,7 @@ export interface WidgetGridProps {
     getWidgetName: (widgetId: string) => string;
 }
 
-const WidgetGrid: (props: WidgetGridProps) => React.ReactNode = observer(
+export const WidgetGrid: (props: WidgetGridProps) => React.ReactNode = observer(
     ({ store, dict, getWidgetName }) => {
         const { openWidgets, gridConfig } = store;
         const gridDict = typedDict<WidgetGridKey>(dict);
@@ -529,4 +529,3 @@ const AutoSizeMeasure: (props: {
     },
 );
 
-export default WidgetGrid;

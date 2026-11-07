@@ -1,2 +1,2 @@
-export { default as WidgetGrid } from "./WidgetGrid";
-export { default as WidgetGridWrapper } from "./WidgetGridWrapper";
+export { WidgetGrid } from "./WidgetGrid";
+export { WidgetGridWrapper } from "./WidgetGridWrapper";

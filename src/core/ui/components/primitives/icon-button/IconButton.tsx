@@ -67,4 +67,3 @@ export const IconButton: (props: IconButtonProps) => React.ReactNode = ({
     );
 };
 
-export default IconButton;

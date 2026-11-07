@@ -4,5 +4,5 @@ export type {
     ContextMenuPosition,
     MenuSize,
 } from "./useContextMenu";
-export { default as ContextMenu } from "./ContextMenu";
+export { ContextMenu } from "./ContextMenu";
 export type { ContextMenuProps, ContextMenuItem } from "./ContextMenu";

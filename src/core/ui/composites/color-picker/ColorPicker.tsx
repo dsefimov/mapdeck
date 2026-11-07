@@ -100,4 +100,3 @@ export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
     );
 };
 
-export default ColorPicker;

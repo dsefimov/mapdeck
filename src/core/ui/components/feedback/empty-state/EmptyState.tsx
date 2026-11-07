@@ -38,4 +38,3 @@ export const EmptyState: (props: EmptyStateProps) => React.ReactNode = ({
     </div>
 );
 
-export default EmptyState;

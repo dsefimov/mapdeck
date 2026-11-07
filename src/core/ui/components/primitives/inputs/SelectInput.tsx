@@ -379,4 +379,3 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
     );
 };
 
-export default SelectInput;

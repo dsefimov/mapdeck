@@ -47,4 +47,3 @@ export const SearchInput: (props: SearchInputProps) => React.ReactNode = ({
     );
 };
 
-export default SearchInput;

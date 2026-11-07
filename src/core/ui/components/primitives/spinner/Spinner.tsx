@@ -12,4 +12,3 @@ export const Spinner: (props: SpinnerProps) => React.ReactNode = ({ className, s
     return <div className={cn(styles.spinner, styles[size], className)} />;
 };
 
-export default Spinner;

@@ -116,4 +116,3 @@ function getPanelStyle(
     };
 }
 
-export default CollapsibleMenu;

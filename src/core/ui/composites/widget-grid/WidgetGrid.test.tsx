@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import type { LayoutItem } from "react-grid-layout/legacy";
-import WidgetGrid, {
+import {
+    WidgetGrid,
     type WidgetGridConfig,
     type WidgetGridInstance,
     type WidgetGridStore,

@@ -170,4 +170,3 @@ export const ColorSlider: (props: ColorSliderProps) => React.ReactNode = ({
     );
 };
 
-export default ColorSlider;

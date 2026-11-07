@@ -72,4 +72,3 @@ export const SegmentsList: (props: SegmentsListProps) => React.ReactNode = ({
     </div>
 );
 
-export default SegmentsList;
