@@ -1,8 +1,16 @@
 import React from "react";
+import { typedDict } from "@core/lib/text";
 import { Text } from "@core/ui/components/primitives/text/Text";
 import type { SortDirection } from "../types";
 import { getAriaSort, getSortIndicator } from "../utils";
 import styles from "../AttributeTable.module.css";
+
+/** Core-namespace keys the KV header reads (typed view, no fallbacks). */
+type KvHeaderKey =
+    | "dataTable.attribute"
+    | "dataTable.value"
+    | "dataTable.filterAttributes"
+    | "dataTable.filterValues";
 
 interface KvHeaderRowProps {
     sortColumn: string | null;
@@ -59,53 +67,56 @@ export const KvHeaderRow = React.memo<KvHeaderRowProps>(
         filters,
         onFilterChange,
         dict,
-    }) => (
-        <>
-            <tr>
-                <SortableCell
-                    column="attribute"
-                    caption={dict["dataTable.attribute"] ?? "Attribute"}
-                    sortColumn={sortColumn}
-                    sortDirection={sortDirection}
-                    onSort={onSort}
-                />
-                <SortableCell
-                    column="value"
-                    caption={dict["dataTable.value"] ?? "Value"}
-                    sortColumn={sortColumn}
-                    sortDirection={sortDirection}
-                    onSort={onSort}
-                />
-            </tr>
-            {showFilters && (
+    }) => {
+        const labels = typedDict<KvHeaderKey>(dict);
+        return (
+            <>
                 <tr>
-                    <th>
-                        <input
-                            type="text"
-                            className={styles.filterInput}
-                            placeholder={dict["dataTable.filterAttributes"]}
-                            aria-label={dict["dataTable.filterAttributes"]}
-                            value={filters.attribute ?? ""}
-                            onChange={(e) =>
-                                onFilterChange("attribute", e.target.value)
-                            }
-                        />
-                    </th>
-                    <th>
-                        <input
-                            type="text"
-                            className={styles.filterInput}
-                            placeholder={dict["dataTable.filterValues"]}
-                            aria-label={dict["dataTable.filterValues"]}
-                            value={filters.value ?? ""}
-                            onChange={(e) =>
-                                onFilterChange("value", e.target.value)
-                            }
-                        />
-                    </th>
+                    <SortableCell
+                        column="attribute"
+                        caption={labels["dataTable.attribute"]}
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={onSort}
+                    />
+                    <SortableCell
+                        column="value"
+                        caption={labels["dataTable.value"]}
+                        sortColumn={sortColumn}
+                        sortDirection={sortDirection}
+                        onSort={onSort}
+                    />
                 </tr>
-            )}
-        </>
-    ),
+                {showFilters && (
+                    <tr>
+                        <th>
+                            <input
+                                type="text"
+                                className={styles.filterInput}
+                                placeholder={labels["dataTable.filterAttributes"]}
+                                aria-label={labels["dataTable.filterAttributes"]}
+                                value={filters.attribute ?? ""}
+                                onChange={(e) =>
+                                    onFilterChange("attribute", e.target.value)
+                                }
+                            />
+                        </th>
+                        <th>
+                            <input
+                                type="text"
+                                className={styles.filterInput}
+                                placeholder={labels["dataTable.filterValues"]}
+                                aria-label={labels["dataTable.filterValues"]}
+                                value={filters.value ?? ""}
+                                onChange={(e) =>
+                                    onFilterChange("value", e.target.value)
+                                }
+                            />
+                        </th>
+                    </tr>
+                )}
+            </>
+        );
+    },
 );
 KvHeaderRow.displayName = "KvHeaderRow";

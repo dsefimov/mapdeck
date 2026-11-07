@@ -1,3 +1,4 @@
+import { typedDict } from "@core/lib/text";
 import type { SortDirection } from "./types";
 
 /** Localized strings — structural, so callers may pass any dictionary. */
@@ -9,10 +10,14 @@ function formatNumber(value: number): string {
     return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
-function formatBoolean(value: boolean, dict: Dict): string {
-    return value
-        ? (dict["dataTable.yes"] ?? "Yes")
-        : (dict["dataTable.no"] ?? "No");
+/** Keys formatValue reads — typed view, no fallbacks (ADR-0015). */
+type FormatKey = "dataTable.nullValue" | "dataTable.yes" | "dataTable.no";
+
+function formatBoolean(
+    value: boolean,
+    labels: Record<FormatKey, string>,
+): string {
+    return value ? labels["dataTable.yes"] : labels["dataTable.no"];
 }
 
 /**
@@ -20,8 +25,9 @@ function formatBoolean(value: boolean, dict: Dict): string {
  * dictionary, large numbers exponentiated, arrays joined, objects JSON-pretty-printed.
  */
 export function formatValue(value: unknown, dict: Dict): string {
-    if (value == null) return dict["dataTable.nullValue"] ?? "";
-    if (typeof value === "boolean") return formatBoolean(value, dict);
+    const labels = typedDict<FormatKey>(dict);
+    if (value == null) return labels["dataTable.nullValue"];
+    if (typeof value === "boolean") return formatBoolean(value, labels);
     if (typeof value === "number") return formatNumber(value);
     if (typeof value === "string") return value;
     if (Array.isArray(value)) return `[${value.join(", ")}]`;

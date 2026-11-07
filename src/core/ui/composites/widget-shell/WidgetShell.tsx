@@ -3,21 +3,18 @@ import { IconButton } from "@core/ui/components/primitives/icon-button/IconButto
 import { Text } from "@core/ui/components/primitives/text/Text";
 import styles from "./WidgetShell.module.css";
 
-export interface WidgetShellProps {
+export type WidgetShellProps = {
     title: ReactNode;
-    /** Close button on the right of the header */
-    onClose?: () => void;
-    /** Accessible label for the close button */
-    closeLabel?: string;
     /** Action row at the bottom (full-width buttons) */
     actions?: ReactNode;
     /** Hint at the very bottom */
     hint?: ReactNode;
     children?: ReactNode;
     className?: string;
-}
-
-const DEFAULT_CLOSE_LABEL = "Close";
+} & (
+    | { onClose: () => void; closeLabel: string }
+    | { onClose?: undefined; closeLabel?: undefined }
+);
 
 /**
  * Design-system widget shell: header with title and close button,
@@ -26,7 +23,7 @@ const DEFAULT_CLOSE_LABEL = "Close";
 export const WidgetShell: (props: WidgetShellProps) => React.ReactNode = ({
     title,
     onClose,
-    closeLabel = DEFAULT_CLOSE_LABEL,
+    closeLabel,
     actions,
     hint,
     children,

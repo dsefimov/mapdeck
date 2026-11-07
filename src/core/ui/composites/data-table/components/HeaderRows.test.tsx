@@ -13,6 +13,8 @@ const DICT: Record<string, string> = {
     "dataTable.filterColumn": "Filter {column}...",
     "dataTable.filterAttributes": "Filter attributes...",
     "dataTable.filterValues": "Filter values...",
+    "dataTable.attribute": "Attribute",
+    "dataTable.value": "Value",
 };
 
 interface ColumnarOverrides {
