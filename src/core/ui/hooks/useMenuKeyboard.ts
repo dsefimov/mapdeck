@@ -3,13 +3,15 @@ import React, { useCallback } from "react";
 const FOCUSABLE_SELECTOR = [
     "button",
     "[href]",
-    "input",
+    'input:not([type="hidden"])',
     "select",
     "textarea",
     '[tabindex]:not([tabindex="-1"])',
 ].join(", ");
 
-const NAVIGATION_KEYS = new Set([
+type NavigationKey = "ArrowDown" | "ArrowUp" | "Home" | "End";
+
+const NAVIGATION_KEYS: ReadonlySet<NavigationKey> = new Set([
     "ArrowDown",
     "ArrowUp",
     "Home",
@@ -26,12 +28,18 @@ export interface MenuKeyboardEvent {
     preventDefault(): void;
 }
 
-/** Focusable, enabled elements of the menu panel, in DOM order. */
+/** Focusable, enabled, visible elements of the menu panel, in DOM order. */
 function focusablesOf(panel: HTMLElement | null): HTMLElement[] {
     if (!panel) return [];
     return [
         ...panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-    ].filter((el) => !el.hasAttribute("disabled"));
+    ].filter(
+        (el) =>
+            !el.hasAttribute("disabled") &&
+            !el.closest("[inert]") &&
+            // display:none / visibility:hidden — focus() on them is a no-op
+            el.checkVisibility(),
+    );
 }
 
 /**
@@ -51,7 +59,7 @@ export function useMenuKeyboard(
                 onClose();
                 return;
             }
-            if (!NAVIGATION_KEYS.has(event.key)) return;
+            if (!isNavigationKey(event.key)) return;
 
             const focusables = focusablesOf(panelRef.current);
             if (focusables.length === 0) return;
@@ -67,10 +75,24 @@ export function useMenuKeyboard(
     );
 }
 
+function isNavigationKey(key: string): key is NavigationKey {
+    return NAVIGATION_KEYS.has(key as NavigationKey);
+}
+
 /** Where roving focus moves for the pressed key, wrapping at both ends. */
-function nextFocusIndex(key: string, current: number, count: number): number {
-    if (key === "Home") return 0;
-    if (key === "End") return count - 1;
-    if (key === "ArrowDown") return (current + 1) % count;
-    return (current <= 0 ? count : current) - 1;
+function nextFocusIndex(
+    key: NavigationKey,
+    current: number,
+    count: number,
+): number {
+    switch (key) {
+        case "Home":
+            return 0;
+        case "End":
+            return count - 1;
+        case "ArrowDown":
+            return (current + 1) % count;
+        case "ArrowUp":
+            return (current <= 0 ? count : current) - 1;
+    }
 }

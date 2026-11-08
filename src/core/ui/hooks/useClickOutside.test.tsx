@@ -19,14 +19,13 @@ function Probe({ handler }: { readonly handler: () => void }) {
 interface ArrayProbeProps {
     readonly handler: () => void;
     readonly enabled?: boolean;
-    readonly defer?: boolean;
 }
 
 /** Array form with two watched nodes and one unwatched sibling. */
-function ArrayProbe({ handler, enabled = true, defer = false }: ArrayProbeProps) {
+function ArrayProbe({ handler, enabled = true }: ArrayProbeProps) {
     const first = useRef<HTMLDivElement>(null);
     const second = useRef<HTMLDivElement>(null);
-    useClickOutside([first, second], handler, enabled, { defer });
+    useClickOutside([first, second], handler, enabled);
     return (
         <div>
             <div ref={first} data-testid="first" />
@@ -36,24 +35,20 @@ function ArrayProbe({ handler, enabled = true, defer = false }: ArrayProbeProps)
     );
 }
 
-function mousedownOn(testId: string): void {
+function pointerdownOn(testId: string): void {
     screen.getByTestId(testId).dispatchEvent(
-        new MouseEvent("mousedown", { bubbles: true }),
+        new PointerEvent("pointerdown", { bubbles: true }),
     );
 }
 
-function mousedownOnDocument(): void {
-    document.dispatchEvent(new MouseEvent("mousedown"));
+function pointerdownOnDocument(): void {
+    document.dispatchEvent(new PointerEvent("pointerdown"));
 }
 
-function mousedownAdds(spy: ReturnType<typeof vi.spyOn>): number {
+function pointerdownAdds(spy: ReturnType<typeof vi.spyOn>): number {
     return spy.mock.calls.filter(
-        (call: unknown[]) => (call[0] as string) === "mousedown",
+        (call: unknown[]) => (call[0] as string) === "pointerdown",
     ).length;
-}
-
-async function nextTick(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 describe("useClickOutside listener stability", () => {
@@ -67,43 +62,43 @@ describe("useClickOutside listener stability", () => {
         rerender(<Probe handler={() => second()} />);
         rerender(<Probe handler={() => second()} />);
 
-        const mousedowns = addSpy.mock.calls.filter(
-            (call) => (call[0] as string) === "mousedown",
+        const pointerdowns = addSpy.mock.calls.filter(
+            (call) => (call[0] as string) === "pointerdown",
         );
-        expect(mousedowns).toHaveLength(1);
+        expect(pointerdowns).toHaveLength(1);
         expect(removeSpy).not.toHaveBeenCalled();
 
-        document.dispatchEvent(new MouseEvent("mousedown"));
+        document.dispatchEvent(new PointerEvent("pointerdown"));
         expect(second).toHaveBeenCalledTimes(1);
         expect(first).not.toHaveBeenCalled();
     });
 });
 
 describe("useClickOutside inside/outside discrimination", () => {
-    it("fires the handler for a mousedown outside every watched node", () => {
+    it("fires the handler for a pointerdown outside every watched node", () => {
         const handler = vi.fn();
         render(<ArrayProbe handler={handler} />);
 
-        mousedownOn("other");
+        pointerdownOn("other");
 
         expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    it("suppresses the handler for a mousedown inside any watched node", () => {
+    it("suppresses the handler for a pointerdown inside any watched node", () => {
         const handler = vi.fn();
         render(<ArrayProbe handler={handler} />);
 
-        mousedownOn("first");
-        mousedownOn("second");
+        pointerdownOn("first");
+        pointerdownOn("second");
 
         expect(handler).not.toHaveBeenCalled();
     });
 
-    it("treats a mousedown on the document itself as outside", () => {
+    it("treats a pointerdown on the document itself as outside", () => {
         const handler = vi.fn();
         render(<Probe handler={handler} />);
 
-        mousedownOnDocument();
+        pointerdownOnDocument();
 
         expect(handler).toHaveBeenCalledTimes(1);
     });
@@ -116,8 +111,8 @@ describe("useClickOutside enabled flag", () => {
 
         render(<ArrayProbe handler={handler} enabled={false} />);
 
-        expect(mousedownAdds(addSpy)).toBe(0);
-        mousedownOnDocument();
+        expect(pointerdownAdds(addSpy)).toBe(0);
+        pointerdownOnDocument();
         expect(handler).not.toHaveBeenCalled();
     });
 
@@ -129,37 +124,8 @@ describe("useClickOutside enabled flag", () => {
 
         rerender(<ArrayProbe handler={handler} />);
 
-        mousedownOnDocument();
+        pointerdownOnDocument();
         expect(handler).toHaveBeenCalledTimes(1);
-    });
-});
-
-describe("useClickOutside defer option", () => {
-    it("defers attachment by one tick", async () => {
-        const addSpy = vi.spyOn(document, "addEventListener");
-        const handler = vi.fn();
-
-        render(<ArrayProbe handler={handler} defer />);
-        expect(mousedownAdds(addSpy)).toBe(0);
-
-        await nextTick();
-        expect(mousedownAdds(addSpy)).toBe(1);
-
-        mousedownOn("other");
-        expect(handler).toHaveBeenCalledTimes(1);
-    });
-
-    it("unmount within the defer window cancels the attachment", async () => {
-        const addSpy = vi.spyOn(document, "addEventListener");
-        const handler = vi.fn();
-
-        const { unmount } = render(<ArrayProbe handler={handler} defer />);
-        unmount();
-        await nextTick();
-
-        expect(mousedownAdds(addSpy)).toBe(0);
-        mousedownOnDocument();
-        expect(handler).not.toHaveBeenCalled();
     });
 });
 
@@ -169,7 +135,7 @@ describe("useClickOutside unmount", () => {
         const { unmount } = render(<Probe handler={handler} />);
 
         unmount();
-        mousedownOnDocument();
+        pointerdownOnDocument();
 
         expect(handler).not.toHaveBeenCalled();
     });

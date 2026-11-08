@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { debounce } from "@core/lib/async";
+import { useLatest } from "./useLatest";
 
 type Callback<T extends unknown[]> = (...args: T) => void;
 
@@ -27,8 +28,7 @@ export function useDebounce<T extends unknown[]>(
     callback: Callback<T>,
     delay: number,
 ): UseDebounceResult<T> {
-    const callbackRef = useRef(callback);
-    callbackRef.current = callback;
+    const callbackRef = useLatest(callback);
 
     const argsRef = useRef<T | null>(null);
     const [isPending, setIsPending] = useState(false);

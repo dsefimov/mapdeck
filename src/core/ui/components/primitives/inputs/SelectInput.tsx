@@ -80,11 +80,9 @@ export const SelectInput: (props: SelectInputProps) => React.ReactNode = ({
     );
 
     // The trigger is part of the control: without it in the watch list a
-    // mousedown on the open trigger would close via "outside" and the
+    // press on the open trigger would close via "outside" and the
     // ensuing click would immediately reopen the panel.
-    useClickOutside([panelRef, triggerRef], closePanel, open, {
-        defer: true,
-    });
+    useClickOutside([panelRef, triggerRef], closePanel, open);
 
     useEffect(() => {
         if (!open) return;

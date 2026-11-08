@@ -3,6 +3,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { Text } from "../../primitives/text/Text";
 import { useMenuKeyboard } from "../../../hooks/useMenuKeyboard";
+import { useRestoreFocus } from "../../../hooks/useRestoreFocus";
 import { clampMenuPosition } from "./clampMenuPosition";
 import type { ContextMenuPosition, MenuSize } from "./useContextMenu";
 import styles from "./ContextMenu.module.css";
@@ -44,6 +45,7 @@ export const ContextMenu = ({
     const isOpen = position !== null;
     const [menuSize, setMenuSize] = useState<MenuSize | null>(null);
     const menuRef = useRef<HTMLDivElement | null>(null);
+    useRestoreFocus(isOpen);
 
     const measureMenu = useCallback((node: HTMLDivElement | null) => {
         if (!node) {

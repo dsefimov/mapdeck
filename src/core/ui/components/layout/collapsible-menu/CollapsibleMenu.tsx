@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { useClickOutside } from "../../../hooks/useClickOutside";
 import { useMenuKeyboard } from "../../../hooks/useMenuKeyboard";
+import { useRestoreFocus } from "../../../hooks/useRestoreFocus";
 import { cn } from "../../../utils/cn";
 import styles from "./CollapsibleMenu.module.css";
 
@@ -40,7 +41,8 @@ export const CollapsibleMenu: (props: CollapsibleMenuProps) => React.ReactNode =
 
     // The menu owns focus while open: a div panel is not focusable by
     // default, and keys pressed with focus on <body> never reach the
-    // container's keydown handler.
+    // container's keydown handler. Closing returns focus to the trigger.
+    useRestoreFocus(open);
     useEffect(() => {
         if (open) panelRef.current?.focus({ preventScroll: true });
     }, [open]);
