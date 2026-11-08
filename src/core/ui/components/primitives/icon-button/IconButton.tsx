@@ -16,6 +16,8 @@ export interface IconButtonProps {
     label: string;
     /** Visual treatment: ghost — borderless, tile — bordered box */
     variant?: "ghost" | "tile";
+    /** Semantic color of the glyph (`error` — destructive actions) */
+    tone?: "default" | "error";
     onClick?: () => void;
     /** Active state — highlighted with the accent */
     active?: boolean;
@@ -32,6 +34,7 @@ export const IconButton: (props: IconButtonProps) => ReactNode = ({
     icon,
     label,
     variant = "ghost",
+    tone = "default",
     onClick,
     active,
     size = "sm",
@@ -49,6 +52,7 @@ export const IconButton: (props: IconButtonProps) => ReactNode = ({
             className={cn(
                 styles.button,
                 styles[variant],
+                tone === "error" && styles.error,
                 styles[size],
                 active && styles[`${variant}Active`],
                 className,

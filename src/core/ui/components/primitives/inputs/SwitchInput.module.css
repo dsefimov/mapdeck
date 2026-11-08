@@ -1,4 +1,5 @@
 .switch {
+    position: relative;
     display: inline-flex;
     align-items: center;
     cursor: pointer;
@@ -15,7 +16,7 @@
 
 /* The input is visually hidden — ring the track it controls instead */
 .input:focus-visible + .track {
-    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+    box-shadow: var(--focus-ring);
 }
 
 .track {
@@ -24,7 +25,6 @@
     height: var(--space-16);
     border-radius: var(--radius-full);
     background: var(--color-border);
-    opacity: 0.6;
     transition: background-color var(--transition-fast);
 }
 
@@ -41,16 +41,15 @@
     transition: transform var(--transition-fast);
 }
 
-.checked .track {
+.input:checked + .track {
     background: var(--color-accent);
-    opacity: 1;
 }
 
-.checked .thumb {
+.input:checked + .track .thumb {
     transform: translateX(var(--space-16));
 }
 
 .disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: var(--opacity-disabled);
 }

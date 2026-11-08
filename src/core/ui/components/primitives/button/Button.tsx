@@ -27,6 +27,12 @@ export const Button: (props: ButtonProps) => ReactNode = ({
     onClick,
     className,
 }) => {
+    const toneByVariant = {
+        primary: "on-accent",
+        danger: "error",
+        default: undefined,
+    } as const;
+    const labelTone = toneByVariant[variant];
     return (
         <button
             type="button"
@@ -41,7 +47,7 @@ export const Button: (props: ButtonProps) => ReactNode = ({
                 className,
             )}
         >
-            <Text variant="body" className={styles.buttonLabel}>
+            <Text variant="body" tone={labelTone}>
                 {children}
             </Text>
         </button>

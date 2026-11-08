@@ -27,8 +27,8 @@ export const InlineError: (props: InlineErrorProps) => ReactNode = ({
                 <IconButton
                     icon="refresh"
                     label={labels["error.retry"]}
+                    tone="error"
                     onClick={onRetry}
-                    className={styles.retry}
                 />
             )}
         </div>

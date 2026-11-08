@@ -56,6 +56,11 @@
     color: var(--color-error);
 }
 
+/* Text on an accent-filled surface (primary buttons, active tiles) */
+.onAccent {
+    color: var(--color-on-accent);
+}
+
 .semibold {
     font-weight: var(--font-semibold);
 }

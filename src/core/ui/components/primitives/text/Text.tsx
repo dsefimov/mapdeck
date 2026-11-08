@@ -3,7 +3,12 @@ import { cn } from "../../../utils/cn";
 import styles from "./Text.module.css";
 
 export type TextVariant = "title" | "body" | "hint" | "caption";
-export type TextTone = "secondary" | "muted" | "accent" | "error";
+export type TextTone =
+    | "secondary"
+    | "muted"
+    | "accent"
+    | "error"
+    | "on-accent";
 export type TextWeight = "semibold" | "bold";
 
 export interface TextProps {

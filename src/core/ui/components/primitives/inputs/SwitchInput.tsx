@@ -22,13 +22,7 @@ export const SwitchInput: (props: SwitchInputProps) => ReactNode = ({
 }) => {
     return (
         <label
-            htmlFor={id}
-            className={cn(
-                styles.switch,
-                checked && styles.checked,
-                disabled && styles.disabled,
-                className,
-            )}
+            className={cn(styles.switch, disabled && styles.disabled, className)}
         >
             <input
                 id={id}

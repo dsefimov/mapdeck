@@ -13,5 +13,5 @@
 .inputBase:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+    box-shadow: var(--focus-ring);
 }

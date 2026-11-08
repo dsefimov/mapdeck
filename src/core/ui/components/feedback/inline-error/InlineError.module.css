@@ -13,12 +13,3 @@
 .message {
     word-break: break-word;
 }
-
-.retry {
-    color: var(--color-error);
-}
-
-.retry:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--color-error) 15%, transparent);
-    color: var(--color-error);
-}

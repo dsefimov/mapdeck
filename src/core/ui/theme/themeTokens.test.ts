@@ -26,9 +26,7 @@ const ELEMENT_SCOPED_VARS = new Set([
     "--slider-fill", // set inline from SliderInput (JS)
     "--icon", // set inline from Icon (JS), points at the --icon-<name> token
     "--depth", // set inline from the layer-tree BaseNode
-    "--thumb-size", // local variable in .slider (SliderInput)
     "--pos", // set inline from ColorSlider (JS), thumb position in %
-    "--thumb-w", // local variable in .thumb (ColorSlider)
 ]);
 
 const THEME_DEFS = new Set<string>();
@@ -63,9 +61,20 @@ describe("theme tokens", () => {
 
         for (const file of cssFiles) {
             const content = readFileSync(file, "utf8");
+            // Custom properties declared in the same file are locally
+            // scoped (e.g. --thumb-size in SliderInput) — not theme tokens.
+            const localDefs = new Set(
+                [...content.matchAll(/^[ \t]*(--[\w-]+):/gm)].map(
+                    (m) => m[1]!,
+                ),
+            );
             for (const match of content.matchAll(/var\((--[\w-]+)\)/g)) {
                 const name = match[1]!;
-                if (!THEME_DEFS.has(name) && !ELEMENT_SCOPED_VARS.has(name)) {
+                if (
+                    !THEME_DEFS.has(name) &&
+                    !ELEMENT_SCOPED_VARS.has(name) &&
+                    !localDefs.has(name)
+                ) {
                     undefinedVars.add(
                         `${name} (${file.replace(SRC_ROOT, "")})`,
                     );

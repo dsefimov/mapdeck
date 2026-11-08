@@ -9,7 +9,7 @@
 }
 
 .slider:focus-visible {
-    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+    box-shadow: var(--focus-ring);
 }
 
 .slider::-webkit-slider-runnable-track {

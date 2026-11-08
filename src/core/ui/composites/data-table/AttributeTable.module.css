@@ -90,7 +90,7 @@
 
 .sortButton:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+    box-shadow: var(--focus-ring);
 }
 
 .sortIndicator {
@@ -112,7 +112,7 @@
 .filterInput:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+    box-shadow: var(--focus-ring);
 }
 
 /* ── Scroll container ───────────────────────────────────────────── */
@@ -145,8 +145,8 @@
 /* ── Zoom column ────────────────────────────────────────────────── */
 
 .zoomColumnHeader {
-    width: 28px;
-    height: 28px;
+    width: var(--control-height);
+    height: var(--control-height);
     text-align: center;
     vertical-align: middle;
 }

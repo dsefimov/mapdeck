@@ -138,6 +138,13 @@
     --icon-sm: 1rem; /* inline icons, buttons */
     --icon-lg: 1.5rem; /* widget icons, large buttons */
 
+    /* ═══════════════════════════════════════════
+     12a. CONTROLS — shared box metrics
+     ═══════════════════════════════════════════ */
+    --control-height: calc(var(--space-32) + var(--space-2)); /* selects, search, table zoom column */
+    --opacity-disabled: 0.5;
+    --focus-ring: 0 0 0 var(--border-md) var(--color-focus-ring);
+
     /* Artwork: icons render as masks painted with currentColor, so a host
        swaps a glyph or recolors the set by overriding these on its
        container — the same gesture as any other token. */
@@ -169,4 +176,16 @@
      ═══════════════════════════════════════════ */
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
+}
+
+/* Forced-colors (Windows High Contrast) paints no box-shadows, so the
+   shared focus ring would vanish. The system outline is restored with
+   !important — module rules above set `outline: none` at equal-or-higher
+   specificity, and this backstop must win. Unscoped: portal panels render
+   outside .mapdeck-root. */
+@media (forced-colors: active) {
+    :is(button, a[href], input, select, textarea, [tabindex]):focus-visible {
+        outline: 2px solid Highlight !important;
+        outline-offset: 2px !important;
+    }
 }

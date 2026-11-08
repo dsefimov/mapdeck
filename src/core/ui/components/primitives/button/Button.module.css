@@ -20,12 +20,12 @@
 
 .button:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 var(--border-md) var(--color-focus-ring);
+    box-shadow: var(--focus-ring);
 }
 
 .button:disabled {
     cursor: not-allowed;
-    opacity: 0.5;
+    opacity: var(--opacity-disabled);
 }
 
 .primary {
@@ -53,17 +53,4 @@
 
 .sm {
     padding: var(--space-5) var(--space-10);
-}
-
-.md {
-    padding: var(--space-10);
-}
-
-/* Button text color is driven by the container (0-2-0) — text is a Text body */
-.primary .buttonLabel {
-    color: var(--color-on-accent);
-}
-
-.danger .buttonLabel {
-    color: var(--color-error);
 }
