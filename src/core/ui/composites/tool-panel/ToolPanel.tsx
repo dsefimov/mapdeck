@@ -1,6 +1,6 @@
 import React, { type ReactNode } from "react";
-import { WidgetShell } from "@core/ui/composites/widget-shell/WidgetShell";
-import { cn } from "@core/ui/utils/cn";
+import { WidgetShell } from "../widget-shell/WidgetShell";
+import { cn } from "../../utils/cn";
 import styles from "./ToolPanel.module.css";
 
 export interface ToolPanelProps {

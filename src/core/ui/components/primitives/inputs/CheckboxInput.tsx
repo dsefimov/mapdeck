@@ -1,5 +1,5 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
 import styles from "./CheckboxInput.module.css";
 
 export interface CheckboxInputProps {
@@ -12,7 +12,7 @@ export interface CheckboxInputProps {
     className?: string | undefined;
 }
 
-export const CheckboxInput: (props: CheckboxInputProps) => React.ReactNode = ({
+export const CheckboxInput: (props: CheckboxInputProps) => ReactNode = ({
     id,
     checked,
     onChange,

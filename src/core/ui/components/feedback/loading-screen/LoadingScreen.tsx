@@ -1,8 +1,8 @@
-import React from "react";
-import { Spinner } from "@core/ui/components";
+import type { ReactNode } from "react";
+import { Spinner } from "../../primitives/spinner/Spinner";
 import styles from "./LoadingScreen.module.css";
 
-export const LoadingScreen: () => React.ReactNode = () => {
+export const LoadingScreen: () => ReactNode = () => {
     return (
         <div className={styles.container} role="status">
             <Spinner />

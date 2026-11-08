@@ -1,5 +1,5 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { CSSProperties, ReactNode } from "react";
+import { cn } from "../../../utils/cn";
 import type { IconName } from "../../../icons/registry";
 import styles from "./Icon.module.css";
 
@@ -22,9 +22,9 @@ export interface IconProps {
 /** Names that can serve as a CSS custom-property identifier suffix. */
 const CUSTOM_ICON_ID = /^[\w-]+$/;
 
-function iconStyle(name: string): React.CSSProperties | undefined {
+function iconStyle(name: string): CSSProperties | undefined {
     if (!CUSTOM_ICON_ID.test(name)) return undefined;
-    return { "--icon": `var(--icon-${name})` } as React.CSSProperties;
+    return { "--icon": `var(--icon-${name})` } as CSSProperties;
 }
 
 /**
@@ -34,7 +34,7 @@ function iconStyle(name: string): React.CSSProperties | undefined {
  * theme. Icon size is determined entirely by the parent container's CSS.
  * Interactive icons use IconButton — a clickable icon is not accessible.
  */
-export const Icon: (props: IconProps) => React.ReactNode = ({
+export const Icon: (props: IconProps) => ReactNode = ({
     name,
     className,
     title,

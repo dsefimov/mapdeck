@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { useMenuKeyboard } from "@core/ui/hooks";
+import { Text } from "../../primitives/text/Text";
+import { useMenuKeyboard } from "../../../hooks/useMenuKeyboard";
 import { clampMenuPosition } from "./clampMenuPosition";
 import type { ContextMenuPosition, MenuSize } from "./useContextMenu";
 import styles from "./ContextMenu.module.css";

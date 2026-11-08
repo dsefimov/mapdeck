@@ -1,5 +1,4 @@
-import React from "react";
-import { Button } from "@core/ui/components/primitives/button/Button";
+import { Button } from "../../../components/primitives/button/Button";
 import styles from "../AttributeTable.module.css";
 
 interface TableControlsProps {
@@ -10,27 +9,24 @@ interface TableControlsProps {
     dict: Record<string, string>;
 }
 
-export const TableControls = React.memo<TableControlsProps>(
-    ({
-        showFilters,
-        hasActiveFilters,
-        onToggleFilters,
-        onClearFilters,
-        dict,
-    }) => (
-        <div className={styles.controls}>
-            <Button size="sm" onClick={onToggleFilters}>
-                {showFilters
-                    ? dict["dataTable.hide"]
-                    : dict["dataTable.show"]}{" "}
-                {dict["dataTable.filters"]}
+export const TableControls = ({
+    showFilters,
+    hasActiveFilters,
+    onToggleFilters,
+    onClearFilters,
+    dict,
+}: TableControlsProps) => (
+    <div className={styles.controls}>
+        <Button size="sm" onClick={onToggleFilters}>
+            {showFilters
+                ? dict["dataTable.hide"]
+                : dict["dataTable.show"]}{" "}
+            {dict["dataTable.filters"]}
+        </Button>
+        {hasActiveFilters && (
+            <Button size="sm" onClick={onClearFilters}>
+                {dict["dataTable.clearFilters"]}
             </Button>
-            {hasActiveFilters && (
-                <Button size="sm" onClick={onClearFilters}>
-                    {dict["dataTable.clearFilters"]}
-                </Button>
-            )}
-        </div>
-    ),
+        )}
+    </div>
 );
-TableControls.displayName = "TableControls";

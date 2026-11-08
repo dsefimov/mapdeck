@@ -1,5 +1,5 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
 import styles from "./Text.module.css";
 
 export type TextVariant = "title" | "body" | "hint" | "caption";
@@ -19,7 +19,7 @@ export interface TextProps {
     truncate?: boolean;
     /** Remove the text from the accessibility tree (visual-only labels). */
     ariaHidden?: boolean;
-    children: React.ReactNode;
+    children: ReactNode;
     className?: string | undefined;
 }
 
@@ -27,7 +27,7 @@ export interface TextProps {
  * Design-system text. Single element for all text in src: typography tokens
  * are consumed here, consumers keep only layout.
  */
-export const Text: (props: TextProps) => React.ReactNode = ({
+export const Text: (props: TextProps) => ReactNode = ({
     variant = "body",
     tone,
     weight,

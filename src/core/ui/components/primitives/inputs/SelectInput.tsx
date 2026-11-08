@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { typedDict } from "@core/lib/text";
-import { Icon } from "@core/ui/components/primitives/icon/Icon";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { useClickOutside } from "@core/ui/hooks/useClickOutside";
-import { cn } from "@core/ui/utils/cn";
+import { Icon } from "../icon/Icon";
+import { Text } from "../text/Text";
+import { useClickOutside } from "../../../hooks/useClickOutside";
+import { cn } from "../../../utils/cn";
 import {
     activeDescendantId,
     buildSections,

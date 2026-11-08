@@ -1,7 +1,7 @@
-import React from "react";
-import { Icon } from "@core/ui/components/primitives/icon/Icon";
-import type { IconName } from "@core/ui/icons/registry";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { Icon } from "../icon/Icon";
+import type { IconName } from "../../../icons/registry";
+import { cn } from "../../../utils/cn";
 import styles from "./IconButton.module.css";
 
 export interface IconButtonProps {
@@ -28,7 +28,7 @@ export interface IconButtonProps {
  * Design-system icon button. Used in layer-tree, widget headers,
  * map-tool toolbars (tile).
  */
-export const IconButton: (props: IconButtonProps) => React.ReactNode = ({
+export const IconButton: (props: IconButtonProps) => ReactNode = ({
     icon,
     label,
     variant = "ghost",

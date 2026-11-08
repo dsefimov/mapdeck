@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { EmptyState } from "@core/ui/components/feedback/empty-state/EmptyState";
+import { Text } from "../../../components/primitives/text/Text";
+import { EmptyState } from "../../../components/feedback/empty-state/EmptyState";
 import styles from "../AttributeTable.module.css";
 
 interface TableEmptyProps {

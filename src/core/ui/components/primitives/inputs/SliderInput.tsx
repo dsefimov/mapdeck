@@ -1,5 +1,5 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { CSSProperties, ReactNode } from "react";
+import { cn } from "../../../utils/cn";
 import styles from "./SliderInput.module.css";
 
 export interface SliderInputProps {
@@ -27,7 +27,7 @@ const VALUE_KEYS: ReadonlySet<string> = new Set([
     "PageDown",
 ]);
 
-export const SliderInput: (props: SliderInputProps) => React.ReactNode = ({
+export const SliderInput: (props: SliderInputProps) => ReactNode = ({
     id,
     value,
     min,
@@ -47,7 +47,7 @@ export const SliderInput: (props: SliderInputProps) => React.ReactNode = ({
             id={id}
             type="range"
             className={cn(styles.slider, className)}
-            style={{ "--slider-fill": `${percent}%` } as React.CSSProperties}
+            style={{ "--slider-fill": `${percent}%` } as CSSProperties}
             value={value}
             min={min}
             max={max}

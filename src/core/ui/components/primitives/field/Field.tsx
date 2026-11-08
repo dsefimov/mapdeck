@@ -1,28 +1,28 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { InputLabel } from "@core/ui/components/primitives/inputs/InputLabel";
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
+import { Text } from "../text/Text";
+import { InputLabel } from "../inputs/InputLabel";
 import styles from "./Field.module.css";
 
 export interface FieldProps {
     /** Label content: text or formatted message */
-    label: React.ReactNode;
+    label: ReactNode;
     /** Id of the control the label is bound to */
     htmlFor: string;
     /** `Text` variant of the label: "body" or "caption" */
     labelVariant?: "body" | "caption";
-    children: React.ReactNode;
+    children: ReactNode;
     /** Extra hint below the control */
-    hint?: React.ReactNode;
+    hint?: ReactNode;
     /** Validation error below the control (hint, red) */
-    error?: React.ReactNode;
+    error?: ReactNode;
     className?: string | undefined;
 }
 
 /**
  * Field: label + control, optional hint and error.
  */
-export const Field: (props: FieldProps) => React.ReactNode = ({
+export const Field: (props: FieldProps) => ReactNode = ({
     label,
     htmlFor,
     labelVariant,

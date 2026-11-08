@@ -12,7 +12,7 @@ import {
     type LayoutItem,
 } from "react-grid-layout/legacy";
 import { typedDict } from "@core/lib/text";
-import { cn } from "@core/ui/utils/cn";
+import { cn } from "../../utils/cn";
 import {
     applyDragSnap,
     calculateEdgeSnap,

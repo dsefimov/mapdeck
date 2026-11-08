@@ -1,5 +1,5 @@
 import React, { useCallback } from "react";
-import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
+import { IconButton } from "../../../components/primitives/icon-button/IconButton";
 import { typedDict } from "@core/lib/text";
 import type { Bbox } from "@core/lib/geo";
 import { Bbox as BboxClass } from "@core/lib/geo";

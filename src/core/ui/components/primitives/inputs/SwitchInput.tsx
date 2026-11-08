@@ -1,5 +1,5 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
 import styles from "./SwitchInput.module.css";
 
 export interface SwitchInputProps {
@@ -12,7 +12,7 @@ export interface SwitchInputProps {
     className?: string | undefined;
 }
 
-export const SwitchInput: (props: SwitchInputProps) => React.ReactNode = ({
+export const SwitchInput: (props: SwitchInputProps) => ReactNode = ({
     id,
     checked,
     onChange,

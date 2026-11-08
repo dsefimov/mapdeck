@@ -1,4 +1,4 @@
-import { Text } from "@core/ui/components/primitives/text/Text";
+import { Text } from "../../../components/primitives/text/Text";
 import { ColumnarHeaderRow } from "./ColumnarHeaderRow";
 import { VisibleRows } from "./VisibleRows";
 import type { GeometryColumnConfig } from "../types";

@@ -1,7 +1,6 @@
-import React from "react";
 import { interpolate } from "@core/lib/text";
-import { Icon } from "@core/ui/components";
-import { Text } from "@core/ui/components/primitives/text/Text";
+import { Icon } from "../../../components/primitives/icon/Icon";
+import { Text } from "../../../components/primitives/text/Text";
 import type { SortDirection, GeometryColumnConfig } from "../types";
 import { getAriaSort, getSortIndicator } from "../utils";
 import styles from "../AttributeTable.module.css";
@@ -19,19 +18,18 @@ interface ColumnarHeaderRowProps {
     dict: Record<string, string>;
 }
 
-export const ColumnarHeaderRow = React.memo<ColumnarHeaderRowProps>(
-    ({
-        columns,
-        showRowNumbers = true,
-        sortColumn,
-        sortDirection,
-        onSort,
-        showFilters,
-        filters,
-        onFilterChange,
-        geometryColumn,
-        dict,
-    }) => (
+export const ColumnarHeaderRow = ({
+    columns,
+    showRowNumbers = true,
+    sortColumn,
+    sortDirection,
+    onSort,
+    showFilters,
+    filters,
+    onFilterChange,
+    geometryColumn,
+    dict,
+}: ColumnarHeaderRowProps) => (
         <>
             <tr>
                 {showRowNumbers && (
@@ -106,6 +104,4 @@ export const ColumnarHeaderRow = React.memo<ColumnarHeaderRowProps>(
                 </tr>
             )}
         </>
-    ),
 );
-ColumnarHeaderRow.displayName = "ColumnarHeaderRow";

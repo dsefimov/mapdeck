@@ -1,6 +1,6 @@
-import React from "react";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { Button } from "@core/ui/components/primitives/button/Button";
+import type { ReactNode } from "react";
+import { Text } from "../../primitives/text/Text";
+import { Button } from "../../primitives/button/Button";
 import styles from "./ErrorScreen.module.css";
 
 export interface ErrorScreenProps {
@@ -11,7 +11,7 @@ export interface ErrorScreenProps {
     titleKey?: "error.title" | "error.renderTitle";
 }
 
-export const ErrorScreen: (props: ErrorScreenProps) => React.ReactNode = ({
+export const ErrorScreen: (props: ErrorScreenProps) => ReactNode = ({
     message,
     onRetry,
     dict,

@@ -1,10 +1,10 @@
 import React, { useRef, type ComponentProps } from "react";
 import type { LayoutItem } from "react-grid-layout/legacy";
 import { interpolate } from "@core/lib/text";
-import { cn } from "@core/ui/utils/cn";
-import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { ErrorBoundary } from "@core/ui/components";
+import { cn } from "../../utils/cn";
+import { IconButton } from "../../components/primitives/icon-button/IconButton";
+import { Text } from "../../components/primitives/text/Text";
+import { ErrorBoundary } from "../../components/feedback/error-boundary/ErrorBoundary";
 import type { GridConfig } from "./snapGeometry";
 import { useAutoSize } from "./useAutoSize";
 import styles from "./WidgetGrid.module.css";

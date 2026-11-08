@@ -1,7 +1,7 @@
 import React, { type ReactNode } from "react";
-import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { cn } from "@core/ui/utils/cn";
+import { IconButton } from "../../components/primitives/icon-button/IconButton";
+import { Text } from "../../components/primitives/text/Text";
+import { cn } from "../../utils/cn";
 import styles from "./WidgetShell.module.css";
 
 export type WidgetShellProps = {

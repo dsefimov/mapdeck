@@ -1,6 +1,6 @@
-import React from "react";
-import { Icon } from "@core/ui/components/primitives/icon/Icon";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { Icon } from "../icon/Icon";
+import { cn } from "../../../utils/cn";
 import styles from "./SearchInput.module.css";
 
 export interface SearchInputProps {
@@ -18,7 +18,7 @@ export interface SearchInputProps {
  * Search input with a search icon on the left. The "refresh" button is a
  * separate IconButton rendered next to the field by the consumer.
  */
-export const SearchInput: (props: SearchInputProps) => React.ReactNode = ({
+export const SearchInput: (props: SearchInputProps) => ReactNode = ({
     id,
     value,
     onChange,

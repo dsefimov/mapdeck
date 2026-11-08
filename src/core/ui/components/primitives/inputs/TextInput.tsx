@@ -1,5 +1,5 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
 import styles from "./TextInput.module.css";
 
 export interface TextInputProps {
@@ -14,7 +14,7 @@ export interface TextInputProps {
     className?: string | undefined;
 }
 
-export const TextInput: (props: TextInputProps) => React.ReactNode = ({
+export const TextInput: (props: TextInputProps) => ReactNode = ({
     id,
     value,
     onChange,

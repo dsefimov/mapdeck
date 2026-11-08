@@ -1,5 +1,5 @@
-import React from "react";
-import { Text } from "@core/ui/components/primitives/text/Text";
+import { memo } from "react";
+import { Text } from "../../../components/primitives/text/Text";
 import type { GeometryColumnConfig } from "../types";
 import { formatValue } from "../utils";
 import { ZoomButtonCell } from "./ZoomButtonCell";
@@ -14,7 +14,7 @@ interface ColumnarRowProps {
     dict: Record<string, string>;
 }
 
-export const ColumnarRow = React.memo<ColumnarRowProps>(
+export const ColumnarRow = memo<ColumnarRowProps>(
     ({ row, globalIdx, showRowNumbers, columns, geometryColumn, dict }) => (
         <tr>
             {showRowNumbers && (

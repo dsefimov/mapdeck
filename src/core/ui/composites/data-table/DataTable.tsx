@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
-import { LoadingScreen } from "@core/ui/components";
-import { Text } from "@core/ui/components/primitives/text/Text";
+import { LoadingScreen } from "../../components/feedback/loading-screen/LoadingScreen";
+import { Text } from "../../components/primitives/text/Text";
 import { KV_COLUMNS, toKvRows } from "./utils";
 import { useSortMode } from "./hooks/useSortMode";
 import { useFilterState } from "./hooks/useFilterState";

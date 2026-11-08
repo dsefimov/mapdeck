@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { hexToHue, hueToHex, normalizeHex } from "@core/lib/color";
 import { interpolate, typedDict } from "@core/lib/text";
-import { InputLabel, TextInput } from "@core/ui/components/primitives/inputs";
-import { ColorSlider } from "@core/ui/components/primitives/color-slider/ColorSlider";
+import { InputLabel } from "../../components/primitives/inputs/InputLabel";
+import { TextInput } from "../../components/primitives/inputs/TextInput";
+import { ColorSlider } from "../../components/primitives/color-slider/ColorSlider";
 import styles from "./ColorPicker.module.css";
 
 /** Core-namespace keys the picker reads (typed view, no fallbacks). */

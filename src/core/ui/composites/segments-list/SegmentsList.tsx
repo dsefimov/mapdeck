@@ -1,5 +1,5 @@
-import React from "react";
-import { Text } from "@core/ui/components/primitives/text/Text";
+import type { ReactNode } from "react";
+import { Text } from "../../components/primitives/text/Text";
 import styles from "./SegmentsList.module.css";
 
 export interface Segment {
@@ -26,7 +26,7 @@ export interface SegmentsListProps {
 /**
  * Scrollable list of label/value segments with optional detail rows.
  */
-export const SegmentsList: (props: SegmentsListProps) => React.ReactNode = ({
+export const SegmentsList: (props: SegmentsListProps) => ReactNode = ({
     title,
     segments,
 }) => (

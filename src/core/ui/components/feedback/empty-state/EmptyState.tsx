@@ -1,12 +1,12 @@
-import React from "react";
-import { Button } from "@core/ui/components/primitives/button/Button";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { Button } from "../../primitives/button/Button";
+import { Text } from "../../primitives/text/Text";
+import { cn } from "../../../utils/cn";
 import styles from "./EmptyState.module.css";
 
 export interface EmptyStateProps {
     /** Primary centered message (empty result or loading placeholder). */
-    message: React.ReactNode;
+    message: ReactNode;
     /** Optional single action, e.g. a retry. */
     action?: {
         label: string;
@@ -19,7 +19,7 @@ export interface EmptyStateProps {
  * Centered placeholder for empty or loading content.
  * Announced to screen readers via `role="status"`.
  */
-export const EmptyState: (props: EmptyStateProps) => React.ReactNode = ({
+export const EmptyState: (props: EmptyStateProps) => ReactNode = ({
     message,
     action,
     className,

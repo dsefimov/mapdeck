@@ -1,5 +1,5 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
 import styles from "./Spinner.module.css";
 
 export interface SpinnerProps {
@@ -8,7 +8,7 @@ export interface SpinnerProps {
     size?: "sm" | "md";
 }
 
-export const Spinner: (props: SpinnerProps) => React.ReactNode = ({ className, size = "md" }) => {
+export const Spinner: (props: SpinnerProps) => ReactNode = ({ className, size = "md" }) => {
     return <div className={cn(styles.spinner, styles[size], className)} />;
 };
 

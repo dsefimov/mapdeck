@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from "react";
-import { cn } from "@core/ui/utils/cn";
+import { cn } from "../../../utils/cn";
 import styles from "./ColorSlider.module.css";
 
 export interface ColorSliderProps {

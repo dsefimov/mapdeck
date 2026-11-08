@@ -259,6 +259,11 @@ export default [
                                 "The ui kit must not know the application or its extensions.",
                         },
                         {
+                            group: ["@core/ui", "@core/ui/*"],
+                            message:
+                                "The ui kit imports its own parts relatively — aliases point outward only (self-import through a barrel risks cycles).",
+                        },
+                        {
                             group: ["mobx", "mobx-react-lite", "mobx-react-lite/*"],
                             message:
                                 "Stores are not for the generic kit — data arrives through props.",

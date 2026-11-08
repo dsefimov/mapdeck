@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
-import { useClickOutside, useMenuKeyboard } from "@core/ui/hooks";
-import { cn } from "@core/ui/utils/cn";
+import { useClickOutside } from "../../../hooks/useClickOutside";
+import { useMenuKeyboard } from "../../../hooks/useMenuKeyboard";
+import { cn } from "../../../utils/cn";
 import styles from "./CollapsibleMenu.module.css";
 
 export interface CollapsibleMenuProps {

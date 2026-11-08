@@ -1,6 +1,6 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
-import { Text } from "@core/ui/components/primitives/text/Text";
+import type { ReactNode } from "react";
+import { cn } from "../../utils/cn";
+import { Text } from "../../components/primitives/text/Text";
 import styles from "./SummarySection.module.css";
 
 export interface SummaryItem {
@@ -18,7 +18,7 @@ export interface SummarySectionProps {
 /**
  * Summary card. Row: label on the left, value on the right (accent).
  */
-export const SummarySection: (props: SummarySectionProps) => React.ReactNode = ({
+export const SummarySection: (props: SummarySectionProps) => ReactNode = ({
     items,
     className,
 }) => {

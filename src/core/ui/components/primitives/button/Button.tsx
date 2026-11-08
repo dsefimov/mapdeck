@@ -1,6 +1,6 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
-import { Text } from "@core/ui/components/primitives/text/Text";
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
+import { Text } from "../text/Text";
 import styles from "./Button.module.css";
 
 export interface ButtonProps {
@@ -12,12 +12,12 @@ export interface ButtonProps {
     disabled?: boolean;
     /** Native title (tooltip) */
     title?: string;
-    children: React.ReactNode;
+    children: ReactNode;
     onClick?: () => void;
     className?: string | undefined;
 }
 
-export const Button: (props: ButtonProps) => React.ReactNode = ({
+export const Button: (props: ButtonProps) => ReactNode = ({
     variant = "default",
     size = "md",
     fullWidth,

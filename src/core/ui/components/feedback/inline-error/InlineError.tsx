@@ -1,6 +1,6 @@
-import React from "react";
-import { Text } from "@core/ui/components/primitives/text/Text";
-import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
+import type { ReactNode } from "react";
+import { Text } from "../../primitives/text/Text";
+import { IconButton } from "../../primitives/icon-button/IconButton";
 import { typedDict } from "@core/lib/text";
 import styles from "./InlineError.module.css";
 
@@ -10,7 +10,7 @@ export interface InlineErrorProps {
     dict: Record<string, string>;
 }
 
-export const InlineError: (props: InlineErrorProps) => React.ReactNode = ({
+export const InlineError: (props: InlineErrorProps) => ReactNode = ({
     message,
     onRetry,
     dict,
