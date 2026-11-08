@@ -61,4 +61,42 @@ test.describe("feature info", () => {
             page.getByText("No features found at this location"),
         ).toBeVisible({ timeout: 15_000 });
     });
+
+    test("activation from the context menu queries the right-clicked point", async ({
+        page,
+    }) => {
+        const console = collectConsoleErrors(page);
+        await page.goto("/");
+        await openLayerTree(page);
+        await expandCollection(page, VECTOR_ROW, "Countries (MapLibre demotiles)");
+        await toggleLayer(page, "demotiles-countries", true);
+
+        await page
+            .getByRole("button", { name: "Zoom to extent" })
+            .nth(1)
+            .click();
+        await page.waitForTimeout(1500);
+
+        const canvas = page.locator(".maplibregl-canvas");
+        const box = await canvas.boundingBox();
+        expect(box).not.toBeNull();
+        // The suite runs the dev bundle, where React StrictMode remounts
+        // the panel right after activation — the activation query must
+        // survive it (regression: it used to abort with the first mount).
+        await page.mouse.click(
+            box!.x + box!.width / 2 + 70,
+            box!.y + box!.height / 2 + 30,
+            { button: "right" },
+        );
+        await page
+            .getByRole("menuitem", { name: "Feature Info" })
+            .click();
+
+        await expect(
+            page.getByText("No features found at this location"),
+        ).toBeHidden({ timeout: 15_000 });
+        await expect(page.getByText("NAME", { exact: true })).toBeVisible();
+
+        await console.assertClean("feature info context menu");
+    });
 });
