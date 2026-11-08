@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../../utils/cn";
+import { useFieldAria } from "../field/FieldContext";
 import styles from "./SwitchInput.module.css";
 
 export interface SwitchInputProps {
@@ -20,6 +21,7 @@ export const SwitchInput: (props: SwitchInputProps) => ReactNode = ({
     ariaLabel,
     className,
 }) => {
+    const field = useFieldAria();
     return (
         <label
             className={cn(styles.switch, disabled && styles.disabled, className)}
@@ -32,6 +34,8 @@ export const SwitchInput: (props: SwitchInputProps) => ReactNode = ({
                 onChange={(e) => onChange(e.target.checked)}
                 disabled={disabled}
                 aria-label={ariaLabel}
+                aria-describedby={field.describedBy}
+                aria-invalid={field.invalid || undefined}
                 className={styles.input}
             />
             <span className={styles.track}>

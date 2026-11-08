@@ -26,6 +26,10 @@ changing anything that affects extension authors. Domain terms are defined in
   and why an existing dependency or a small local implementation does not fit.
   Dependencies that change the architecture, a public contract or the package
   surface also need an ADR (ADR-0020).
+- Kit components in `src/core/ui` use the annotated-const form
+  (`export const X: (props: XProps) => ReactNode = …`) uniformly; not a
+  toolchain requirement — a convention. Do not mix in `export function`
+  components.
 
 The full dependency rules between layers are enforced by the ESLint zones in
 `eslint.config.js` — do not add imports that the zones reject.

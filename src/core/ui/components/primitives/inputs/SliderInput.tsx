@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { cn } from "../../../utils/cn";
+import { useFieldAria } from "../field/FieldContext";
 import styles from "./SliderInput.module.css";
 
 export interface SliderInputProps {
@@ -39,6 +40,7 @@ export const SliderInput: (props: SliderInputProps) => ReactNode = ({
     ariaLabel,
     className,
 }) => {
+    const field = useFieldAria();
     const raw = max > min ? ((value - min) / (max - min)) * 100 : 0;
     const percent = Math.min(100, Math.max(0, raw));
 
@@ -54,6 +56,8 @@ export const SliderInput: (props: SliderInputProps) => ReactNode = ({
             step={step ?? 1}
             disabled={disabled}
             aria-label={ariaLabel}
+            aria-describedby={field.describedBy}
+            aria-invalid={field.invalid || undefined}
             onChange={(e) => onChange(Number(e.target.value))}
             onPointerUp={onCommit}
             onKeyUp={(e) => {

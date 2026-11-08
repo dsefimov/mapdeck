@@ -37,8 +37,6 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
  */
 const GRID_BREAKPOINT_LG = 1200;
 
-const NO_EDGES: ReadonlySet<EdgeZone> = new Set();
-
 /**
  * Core-namespace keys the grid chrome reads. The kit cannot name the core
  * dictionary's key union (`ui → lib` layer rule), so it declares exactly
@@ -58,17 +56,6 @@ const EDGE_ZONE_TITLE: Record<EdgeZone, WidgetGridKey> = {
     left: "widgetGrid.dragToLeft",
     right: "widgetGrid.dragToRight",
 };
-
-function sameEdges(
-    a: ReadonlySet<EdgeZone>,
-    b: ReadonlySet<EdgeZone>,
-): boolean {
-    if (a.size !== b.size) return false;
-    for (const zone of a) {
-        if (!b.has(zone)) return false;
-    }
-    return true;
-}
 
 export interface WidgetGridProps {
     /** Open widget instances; only `placement: "grid"` ones render here. */
@@ -107,14 +94,7 @@ export const WidgetGrid: (props: WidgetGridProps) => React.ReactNode = ({
 
     const containerRef = useRef<HTMLDivElement>(null);
     const [rowHeight, setRowHeight] = useState(40);
-    const [activeEdges, setActiveEdges] =
-        useState<ReadonlySet<EdgeZone>>(NO_EDGES);
-
-    // Returning the current set keeps its identity, so drag events that do
-    // not change the highlighted edges do not re-render the grid.
-    const showEdgeZones = useCallback((zones: ReadonlySet<EdgeZone>) => {
-        setActiveEdges((current) => (sameEdges(current, zones) ? current : zones));
-    }, []);
+    const [activeEdgeKey, setActiveEdgeKey] = useState("");
 
     // Snap corrections are written one macrotask after RGL's stop
     // handlers: RGL is still committing its internal state in that
@@ -189,7 +169,7 @@ export const WidgetGrid: (props: WidgetGridProps) => React.ReactNode = ({
         if (snappedLayout) {
             scheduleLayoutUpdate(snappedLayout);
         }
-        showEdgeZones(NO_EDGES);
+        setActiveEdgeKey("");
     };
 
     const handleDragStop = (
@@ -202,7 +182,7 @@ export const WidgetGrid: (props: WidgetGridProps) => React.ReactNode = ({
         if (snappedLayout) {
             scheduleLayoutUpdate(snappedLayout);
         }
-        showEdgeZones(NO_EDGES);
+        setActiveEdgeKey("");
     };
 
     const handleDrag = (
@@ -211,8 +191,13 @@ export const WidgetGrid: (props: WidgetGridProps) => React.ReactNode = ({
         newItem: LayoutItem | null,
     ) => {
         if (!newItem) return;
-        showEdgeZones(computeActiveEdgeZones(newItem, gridConfig));
+        const zones = computeActiveEdgeZones(newItem, gridConfig);
+        setActiveEdgeKey(
+            EDGE_ZONES.filter((zone) => zones.has(zone)).join(" "),
+        );
     };
+
+    const activeEdges = new Set(activeEdgeKey.split(" ").filter(Boolean));
 
     return (
         <div className={styles.grid}>

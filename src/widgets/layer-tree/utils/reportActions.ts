@@ -1,4 +1,4 @@
-import { downloadFile } from "@core/ui/utils";
+import { downloadFile } from "@core/lib/browser";
 import { logger } from "@core/lib/logger";
 
 /**

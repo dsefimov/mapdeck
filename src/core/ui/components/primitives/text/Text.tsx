@@ -24,6 +24,10 @@ export interface TextProps {
     truncate?: boolean;
     /** Remove the text from the accessibility tree (visual-only labels). */
     ariaHidden?: boolean;
+    /** Element id — Field hints/errors are aria-describedby targets. */
+    id?: string | undefined;
+    /** ARIA role (Field errors announce as `alert`). */
+    role?: string | undefined;
     children: ReactNode;
     className?: string | undefined;
 }
@@ -38,10 +42,14 @@ export const Text: (props: TextProps) => ReactNode = ({
     weight,
     truncate,
     ariaHidden,
+    id,
+    role,
     children,
     className,
 }) => (
     <span
+        id={id}
+        role={role}
         className={cn(
             styles.text,
             styles[variant],

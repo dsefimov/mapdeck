@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../../utils/cn";
+import { useFieldAria } from "../field/FieldContext";
 import styles from "./TextInput.module.css";
 
 export interface TextInputProps {
@@ -24,6 +25,7 @@ export const TextInput: (props: TextInputProps) => ReactNode = ({
     ariaLabel,
     className,
 }) => {
+    const field = useFieldAria();
     return (
         <input
             id={id}
@@ -34,6 +36,8 @@ export const TextInput: (props: TextInputProps) => ReactNode = ({
             onBlur={onBlur}
             disabled={disabled}
             aria-label={ariaLabel}
+            aria-describedby={field.describedBy}
+            aria-invalid={field.invalid || undefined}
             onChange={(e) => onChange(e.target.value)}
         />
     );

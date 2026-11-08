@@ -8,7 +8,15 @@ export interface SpinnerProps {
     size?: "sm" | "md";
 }
 
-export const Spinner: (props: SpinnerProps) => ReactNode = ({ className, size = "md" }) => {
-    return <div className={cn(styles.spinner, styles[size], className)} />;
+export const Spinner: (props: SpinnerProps) => ReactNode = ({
+    className,
+    size = "md",
+}) => {
+    return (
+        <div
+            className={cn(styles.spinner, styles[size], className)}
+            aria-hidden={true}
+        />
+    );
 };
 

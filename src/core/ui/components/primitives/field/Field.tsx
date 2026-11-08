@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "../../../utils/cn";
 import { Text } from "../text/Text";
 import { InputLabel } from "../inputs/InputLabel";
+import { FieldContext } from "./FieldContext";
 import styles from "./Field.module.css";
 
 export interface FieldProps {
@@ -20,7 +21,9 @@ export interface FieldProps {
 }
 
 /**
- * Field: label + control, optional hint and error.
+ * Field: label + control, optional hint and error. The hint and error ids
+ * are handed to the control through `FieldContext` — the control attaches
+ * them as `aria-describedby` and flags itself `aria-invalid` on error.
  */
 export const Field: (props: FieldProps) => ReactNode = ({
     label,
@@ -31,19 +34,28 @@ export const Field: (props: FieldProps) => ReactNode = ({
     error,
     className,
 }) => {
+    const hintId = hint ? `${htmlFor}-hint` : undefined;
+    const errorId = error ? `${htmlFor}-error` : undefined;
+    const describedBy =
+        hintId && errorId ? `${hintId} ${errorId}` : (hintId ?? errorId);
+
     return (
         <div className={cn(styles.field, className)}>
             <InputLabel htmlFor={htmlFor} variant={labelVariant}>
                 {label}
             </InputLabel>
-            {children}
+            <FieldContext.Provider
+                value={{ describedBy, invalid: error !== undefined }}
+            >
+                {children}
+            </FieldContext.Provider>
             {hint && (
-                <Text variant="hint" tone="muted">
+                <Text variant="hint" tone="muted" id={hintId}>
                     {hint}
                 </Text>
             )}
             {error && (
-                <Text variant="hint" tone="error">
+                <Text variant="hint" tone="error" id={errorId} role="alert">
                     {error}
                 </Text>
             )}

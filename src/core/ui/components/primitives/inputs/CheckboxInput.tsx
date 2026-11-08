@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../../utils/cn";
+import { useFieldAria } from "../field/FieldContext";
 import styles from "./CheckboxInput.module.css";
 
 export interface CheckboxInputProps {
@@ -20,6 +21,7 @@ export const CheckboxInput: (props: CheckboxInputProps) => ReactNode = ({
     ariaLabel,
     className,
 }) => {
+    const field = useFieldAria();
     return (
         <input
             id={id}
@@ -28,6 +30,8 @@ export const CheckboxInput: (props: CheckboxInputProps) => ReactNode = ({
             onChange={(e) => onChange(e.target.checked)}
             disabled={disabled}
             aria-label={ariaLabel}
+            aria-describedby={field.describedBy}
+            aria-invalid={field.invalid || undefined}
             className={cn(styles.input, className)}
         />
     );

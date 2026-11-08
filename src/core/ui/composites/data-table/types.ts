@@ -15,6 +15,7 @@ export type DataTableKey =
     | "dataTable.filterColumn"
     | "dataTable.filters"
     | "dataTable.hide"
+    | "dataTable.loading"
     | "dataTable.no"
     | "dataTable.noData"
     | "dataTable.noMatches"

@@ -41,8 +41,7 @@
     z-index: calc(var(--z-dragging) - 1);
 }
 
-/* Only the zones active during a drag are mounted, so every rendered zone
-   is a live drop target — hence the always-on pulse. */
+/* Only the active zones are mounted, so there is no inactive state. */
 .edgeZone {
     position: absolute;
     background: color-mix(in srgb, var(--color-accent) 15%, transparent);

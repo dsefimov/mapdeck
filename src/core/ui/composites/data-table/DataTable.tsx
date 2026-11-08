@@ -126,7 +126,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                     />
                     {loading && (
                         <div className={styles.loadingContainer}>
-                            <LoadingScreen />
+                            <LoadingScreen label={labels["dataTable.loading"]} />
                         </div>
                     )}
                 </div>

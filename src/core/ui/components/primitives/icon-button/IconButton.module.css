@@ -67,7 +67,7 @@
     color: var(--color-on-accent);
 }
 
-/* ── Sizes — one variable per size, every glyph box consumes it ─── */
+/* ── Sizes ──────────────────────────────────────────────────────── */
 
 .sm {
     --icon-button-size: var(--icon-sm);

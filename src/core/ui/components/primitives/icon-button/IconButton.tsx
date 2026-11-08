@@ -59,7 +59,8 @@ export const IconButton: (props: IconButtonProps) => ReactNode = ({
             )}
         >
             {icon ? (
-                <Icon name={icon} title={label} className={styles.icon} />
+                // Decorative glyph — the button carries the accessible name.
+                <Icon name={icon} className={styles.icon} />
             ) : (
                 <span className={styles.placeholder} />
             )}

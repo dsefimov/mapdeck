@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { cn } from "../../../utils/cn";
+import { useFieldAria } from "../field/FieldContext";
 import styles from "./NumberInput.module.css";
 
 export interface NumberInputProps {
@@ -64,6 +65,7 @@ export const NumberInput: (props: NumberInputProps) => React.ReactNode = ({
         if (Number.isFinite(parsed)) onChange(parsed);
     };
 
+    const field = useFieldAria();
     return (
         <input
             id={id}
@@ -75,6 +77,8 @@ export const NumberInput: (props: NumberInputProps) => React.ReactNode = ({
             step={step ?? 1}
             disabled={disabled}
             aria-label={ariaLabel}
+            aria-describedby={field.describedBy}
+            aria-invalid={field.invalid || undefined}
             onChange={handleChange}
         />
     );
