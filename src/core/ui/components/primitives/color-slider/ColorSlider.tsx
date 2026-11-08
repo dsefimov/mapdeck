@@ -9,7 +9,7 @@ export interface ColorSliderProps {
     onChange: (hue: number) => void;
     /** Slider aria-name */
     label: string;
-    className?: string;
+    className?: string | undefined;
 }
 
 /** Clamp a hue into the 0..360 wheel range. */

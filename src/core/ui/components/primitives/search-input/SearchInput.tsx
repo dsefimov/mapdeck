@@ -11,7 +11,7 @@ export interface SearchInputProps {
     disabled?: boolean;
     /** Accessible name for the input when there is no visible label */
     ariaLabel?: string;
-    className?: string;
+    className?: string | undefined;
 }
 
 /**
@@ -29,10 +29,7 @@ export const SearchInput: (props: SearchInputProps) => React.ReactNode = ({
 }) => {
     return (
         <div className={cn(styles.wrapper, className)}>
-            <Icon
-                name="search"
-                {...(styles.searchIcon && { className: styles.searchIcon })}
-            />
+            <Icon name="search" className={styles.searchIcon} />
             <input
                 id={id}
                 type="text"

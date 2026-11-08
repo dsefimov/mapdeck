@@ -55,11 +55,7 @@ export const IconButton: (props: IconButtonProps) => React.ReactNode = ({
             )}
         >
             {icon ? (
-                <Icon
-                    name={icon}
-                    title={label}
-                    {...(styles.icon && { className: styles.icon })}
-                />
+                <Icon name={icon} title={label} className={styles.icon} />
             ) : (
                 <span className={styles.placeholder} />
             )}

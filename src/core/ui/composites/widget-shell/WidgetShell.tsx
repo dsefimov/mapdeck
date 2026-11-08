@@ -1,6 +1,7 @@
 import React, { type ReactNode } from "react";
 import { IconButton } from "@core/ui/components/primitives/icon-button/IconButton";
 import { Text } from "@core/ui/components/primitives/text/Text";
+import { cn } from "@core/ui/utils/cn";
 import styles from "./WidgetShell.module.css";
 
 export type WidgetShellProps = {
@@ -10,7 +11,7 @@ export type WidgetShellProps = {
     /** Hint at the very bottom */
     hint?: ReactNode;
     children?: ReactNode;
-    className?: string;
+    className?: string | undefined;
 } & (
     | { onClose: () => void; closeLabel: string }
     | { onClose?: undefined; closeLabel?: undefined }
@@ -29,7 +30,7 @@ export const WidgetShell: (props: WidgetShellProps) => React.ReactNode = ({
     children,
     className,
 }) => {
-    const panelClass = [styles.panel, className].filter(Boolean).join(" ");
+    const panelClass = cn(styles.panel, className);
 
     return (
         <div className={panelClass}>

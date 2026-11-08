@@ -1,5 +1,6 @@
 import React, { type ReactNode } from "react";
 import { WidgetShell } from "@core/ui/composites/widget-shell/WidgetShell";
+import { cn } from "@core/ui/utils/cn";
 import styles from "./ToolPanel.module.css";
 
 export interface ToolPanelProps {
@@ -11,7 +12,7 @@ export interface ToolPanelProps {
     actions?: ReactNode;
     /** Tool-specific content */
     children?: ReactNode;
-    className?: string;
+    className?: string | undefined;
 }
 
 /**
@@ -29,7 +30,7 @@ export const ToolPanel: (props: ToolPanelProps) => React.ReactNode = ({
     children,
     className,
 }) => {
-    const panelClass = [styles.panel, className].filter(Boolean).join(" ");
+    const panelClass = cn(styles.panel, className);
 
     return (
         <WidgetShell

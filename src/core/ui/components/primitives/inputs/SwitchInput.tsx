@@ -9,7 +9,7 @@ export interface SwitchInputProps {
     disabled?: boolean;
     /** Accessible name for the switch when there is no visible label */
     ariaLabel?: string;
-    className?: string;
+    className?: string | undefined;
 }
 
 export const SwitchInput: (props: SwitchInputProps) => React.ReactNode = ({

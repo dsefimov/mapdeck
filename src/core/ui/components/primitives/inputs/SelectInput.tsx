@@ -29,7 +29,7 @@ export interface SelectInputProps {
     /** Core dictionary carrying `select.noOptions` */
     dict: Record<string, string>;
     onChange: (value: string) => void;
-    className?: string;
+    className?: string | undefined;
 }
 
 /**

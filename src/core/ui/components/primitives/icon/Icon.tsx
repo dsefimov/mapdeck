@@ -14,7 +14,7 @@ export interface IconProps {
      */
     name: IconName | (string & {});
     /** CSS class name for additional styling */
-    className?: string;
+    className?: string | undefined;
     /** Title / accessibility label for the icon */
     title?: string;
 }

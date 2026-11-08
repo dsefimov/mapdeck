@@ -14,7 +14,7 @@ export interface ButtonProps {
     title?: string;
     children: React.ReactNode;
     onClick?: () => void;
-    className?: string;
+    className?: string | undefined;
 }
 
 export const Button: (props: ButtonProps) => React.ReactNode = ({

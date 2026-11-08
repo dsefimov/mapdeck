@@ -13,7 +13,7 @@ export interface SliderInputProps {
     disabled?: boolean;
     /** Accessible name for the slider when there is no visible label */
     ariaLabel?: string;
-    className?: string;
+    className?: string | undefined;
 }
 
 const VALUE_KEYS: ReadonlySet<string> = new Set([

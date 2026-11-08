@@ -10,7 +10,7 @@ export interface InputLabelProps {
     children: React.ReactNode;
     /** `Text` variant of the label content */
     variant?: "body" | "caption" | undefined;
-    className?: string;
+    className?: string | undefined;
 }
 
 export const InputLabel: (props: InputLabelProps) => React.ReactNode = ({

@@ -1,6 +1,7 @@
 import React from "react";
 import { Button } from "@core/ui/components/primitives/button/Button";
 import { Text } from "@core/ui/components/primitives/text/Text";
+import { cn } from "@core/ui/utils/cn";
 import styles from "./EmptyState.module.css";
 
 export interface EmptyStateProps {
@@ -11,7 +12,7 @@ export interface EmptyStateProps {
         label: string;
         onClick: () => void;
     };
-    className?: string;
+    className?: string | undefined;
 }
 
 /**
@@ -23,10 +24,7 @@ export const EmptyState: (props: EmptyStateProps) => React.ReactNode = ({
     action,
     className,
 }) => (
-    <div
-        role="status"
-        className={[styles.container, className].filter(Boolean).join(" ")}
-    >
+    <div role="status" className={cn(styles.container, className)}>
         <Text variant="body" tone="secondary" className={styles.message}>
             {message}
         </Text>

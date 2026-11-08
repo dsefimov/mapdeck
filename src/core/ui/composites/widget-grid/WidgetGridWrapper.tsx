@@ -1,15 +1,15 @@
 import React from "react";
+import { cn } from "@core/ui/utils/cn";
 import styles from "./WidgetGrid.module.css";
 
 export interface WidgetGridWrapperProps {
     /** Additional CSS class name */
-    className?: string;
+    className?: string | undefined;
     /** Child content (typically WidgetGrid) */
     children: React.ReactNode;
 }
 
 export const WidgetGridWrapper: (props: WidgetGridWrapperProps) => React.ReactNode = ({
-    className = "",
+    className,
     children,
-}) => <div className={`${styles.wrapper} ${className}`.trim()}>{children}</div>;
-
+}) => <div className={cn(styles.wrapper, className)}>{children}</div>;

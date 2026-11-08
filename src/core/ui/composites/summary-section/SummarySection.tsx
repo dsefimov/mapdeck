@@ -12,7 +12,7 @@ export interface SummaryItem {
 
 export interface SummarySectionProps {
     items: SummaryItem[];
-    className?: string;
+    className?: string | undefined;
 }
 
 /**
