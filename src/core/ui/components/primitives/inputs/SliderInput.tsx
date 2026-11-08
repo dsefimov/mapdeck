@@ -10,7 +10,9 @@ export interface SliderInputProps {
     max: number;
     step?: number;
     onChange: (value: number) => void;
-    onCommit?: () => void;
+    /** Fired when an adjustment settles: pointer release or a value-key
+        release. Plain focus loss is not a commit. */
+    onCommit?: (() => void) | undefined;
     disabled?: boolean;
     /** Accessible name for the slider when there is no visible label */
     ariaLabel?: string;
@@ -63,7 +65,6 @@ export const SliderInput: (props: SliderInputProps) => ReactNode = ({
             onKeyUp={(e) => {
                 if (VALUE_KEYS.has(e.key)) onCommit?.();
             }}
-            onBlur={onCommit}
         />
     );
 };

@@ -1,7 +1,4 @@
 .menuPanel {
-    background: var(--color-bg);
-    border: var(--border-sm) solid var(--color-border);
-    border-radius: var(--radius-sm);
     display: grid;
     grid-template-rows: 0fr;
     opacity: 0;
@@ -19,11 +16,19 @@
     visibility: visible;
 }
 
+/* The row child of the 0fr track carries every box property — its own
+   padding or border would keep the collapsed row that many pixels tall. */
+.menuPanelInner {
+    overflow: hidden;
+    min-height: 0;
+    background: var(--color-bg);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-sm);
+}
+
 .menuContent {
     display: flex;
     flex-direction: column;
     gap: var(--space-10);
     padding: var(--space-10);
-    overflow: hidden;
-    min-height: 0;
 }

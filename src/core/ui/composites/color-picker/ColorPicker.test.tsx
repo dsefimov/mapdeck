@@ -30,10 +30,51 @@ function hexField(label: string): HTMLInputElement {
     }) as HTMLInputElement;
 }
 
+function hueSlider(label: string): HTMLElement {
+    return screen.getByRole("slider", { name: `${label} — hue` });
+}
+
+const HOSTILE_LABEL = "Fill";
+const ARIA_VALUENOW = "aria-valuenow";
+
 /** The div rendered just before the hex input — the committed-value swatch. */
 function swatchOf(label: string): HTMLElement {
     return hexField(label).previousElementSibling as HTMLElement;
 }
+
+describe("ColorPicker with hostile values", () => {
+    it("renders a non-hex style value instead of crashing", () => {
+        // Style colors arrive from layer data — rgb()/named values must not
+        // take the whole widget down through hexToHue's throw.
+        render(
+            <ColorPicker
+                label={HOSTILE_LABEL}
+                dict={DICT}
+                value="rgb(255, 0, 0)"
+                onChange={vi.fn()}
+            />,
+        );
+
+        expect(hexField(HOSTILE_LABEL)).toHaveValue("rgb(255, 0, 0)");
+        expect(hueSlider(HOSTILE_LABEL)).toHaveAttribute(ARIA_VALUENOW, "0");
+    });
+
+    it("keeps the hue of a short hex form", () => {
+        render(
+            <ColorPicker
+                label={HOSTILE_LABEL}
+                dict={DICT}
+                value="#0f0"
+                onChange={vi.fn()}
+            />,
+        );
+
+        expect(hueSlider(HOSTILE_LABEL)).toHaveAttribute(
+            ARIA_VALUENOW,
+            "120",
+        );
+    });
+});
 
 /** Feeds commits back as the new prop value, like a real owner would. */
 function StatefulPicker({
@@ -179,7 +220,7 @@ describe("ColorPicker hex field", () => {
 describe("ColorPicker hue state", () => {
     function hueOf(): number {
         return Number(
-            screen.getByRole("slider").getAttribute("aria-valuenow"),
+            screen.getByRole("slider").getAttribute(ARIA_VALUENOW),
         );
     }
 

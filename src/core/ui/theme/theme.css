@@ -180,11 +180,13 @@
 
 /* Forced-colors (Windows High Contrast) paints no box-shadows, so the
    shared focus ring would vanish. The system outline is restored with
-   !important — module rules above set `outline: none` at equal-or-higher
-   specificity, and this backstop must win. Unscoped: portal panels render
-   outside .mapdeck-root. */
+   !important — module rules set `outline: none` at equal-or-higher
+   specificity, and this backstop must win. Scoped to the library's own
+   containers; portaled panels (body-level) stay out until they render
+   into a portal root inside .mapdeck-root. */
 @media (forced-colors: active) {
-    :is(button, a[href], input, select, textarea, [tabindex]):focus-visible {
+    .mapdeck-root
+        :is(button, a[href], input, select, textarea, [tabindex]):focus-visible {
         outline: 2px solid Highlight !important;
         outline-offset: 2px !important;
     }

@@ -10,6 +10,22 @@ import styles from "./ColorPicker.module.css";
 /** Core-namespace keys the picker reads (typed view, no fallbacks). */
 type ColorPickerKey = "colorPicker.hexField" | "colorPicker.hueField";
 
+/**
+ * Hue for any incoming style color. Values reach the picker from layer
+ * data and may be `rgb(...)`, named colors, garbage — `hexToHue` throws
+ * on those, so anything unparsable falls back to the wheel's start
+ * instead of crashing the widget behind an ErrorBoundary. Parsing, not
+ * pre-validation: the parser accepts forms a validator would have to
+ * re-derive (`#RGB`, `#RRGGBBAA`).
+ */
+function safeHue(color: string): number {
+    try {
+        return hexToHue(color);
+    } catch {
+        return 0;
+    }
+}
+
 export interface ColorPickerProps {
     value: string;
     label: string;
@@ -32,7 +48,7 @@ export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
 }) => {
     const labels = typedDict<ColorPickerKey>(dict);
 
-    const [hue, setHue] = useState(() => hexToHue(value));
+    const [hue, setHue] = useState(() => safeHue(value));
     const [hexInput, setHexInput] = useState(value);
 
     // Render-time adjust (React docs pattern, not an effect): an external
@@ -42,7 +58,7 @@ export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
         setPrevValue(value);
         setHexInput(value);
         if (value.toLowerCase() !== hueToHex(hue)) {
-            setHue(hexToHue(value));
+            setHue(safeHue(value));
         }
     }
 

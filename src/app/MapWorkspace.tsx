@@ -42,6 +42,17 @@ const MapWorkspace: () => ReactNode = observer(() => {
     const map = widgetStore.getWidgetById(MAP_VIEWER_ID);
     const toolbarPanels = widgetStore.allWidgets.filter(isMapToolbarWidget);
 
+    // The kit reads no observables (mobx-free by design), so this observer
+    // must touch every field the grid renders — otherwise tracking hangs on
+    // the store getters' incidental reads and e.g. a z-order bump never
+    // re-renders.
+    const gridWidgets = widgetStore.openWidgets.map((widget) => ({
+        id: widget.id,
+        zIndex: widget.zIndex,
+        layout: widget.layout,
+        definition: widget.definition,
+    }));
+
     return (
         <div className={styles.mapWorkspace}>
             <WidgetSlot widget={sidebar} widgetId={SIDEBAR_ID} />
@@ -61,7 +72,7 @@ const MapWorkspace: () => ReactNode = observer(() => {
 
                     <WidgetGridWrapper>
                         <WidgetGrid
-                            widgets={widgetStore.openWidgets}
+                            widgets={gridWidgets}
                             layout={widgetStore.layoutItems}
                             gridConfig={widgetStore.gridConfig}
                             onUpdateLayout={(id, item) =>

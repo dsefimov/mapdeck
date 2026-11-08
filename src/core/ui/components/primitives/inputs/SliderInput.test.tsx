@@ -122,7 +122,7 @@ describe("SliderInput onCommit", () => {
         expect(onCommit).not.toHaveBeenCalled();
     });
 
-    it("fires onCommit on blur", () => {
+    it("does not fire onCommit on plain focus loss", () => {
         const onCommit = vi.fn();
         render(
             <SliderInput
@@ -136,6 +136,6 @@ describe("SliderInput onCommit", () => {
         );
 
         fireEvent.blur(getSlider());
-        expect(onCommit).toHaveBeenCalledTimes(1);
+        expect(onCommit).not.toHaveBeenCalled();
     });
 });

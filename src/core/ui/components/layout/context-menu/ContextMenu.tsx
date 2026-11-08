@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { MouseEvent as ReactMouseEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Text } from "../../primitives/text/Text";
 import { useMenuKeyboard } from "../../../hooks/useMenuKeyboard";
@@ -33,7 +33,7 @@ export interface ContextMenuProps {
 /** Gap between cursor and menu when the CSS padding cannot be parsed. */
 const MENU_MARGIN_FALLBACK_PX = 8;
 
-export const ContextMenu = ({
+export const ContextMenu: (props: ContextMenuProps) => ReactNode = ({
     position,
     items,
     activeItemId,
@@ -41,7 +41,7 @@ export const ContextMenu = ({
     onSelect,
     onClose,
     onReposition,
-}: ContextMenuProps) => {
+}) => {
     const isOpen = position !== null;
     const [menuSize, setMenuSize] = useState<MenuSize | null>(null);
     const menuRef = useRef<HTMLDivElement | null>(null);

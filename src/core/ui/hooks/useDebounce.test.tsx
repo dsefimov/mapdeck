@@ -44,7 +44,7 @@ describe("useDebounce", () => {
 
     it("cancel drops the pending call", () => {
         vi.useFakeTimers();
-        const cb = vi.fn<(...args: unknown[]) => void>();
+        const cb = vi.fn<(value: string) => void>();
         const { result } = renderHook(() => useDebounce(cb, 100));
 
         act(() => result.current.call("a"));
@@ -53,6 +53,29 @@ describe("useDebounce", () => {
 
         expect(cb).not.toHaveBeenCalled();
         expect(result.current.isPending).toBe(false);
+    });
+
+    it("a delay change drops the pending call and the pending flag", () => {
+        vi.useFakeTimers();
+        const cb = vi.fn<(value: string) => void>();
+        const { result, rerender } = renderHook(
+            ({ delay }: { delay: number }) => useDebounce(cb, delay),
+            { initialProps: { delay: 100 } },
+        );
+
+        act(() => result.current.call("a"));
+        rerender({ delay: 200 });
+
+        expect(result.current.isPending).toBe(false);
+        act(() => vi.advanceTimersByTime(500));
+        expect(cb).not.toHaveBeenCalled();
+
+        // The new instance debounces afresh.
+        act(() => result.current.call("b"));
+        act(() => vi.advanceTimersByTime(199));
+        expect(cb).not.toHaveBeenCalled();
+        act(() => vi.advanceTimersByTime(1));
+        expect(cb).toHaveBeenCalledWith("b");
     });
 
     it("always invokes the latest callback version", () => {

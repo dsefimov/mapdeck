@@ -26,11 +26,20 @@ precedent) with its own lib-build entry:
   Point-cloud picking helpers travel through `mapdeck/contracts` and stay there.
 
 The composition of `mapdeck/ui` is a stability contract, guarded by a unit test:
-application chrome — the widget grid (`WidgetGrid`, `WidgetShell`, store-driven, the
-kit's only MobX coupling) and boot screens (`ErrorScreen`, `LoadingScreen`,
-`ErrorBoundary`) — stays internal; those render inside the library's own root component
-and are not a consumer surface. The export inventory is documented in
-[docs/api/extensions.md](../api/extensions.md).
+application chrome — the widget grid (`WidgetGrid`, `WidgetShell`) and boot screens
+(`ErrorScreen`, `LoadingScreen`, `ErrorBoundary`) — stays internal; those render
+inside the library's own root component and are not a consumer surface. The export
+inventory is documented in [docs/api/extensions.md](../api/extensions.md).
+
+`mapdeck/ui` vocabulary is domain-free by construction: `ContextMenu` speaks
+`items: ContextMenuItem[]` with `activeItemId` (the host maps its own tool
+objects into them); `SelectInput` takes a single `options: SelectOption[]`
+array where a `group` field labels section runs; `CollapsibleMenu` fills
+through `children` alone; `SummarySection` marks rows with `marker`. The kit
+is store-free — the widget grid takes plain props and the composition root
+wires the widget store. `SelectInput` and `ColorPicker` take the core `dict`
+for their chrome strings; the input primitives (`TextInput`, `NumberInput`,
+`SliderInput`, `SwitchInput`, `CheckboxInput`) accept `ariaLabel`.
 
 ## Consequences
 
@@ -38,5 +47,5 @@ and are not a consumer surface. The export inventory is documented in
   in the host restyles built-in and extension panels alike.
 - The subpaths follow the package's SemVer policy (ADR-0019): adding a name to the
   barrels is a minor change and requires a dated note here; removing one is breaking.
-- The subpath cannot grow store-driven components: the grid stays the only
-  MobX-coupled kit piece and stays out.
+- The subpath cannot grow store-driven components: the kit is store-free and
+  stays that way.

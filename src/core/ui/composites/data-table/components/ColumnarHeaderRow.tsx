@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { interpolate } from "@core/lib/text";
 import { Icon } from "../../../components/primitives/icon/Icon";
 import { Text } from "../../../components/primitives/text/Text";
@@ -24,7 +25,9 @@ interface ColumnarHeaderRowProps {
     labels: DataTableLabels;
 }
 
-export const ColumnarHeaderRow = ({
+export const ColumnarHeaderRow: (
+    props: ColumnarHeaderRowProps,
+) => ReactNode = ({
     columns,
     headerLabels,
     showRowNumbers = true,
@@ -36,7 +39,7 @@ export const ColumnarHeaderRow = ({
     onFilterChange,
     geometryColumn,
     labels,
-}: ColumnarHeaderRowProps) => (
+}) => (
     <>
         <tr>
             {showRowNumbers && (

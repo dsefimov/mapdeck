@@ -37,8 +37,10 @@ function focusablesOf(panel: HTMLElement | null): HTMLElement[] {
         (el) =>
             !el.hasAttribute("disabled") &&
             !el.closest("[inert]") &&
-            // display:none / visibility:hidden — focus() on them is a no-op
-            el.checkVisibility(),
+            // display:none / visibility:hidden — focus() on them is a no-op.
+            // Engines predating checkVisibility (Safari < 17.4) count as
+            // visible: the worst case is a no-op focus, not a crash.
+            (el.checkVisibility?.() ?? true),
     );
 }
 

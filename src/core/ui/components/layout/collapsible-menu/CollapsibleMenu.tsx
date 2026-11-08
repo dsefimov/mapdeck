@@ -27,7 +27,11 @@ export const CollapsibleMenu: (props: CollapsibleMenuProps) => React.ReactNode =
     const menuRef = useRef<HTMLDivElement | null>(null);
     const panelRef = useRef<HTMLDivElement | null>(null);
 
-    const hidden = hideIfEmpty && !children;
+    // Callers express optional children as expressions (`{tools.map(...)}
+    // {hasReports && ...}`), which arrive as a truthy array of empties —
+    // only a real child list keeps the menu mounted.
+    const hidden =
+        hideIfEmpty && React.Children.toArray(children).length === 0;
 
     useClickOutside(
         menuRef,
@@ -65,7 +69,9 @@ export const CollapsibleMenu: (props: CollapsibleMenuProps) => React.ReactNode =
             onKeyDown={handleKeyDown}
         >
             <div ref={panelRef} className={panelClasses} role="group" tabIndex={-1}>
-                <div className={styles.menuContent}>{children}</div>
+                <div className={styles.menuPanelInner}>
+                    <div className={styles.menuContent}>{children}</div>
+                </div>
             </div>
         </div>
     );

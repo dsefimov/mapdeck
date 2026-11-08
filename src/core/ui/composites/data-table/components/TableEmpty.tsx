@@ -11,26 +11,24 @@ interface TableEmptyProps {
 }
 
 /** Empty-table placeholder with an optional retry action. */
-export function TableEmpty({
+export const TableEmpty: (props: TableEmptyProps) => ReactNode = ({
     header,
     labels,
     onRefresh,
-}: TableEmptyProps): ReactNode {
-    return (
-        <>
-            {header && <Text variant="title">{header}</Text>}
-            <div className={styles.tableContainer}>
-                <EmptyState
-                    message={labels["dataTable.noData"]}
-                    {...(onRefresh &&
-                        labels["dataTable.retry"] && {
-                            action: {
-                                label: labels["dataTable.retry"],
-                                onClick: onRefresh,
-                            },
-                        })}
-                />
-            </div>
-        </>
-    );
-}
+}) => (
+    <>
+        {header && <Text variant="title">{header}</Text>}
+        <div className={styles.tableContainer}>
+            <EmptyState
+                message={labels["dataTable.noData"]}
+                {...(onRefresh &&
+                    labels["dataTable.retry"] && {
+                        action: {
+                            label: labels["dataTable.retry"],
+                            onClick: onRefresh,
+                        },
+                    })}
+            />
+        </div>
+    </>
+);

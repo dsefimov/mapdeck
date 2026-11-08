@@ -60,4 +60,37 @@ test.describe("widget grid", () => {
 
         await console.assertClean("widget drag");
     });
+
+    test("a click inside a window raises it above the others", async ({
+        page,
+    }) => {
+        await page.goto("/");
+        await page
+            .getByRole("button", { name: "Select Layer Tree widget" })
+            .click();
+        await page
+            .getByRole("button", { name: "Select Attribute Table widget" })
+            .click();
+
+        const zIndexOf = (name: string) =>
+            page
+                .getByRole("button", { name: `Close ${name}` })
+                .locator(
+                    "xpath=ancestor::div[contains(@class,'react-grid-item')][1]",
+                )
+                .evaluate((el) => Number((el as HTMLElement).style.zIndex));
+
+        // The attribute table opened last — it starts on top.
+        expect(await zIndexOf("Layer Tree")).toBeLessThan(
+            await zIndexOf("Attribute Table"),
+        );
+
+        await page.getByTitle('Drag to move "Layer Tree"').click();
+
+        // The grid itself is MobX-free: the z bump must still re-render
+        // through the observer adapter that snapshots the widgets.
+        expect(await zIndexOf("Layer Tree")).toBeGreaterThan(
+            await zIndexOf("Attribute Table"),
+        );
+    });
 });

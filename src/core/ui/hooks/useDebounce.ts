@@ -46,8 +46,14 @@ export function useDebounce<T extends unknown[]>(
         [delay],
     );
 
+    // A delay change drops the old debounced instance's pending call — the
+    // pending bookkeeping must not outlive it.
     useEffect(() => {
-        return () => debounced.cancel();
+        return () => {
+            debounced.cancel();
+            argsRef.current = null;
+            setIsPending(false);
+        };
     }, [debounced]);
 
     const call = useCallback(

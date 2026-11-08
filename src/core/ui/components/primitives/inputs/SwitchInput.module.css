@@ -25,6 +25,7 @@
     height: var(--space-16);
     border-radius: var(--radius-full);
     background: var(--color-border);
+    opacity: 0.6;
     transition: background-color var(--transition-fast);
 }
 
@@ -43,6 +44,7 @@
 
 .input:checked + .track {
     background: var(--color-accent);
+    opacity: 1;
 }
 
 .input:checked + .track .thumb {

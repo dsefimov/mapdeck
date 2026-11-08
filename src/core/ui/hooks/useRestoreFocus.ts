@@ -1,25 +1,23 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 /**
- * Returns focus to the element that was active when the overlay opened,
- * once it closes. Menus that move focus into their panel leave keyboard
- * users stranded when the panel unmounts and focus dies with it.
+ * Returns focus to the element that was active when the overlay opened —
+ * on close and on unmount-while-open (the panel's death takes focus with
+ * it). The restore lives in the effect cleanup: it survives React's
+ * dev-mode double-run of effects, which would otherwise capture the panel
+ * itself as the "previous" focus.
  */
 export function useRestoreFocus(open: boolean): void {
-    const restoreRef = useRef<HTMLElement | null>(null);
-
     useEffect(() => {
-        if (open) {
-            restoreRef.current =
-                document.activeElement instanceof HTMLElement
-                    ? document.activeElement
-                    : null;
-            return;
-        }
-        const target = restoreRef.current;
-        restoreRef.current = null;
-        if (target && target.isConnected) {
-            target.focus({ preventScroll: true });
-        }
+        if (!open) return;
+        const previous =
+            document.activeElement instanceof HTMLElement
+                ? document.activeElement
+                : null;
+        return () => {
+            if (previous && previous.isConnected) {
+                previous.focus({ preventScroll: true });
+            }
+        };
     }, [open]);
 }

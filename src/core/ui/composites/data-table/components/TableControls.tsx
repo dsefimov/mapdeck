@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button } from "../../../components/primitives/button/Button";
 import type { DataTableLabels } from "../types";
 import styles from "../AttributeTable.module.css";
@@ -10,13 +11,13 @@ interface TableControlsProps {
     labels: DataTableLabels;
 }
 
-export const TableControls = ({
+export const TableControls: (props: TableControlsProps) => ReactNode = ({
     showFilters,
     hasActiveFilters,
     onToggleFilters,
     onClearFilters,
     labels,
-}: TableControlsProps) => (
+}) => (
     <div className={styles.controls}>
         <Button size="sm" onClick={onToggleFilters}>
             {showFilters

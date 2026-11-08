@@ -56,8 +56,9 @@
     color: var(--color-error);
 }
 
-/* Text on an accent-filled surface (primary buttons, active tiles) */
-.onAccent {
+/* Text on an accent-filled surface (primary buttons, active tiles).
+   Kebab name: the tone value indexes the styles object as-is. */
+.on-accent {
     color: var(--color-on-accent);
 }
 

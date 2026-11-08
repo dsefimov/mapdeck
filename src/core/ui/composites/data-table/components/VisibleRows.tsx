@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { DataTableLabels, GeometryColumnConfig } from "../types";
 import { ColumnarRow } from "./ColumnarRow";
 
@@ -11,7 +12,7 @@ interface VisibleRowsProps {
     labels: DataTableLabels;
 }
 
-export const VisibleRows = ({
+export const VisibleRows: (props: VisibleRowsProps) => ReactNode[] = ({
     sortedData,
     startIndex,
     endIndex,
@@ -19,7 +20,7 @@ export const VisibleRows = ({
     showRowNumbers,
     geometryColumn,
     labels,
-}: VisibleRowsProps) => {
+}) => {
     const sliced = sortedData.slice(startIndex, endIndex);
     return sliced.map((row, index) => {
         const globalIdx = startIndex + index;

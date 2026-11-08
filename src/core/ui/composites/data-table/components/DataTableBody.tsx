@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Text } from "../../../components/primitives/text/Text";
 import { ColumnarHeaderRow } from "./ColumnarHeaderRow";
 import { VisibleRows } from "./VisibleRows";
@@ -23,7 +24,7 @@ interface DataTableBodyProps {
     labels: DataTableLabels;
 }
 
-export const DataTableBody = ({
+export const DataTableBody: (props: DataTableBodyProps) => ReactNode = ({
     isColumnar,
     displayColumns,
     geometryColumn,
@@ -40,7 +41,7 @@ export const DataTableBody = ({
     bottomPaddingHeight,
     loading,
     labels,
-}: DataTableBodyProps) => {
+}) => {
     const columnCount =
         (isColumnar ? 1 : 0) +
         (geometryColumn ? 1 : 0) +

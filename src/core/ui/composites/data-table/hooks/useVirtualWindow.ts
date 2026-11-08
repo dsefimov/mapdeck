@@ -127,6 +127,9 @@ export function useVirtualWindow(
         requestedFor.current = `${rowCount}:${effectiveTotal}`;
         void Promise.resolve(fetchMore(count)).catch((error: unknown) => {
             logger.warn("useVirtualWindow: fetchMore failed", error);
+            // A failed fetch must not pin the guard: the next scroll
+            // retries instead of silently running out of data.
+            requestedFor.current = null;
         });
     }, [
         scrollTop,

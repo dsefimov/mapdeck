@@ -6,6 +6,8 @@ import { CollapsibleMenu } from "./CollapsibleMenu";
 
 afterEach(cleanup);
 
+const MENU_TESTID = "collapsible-menu";
+
 describe("CollapsibleMenu", () => {
     it("renders its content inside a focusable group panel", () => {
         render(
@@ -39,7 +41,7 @@ describe("CollapsibleMenu", () => {
             </CollapsibleMenu>,
         );
 
-        fireEvent.keyDown(screen.getByTestId("collapsible-menu"), {
+        fireEvent.keyDown(screen.getByTestId(MENU_TESTID), {
             key: "Escape",
         });
 
@@ -49,6 +51,20 @@ describe("CollapsibleMenu", () => {
     it("renders nothing when hideIfEmpty and no children", () => {
         render(<CollapsibleMenu hideIfEmpty />);
 
-        expect(screen.queryByTestId("collapsible-menu")).toBeNull();
+        expect(screen.queryByTestId(MENU_TESTID)).toBeNull();
+    });
+
+    it("hideIfEmpty sees through children expressed as optional expressions", () => {
+        // The layer-tree menu passes `{tools.map(...)}{hasReports && ...}` —
+        // an always-truthy array of empties when nothing rendered.
+        render(
+            <CollapsibleMenu open hideIfEmpty>
+                {[].map(() => (
+                    <div key="unused" />
+                ))}
+            </CollapsibleMenu>,
+        );
+
+        expect(screen.queryByTestId(MENU_TESTID)).toBeNull();
     });
 });
