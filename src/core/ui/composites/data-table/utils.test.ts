@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { typedDict } from "@core/lib/text";
+import type { DataTableKey } from "./types";
 import {
     applyRowFilters,
     compareValues,
@@ -6,7 +8,7 @@ import {
     toKvRows,
 } from "./utils";
 
-const DICT: Record<string, string> = {};
+const DICT = typedDict<DataTableKey>({});
 
 describe("compareValues", () => {
     it.each([

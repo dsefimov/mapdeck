@@ -1,4 +1,5 @@
 import { Button } from "../../../components/primitives/button/Button";
+import type { DataTableLabels } from "../types";
 import styles from "../AttributeTable.module.css";
 
 interface TableControlsProps {
@@ -6,7 +7,7 @@ interface TableControlsProps {
     hasActiveFilters: boolean;
     onToggleFilters: () => void;
     onClearFilters: () => void;
-    dict: Record<string, string>;
+    labels: DataTableLabels;
 }
 
 export const TableControls = ({
@@ -14,18 +15,18 @@ export const TableControls = ({
     hasActiveFilters,
     onToggleFilters,
     onClearFilters,
-    dict,
+    labels,
 }: TableControlsProps) => (
     <div className={styles.controls}>
         <Button size="sm" onClick={onToggleFilters}>
             {showFilters
-                ? dict["dataTable.hide"]
-                : dict["dataTable.show"]}{" "}
-            {dict["dataTable.filters"]}
+                ? labels["dataTable.hide"]
+                : labels["dataTable.show"]}{" "}
+            {labels["dataTable.filters"]}
         </Button>
         {hasActiveFilters && (
             <Button size="sm" onClick={onClearFilters}>
-                {dict["dataTable.clearFilters"]}
+                {labels["dataTable.clearFilters"]}
             </Button>
         )}
     </div>

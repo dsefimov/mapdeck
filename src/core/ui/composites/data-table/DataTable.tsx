@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { typedDict } from "@core/lib/text";
 import { LoadingScreen } from "../../components/feedback/loading-screen/LoadingScreen";
 import { Text } from "../../components/primitives/text/Text";
 import { KV_COLUMNS, toKvRows } from "./utils";
@@ -9,7 +10,7 @@ import { useVirtualWindow } from "./hooks/useVirtualWindow";
 import { TableControls } from "./components/TableControls";
 import { DataTableBody } from "./components/DataTableBody";
 import { TableEmpty } from "./components/TableEmpty";
-import type { DataTableProps } from "./types";
+import type { DataTableKey, DataTableProps } from "./types";
 import styles from "./AttributeTable.module.css";
 
 export { type DataTableProps, type GeometryColumnConfig } from "./types";
@@ -35,6 +36,9 @@ export const DataTable = React.memo<DataTableProps>((props) => {
     } = props;
 
     const isColumnar = columns !== undefined;
+    // One typed view of the dictionary — children receive `labels`, so a
+    // typo'd key is a compile error instead of a silent undefined.
+    const labels = typedDict<DataTableKey>(dict);
 
     const { sortColumn, sortDirection, handleSort } = useSortMode(props);
 
@@ -65,7 +69,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         filters,
         sortColumn,
         sortDirection,
-        dict,
+        labels,
     });
 
     const rowCount = sortedData.length;
@@ -81,7 +85,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
 
     if (rows.length === 0 && !loading) {
         return (
-            <TableEmpty header={header} dict={dict} onRefresh={onRefresh} />
+            <TableEmpty header={header} labels={labels} onRefresh={onRefresh} />
         );
     }
 
@@ -94,7 +98,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                     hasActiveFilters={hasActiveFilters}
                     onToggleFilters={toggleShowFilters}
                     onClearFilters={clearFilters}
-                    dict={dict}
+                    labels={labels}
                 />
                 <div
                     ref={containerRef}
@@ -118,7 +122,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                         topPaddingHeight={topPaddingHeight}
                         bottomPaddingHeight={bottomPaddingHeight}
                         loading={loading}
-                        dict={dict}
+                        labels={labels}
                     />
                     {loading && (
                         <div className={styles.loadingContainer}>

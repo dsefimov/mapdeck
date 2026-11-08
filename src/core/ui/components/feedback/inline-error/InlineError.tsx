@@ -2,12 +2,13 @@ import type { ReactNode } from "react";
 import { Text } from "../../primitives/text/Text";
 import { IconButton } from "../../primitives/icon-button/IconButton";
 import { typedDict } from "@core/lib/text";
+import type { Dictionary } from "../../../types";
 import styles from "./InlineError.module.css";
 
 export interface InlineErrorProps {
     message: string;
     onRetry?: () => void;
-    dict: Record<string, string>;
+    dict: Dictionary;
 }
 
 export const InlineError: (props: InlineErrorProps) => ReactNode = ({

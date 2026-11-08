@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
-import type { SortDirection } from "../types";
+import { typedDict } from "@core/lib/text";
+import type { DataTableKey, SortDirection } from "../types";
 import { ColumnarHeaderRow } from "./ColumnarHeaderRow";
 
 afterEach(cleanup);
@@ -14,6 +15,8 @@ const DICT: Record<string, string> = {
     "dataTable.attribute": "Attribute",
     "dataTable.value": "Value",
 };
+
+const LABELS = typedDict<DataTableKey>(DICT);
 
 interface ColumnarOverrides {
     sortColumn?: string | null;
@@ -38,7 +41,7 @@ function renderColumnar({
                     showFilters
                     filters={{}}
                     onFilterChange={vi.fn()}
-                    dict={DICT}
+                    labels={LABELS}
                 />
             </thead>
         </table>,
@@ -71,7 +74,7 @@ describe("ColumnarHeaderRow sort headers", () => {
                         showFilters={false}
                         filters={{}}
                         onFilterChange={vi.fn()}
-                        dict={DICT}
+                        labels={LABELS}
                     />
                 </thead>
             </table>,

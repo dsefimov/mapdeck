@@ -1,16 +1,13 @@
 import { useDeferredValue, useMemo } from "react";
-import type { SortDirection } from "../types";
+import type { SortDirection, DataTableLabels } from "../types";
 import { applyRowFilters, compareValues } from "../utils";
-
-/** Localized strings — structural, so callers may pass any dictionary. */
-type Dict = Record<string, string>;
 
 interface DataPipelineInput {
     rows: Record<string, unknown>[];
     filters: Record<string, string>;
     sortColumn?: string | null;
     sortDirection?: SortDirection;
-    dict: Dict;
+    labels: DataTableLabels;
 }
 
 interface DataPipelineResult {
@@ -23,7 +20,7 @@ interface DataPipelineResult {
  * formatted for matching.
  */
 export function useDataPipeline(input: DataPipelineInput): DataPipelineResult {
-    const { rows, filters, sortColumn, sortDirection, dict } = input;
+    const { rows, filters, sortColumn, sortDirection, labels } = input;
     const deferredFilters = useDeferredValue(filters);
 
     const filteredData = useMemo(() => {
@@ -31,8 +28,10 @@ export function useDataPipeline(input: DataPipelineInput): DataPipelineResult {
             (v) => v.length > 0,
         );
         if (!hasFilters) return rows;
-        return rows.filter((row) => applyRowFilters(row, deferredFilters, dict));
-    }, [rows, deferredFilters, dict]);
+        return rows.filter((row) =>
+            applyRowFilters(row, deferredFilters, labels),
+        );
+    }, [rows, deferredFilters, labels]);
 
     const sortedData = useMemo(() => {
         if (!sortColumn || !sortDirection) return filteredData;

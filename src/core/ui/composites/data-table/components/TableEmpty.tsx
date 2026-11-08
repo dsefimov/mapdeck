@@ -1,26 +1,31 @@
 import type { ReactNode } from "react";
 import { Text } from "../../../components/primitives/text/Text";
 import { EmptyState } from "../../../components/feedback/empty-state/EmptyState";
+import type { DataTableLabels } from "../types";
 import styles from "../AttributeTable.module.css";
 
 interface TableEmptyProps {
     readonly header?: string | undefined;
-    readonly dict: Record<string, string>;
+    readonly labels: DataTableLabels;
     readonly onRefresh: (() => void) | (() => Promise<void>) | undefined;
 }
 
 /** Empty-table placeholder with an optional retry action. */
-export function TableEmpty({ header, dict, onRefresh }: TableEmptyProps): ReactNode {
+export function TableEmpty({
+    header,
+    labels,
+    onRefresh,
+}: TableEmptyProps): ReactNode {
     return (
         <>
             {header && <Text variant="title">{header}</Text>}
             <div className={styles.tableContainer}>
                 <EmptyState
-                    message={dict["dataTable.noData"]}
+                    message={labels["dataTable.noData"]}
                     {...(onRefresh &&
-                        dict["dataTable.retry"] && {
+                        labels["dataTable.retry"] && {
                             action: {
-                                label: dict["dataTable.retry"],
+                                label: labels["dataTable.retry"],
                                 onClick: onRefresh,
                             },
                         })}

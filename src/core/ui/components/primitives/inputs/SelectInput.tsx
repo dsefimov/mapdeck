@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { typedDict } from "@core/lib/text";
+import type { Dictionary } from "../../../types";
 import { Icon } from "../icon/Icon";
 import { Text } from "../text/Text";
 import { useClickOutside } from "../../../hooks/useClickOutside";
@@ -27,7 +28,7 @@ export interface SelectInputProps {
     /** Accessible name for the trigger when there is no visible label */
     ariaLabel?: string;
     /** Core dictionary carrying `select.noOptions` */
-    dict: Record<string, string>;
+    dict: Dictionary;
     onChange: (value: string) => void;
     className?: string | undefined;
 }

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { hexToHue, hueToHex, normalizeHex } from "@core/lib/color";
 import { interpolate, typedDict } from "@core/lib/text";
+import type { Dictionary } from "../../types";
 import { InputLabel } from "../../components/primitives/inputs/InputLabel";
 import { TextInput } from "../../components/primitives/inputs/TextInput";
 import { ColorSlider } from "../../components/primitives/color-slider/ColorSlider";
@@ -13,7 +14,7 @@ export interface ColorPickerProps {
     value: string;
     label: string;
     /** Core dictionary carrying `colorPicker.hexField` / `colorPicker.hueField` */
-    dict: Record<string, string>;
+    dict: Dictionary;
     onChange: (color: string) => void;
 }
 

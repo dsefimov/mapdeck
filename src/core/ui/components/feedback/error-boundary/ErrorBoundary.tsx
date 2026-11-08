@@ -1,11 +1,12 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { logger } from "@core/lib/logger";
 import { ErrorScreen } from "../error-screen/ErrorScreen";
+import type { Dictionary } from "../../../types";
 
 interface ErrorBoundaryProps {
     children: ReactNode;
     /** Locale dictionary carrying error.renderTitle / error.retry. */
-    dict: Record<string, string>;
+    dict: Dictionary;
     /** Runs before the built-in recovery (subtree remount). */
     onRetry?: () => void;
 }

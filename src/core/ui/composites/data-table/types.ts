@@ -1,6 +1,32 @@
 import type { Bbox } from "@core/lib/geo";
+import type { Dictionary } from "../../types";
 
 export type SortDirection = "asc" | "desc" | null;
+
+/**
+ * Keys of the core dictionary the table reads. The kit cannot name the core
+ * dictionary's key union (`ui → lib` layer rule), so it declares exactly
+ * what it consumes; `DataTableLabels` is the typed view built once at the
+ * table root and passed down.
+ */
+export type DataTableKey =
+    | "dataTable.attribute"
+    | "dataTable.clearFilters"
+    | "dataTable.filterColumn"
+    | "dataTable.filters"
+    | "dataTable.hide"
+    | "dataTable.no"
+    | "dataTable.noData"
+    | "dataTable.noMatches"
+    | "dataTable.nullValue"
+    | "dataTable.retry"
+    | "dataTable.rowNumber"
+    | "dataTable.show"
+    | "dataTable.value"
+    | "dataTable.yes"
+    | "dataTable.zoomToObject";
+
+export type DataTableLabels = Record<DataTableKey, string>;
 
 export type OnSortHandler = (
     column: string | null,
@@ -34,5 +60,5 @@ export interface DataTableProps {
     /** Optional geometry column config — adds a zoom-to-object button per row */
     geometryColumn?: GeometryColumnConfig;
     /** Localization dictionary */
-    dict: Record<string, string>;
+    dict: Dictionary;
 }

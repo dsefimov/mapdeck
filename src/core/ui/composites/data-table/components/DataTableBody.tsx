@@ -1,7 +1,7 @@
 import { Text } from "../../../components/primitives/text/Text";
 import { ColumnarHeaderRow } from "./ColumnarHeaderRow";
 import { VisibleRows } from "./VisibleRows";
-import type { GeometryColumnConfig } from "../types";
+import type { DataTableLabels, GeometryColumnConfig } from "../types";
 import styles from "../AttributeTable.module.css";
 
 interface DataTableBodyProps {
@@ -20,7 +20,7 @@ interface DataTableBodyProps {
     topPaddingHeight: number;
     bottomPaddingHeight: number;
     loading: boolean;
-    dict: Record<string, string>;
+    labels: DataTableLabels;
 }
 
 export const DataTableBody = ({
@@ -39,12 +39,21 @@ export const DataTableBody = ({
     topPaddingHeight,
     bottomPaddingHeight,
     loading,
-    dict,
+    labels,
 }: DataTableBodyProps) => {
     const columnCount =
         (isColumnar ? 1 : 0) +
         (geometryColumn ? 1 : 0) +
         displayColumns.length;
+
+    // KV headers are literals ("attribute"/"value"), not data keys — they
+    // localize through the dictionary; columnar headers stay as-is.
+    const headerLabels = isColumnar
+        ? undefined
+        : {
+              attribute: labels["dataTable.attribute"],
+              value: labels["dataTable.value"],
+          };
 
     return (
         <table
@@ -54,6 +63,7 @@ export const DataTableBody = ({
             <thead>
                 <ColumnarHeaderRow
                     columns={displayColumns}
+                    headerLabels={headerLabels}
                     showRowNumbers={isColumnar}
                     sortColumn={sortColumn}
                     sortDirection={sortDirection}
@@ -62,7 +72,7 @@ export const DataTableBody = ({
                     filters={filters}
                     onFilterChange={handleFilterChange}
                     geometryColumn={geometryColumn}
-                    dict={dict}
+                    labels={labels}
                 />
             </thead>
             <tbody>
@@ -78,7 +88,7 @@ export const DataTableBody = ({
                     <tr>
                         <td colSpan={columnCount}>
                             <Text variant="body" tone="secondary">
-                                {dict["dataTable.noMatches"]}
+                                {labels["dataTable.noMatches"]}
                             </Text>
                         </td>
                     </tr>
@@ -90,7 +100,7 @@ export const DataTableBody = ({
                     displayColumns={displayColumns}
                     showRowNumbers={isColumnar}
                     geometryColumn={geometryColumn}
-                    dict={dict}
+                    labels={labels}
                 />
                 {bottomPaddingHeight > 0 && (
                     <tr className={styles.spacerRow} data-spacer="">

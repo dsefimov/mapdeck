@@ -1,19 +1,9 @@
-import { typedDict } from "@core/lib/text";
-import type { SortDirection } from "./types";
-
-/** Localized strings — structural, so callers may pass any dictionary. */
-type Dict = Record<string, string>;
+import type { SortDirection, DataTableLabels } from "./types";
 
 /** One comparison locale for the whole module — not per pair. */
 const COLLATOR = new Intl.Collator();
 
-/** Keys formatValue reads — typed view, no fallbacks (ADR-0015). */
-type FormatKey = "dataTable.nullValue" | "dataTable.yes" | "dataTable.no";
-
-function formatBoolean(
-    value: boolean,
-    labels: Record<FormatKey, string>,
-): string {
+function formatBoolean(value: boolean, labels: DataTableLabels): string {
     return value ? labels["dataTable.yes"] : labels["dataTable.no"];
 }
 
@@ -23,10 +13,9 @@ function formatNumber(value: number): string {
 
 /**
  * Render a cell value for display: booleans and nulls localized through the
- * dictionary, arrays joined, objects JSON-serialized.
+ * table labels, arrays joined, objects JSON-serialized.
  */
-export function formatValue(value: unknown, dict: Dict): string {
-    const labels = typedDict<FormatKey>(dict);
+export function formatValue(value: unknown, labels: DataTableLabels): string {
     if (value == null) return labels["dataTable.nullValue"];
     if (typeof value === "boolean") return formatBoolean(value, labels);
     if (typeof value === "number") return formatNumber(value);
@@ -72,12 +61,14 @@ export function compareValues(a: unknown, b: unknown): number {
 export function applyRowFilters(
     row: Record<string, unknown>,
     filters: Record<string, string>,
-    dict: Dict,
+    labels: DataTableLabels,
 ): boolean {
     return Object.entries(filters)
         .filter(([, filterVal]) => filterVal.length > 0)
         .every(([col, filterVal]) =>
-            formatValue(row[col], dict).toLowerCase().includes(filterVal.toLowerCase()),
+            formatValue(row[col], labels)
+                .toLowerCase()
+                .includes(filterVal.toLowerCase()),
         );
 }
 

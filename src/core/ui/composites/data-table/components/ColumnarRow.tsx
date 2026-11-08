@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Text } from "../../../components/primitives/text/Text";
-import type { GeometryColumnConfig } from "../types";
+import type { DataTableLabels, GeometryColumnConfig } from "../types";
 import { formatValue } from "../utils";
 import { ZoomButtonCell } from "./ZoomButtonCell";
 import styles from "../AttributeTable.module.css";
@@ -11,11 +11,11 @@ interface ColumnarRowProps {
     showRowNumbers: boolean;
     columns: string[];
     geometryColumn?: GeometryColumnConfig | undefined;
-    dict: Record<string, string>;
+    labels: DataTableLabels;
 }
 
 export const ColumnarRow = memo<ColumnarRowProps>(
-    ({ row, globalIdx, showRowNumbers, columns, geometryColumn, dict }) => (
+    ({ row, globalIdx, showRowNumbers, columns, geometryColumn, labels }) => (
         <tr>
             {showRowNumbers && (
                 <td className={styles.rowNumber}>
@@ -28,12 +28,12 @@ export const ColumnarRow = memo<ColumnarRowProps>(
                 <ZoomButtonCell
                     bbox={row[geometryColumn.key]}
                     onZoom={geometryColumn.onZoom}
-                    dict={dict}
+                    labels={labels}
                 />
             )}
             {columns.map((col) => (
                 <td key={col}>
-                    <Text variant="body">{formatValue(row[col], dict)}</Text>
+                    <Text variant="body">{formatValue(row[col], labels)}</Text>
                 </td>
             ))}
         </tr>

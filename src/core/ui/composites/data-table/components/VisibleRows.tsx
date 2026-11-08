@@ -1,4 +1,4 @@
-import type { GeometryColumnConfig } from "../types";
+import type { DataTableLabels, GeometryColumnConfig } from "../types";
 import { ColumnarRow } from "./ColumnarRow";
 
 interface VisibleRowsProps {
@@ -8,7 +8,7 @@ interface VisibleRowsProps {
     displayColumns: string[];
     showRowNumbers: boolean;
     geometryColumn: GeometryColumnConfig | undefined;
-    dict: Record<string, string>;
+    labels: DataTableLabels;
 }
 
 export const VisibleRows = ({
@@ -18,7 +18,7 @@ export const VisibleRows = ({
     displayColumns,
     showRowNumbers,
     geometryColumn,
-    dict,
+    labels,
 }: VisibleRowsProps) => {
     const sliced = sortedData.slice(startIndex, endIndex);
     return sliced.map((row, index) => {
@@ -31,7 +31,7 @@ export const VisibleRows = ({
                 showRowNumbers={showRowNumbers}
                 columns={displayColumns}
                 geometryColumn={geometryColumn}
-                dict={dict}
+                labels={labels}
             />
         );
     });

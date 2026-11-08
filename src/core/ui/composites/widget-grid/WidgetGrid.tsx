@@ -12,6 +12,7 @@ import {
     type LayoutItem,
 } from "react-grid-layout/legacy";
 import { typedDict } from "@core/lib/text";
+import type { Dictionary } from "../../types";
 import { cn } from "../../utils/cn";
 import {
     applyDragSnap,
@@ -82,7 +83,7 @@ export interface WidgetGridProps {
     onCloseWidget(widgetId: string): void;
     onFocusWidget(widgetId: string): void;
     /** Core dictionary for the grid's own chrome strings. */
-    dict: Record<string, string>;
+    dict: Dictionary;
     /** Localized display name of a widget by its id. */
     getWidgetName: (widgetId: string) => string;
 }
