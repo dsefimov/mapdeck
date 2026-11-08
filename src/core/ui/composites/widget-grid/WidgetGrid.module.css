@@ -41,59 +41,51 @@
     z-index: calc(var(--z-dragging) - 1);
 }
 
+/* Only the zones active during a drag are mounted, so every rendered zone
+   is a live drop target — hence the always-on pulse. */
 .edgeZone {
     position: absolute;
     background: color-mix(in srgb, var(--color-accent) 15%, transparent);
     border: var(--border-md) dashed var(--color-accent);
     pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-}
-
-.edgeZoneActive {
-    opacity: 1;
     animation: pulse-edge 1.5s ease-in-out infinite;
 }
 
-.edgeZoneTop {
+.edgeZone[data-edge="top"] {
     top: 0;
     left: 0;
     right: 0;
     height: 10%;
-    border-bottom: var(--border-md) dashed var(--color-accent);
     border-top: none;
     border-left: none;
     border-right: none;
 }
 
-.edgeZoneBottom {
+.edgeZone[data-edge="bottom"] {
     bottom: 0;
     left: 0;
     right: 0;
     height: 10%;
-    border-top: var(--border-md) dashed var(--color-accent);
     border-bottom: none;
     border-left: none;
     border-right: none;
 }
 
-.edgeZoneLeft {
+.edgeZone[data-edge="left"] {
     top: 0;
     bottom: 0;
     left: 0;
     width: 10%;
-    border-right: var(--border-md) dashed var(--color-accent);
     border-left: none;
     border-top: none;
     border-bottom: none;
 }
 
-.edgeZoneRight {
+.edgeZone[data-edge="right"] {
     top: 0;
     bottom: 0;
     right: 0;
     width: 10%;
-    border-left: var(--border-md) dashed var(--color-accent);
     border-right: none;
     border-top: none;
     border-bottom: none;

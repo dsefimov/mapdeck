@@ -28,7 +28,8 @@ through the interfaces of `ModuleContext` (ADR-0004) and do not access internal 
   settings, the widget system, and the MobX-based async state (`AsyncState`,
   `KeyedAsyncState` in `common/state`; the plain async utilities stay in `lib/async`).
 - `ui/` — generic React components, composites, hooks, icons, theme. The kit has no
-  stores and no domain knowledge; the widget grid is its only MobX coupling.
+  stores and no domain knowledge; the composition root feeds the widget grid its
+  state through props.
 - `contracts/` — shared types and ports: the extension-context family
   (`ModuleContext`, `ToolRuntimeContext`) and the interfaces external systems sit
   behind (deck.gl, MapLibre, STAC).

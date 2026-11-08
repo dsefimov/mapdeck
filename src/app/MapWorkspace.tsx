@@ -61,7 +61,19 @@ const MapWorkspace: () => ReactNode = observer(() => {
 
                     <WidgetGridWrapper>
                         <WidgetGrid
-                            store={widgetStore}
+                            widgets={widgetStore.openWidgets}
+                            layout={widgetStore.layoutItems}
+                            gridConfig={widgetStore.gridConfig}
+                            onUpdateLayout={(id, item) =>
+                                widgetStore.updateLayout(id, item)
+                            }
+                            onSyncLayout={(items) =>
+                                widgetStore.syncLayout(items)
+                            }
+                            onCloseWidget={(id) => widgetStore.closeWidget(id)}
+                            onFocusWidget={(id) =>
+                                widgetStore.bringToFront(id)
+                            }
                             dict={localeStore.t("core")}
                             getWidgetName={(id) =>
                                 localeStore.t(id)[LOCALE_KEY_WIDGET_NAME] ??

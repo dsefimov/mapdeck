@@ -3,12 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import type { LayoutItem } from "react-grid-layout/legacy";
-import {
-    WidgetGrid,
-    type WidgetGridConfig,
-    type WidgetGridInstance,
-    type WidgetGridStore,
-} from "./WidgetGrid";
+import { WidgetGrid } from "./WidgetGrid";
+import type { WidgetGridInstance } from "./GridWindow";
+import type { GridConfig } from "./snapGeometry";
 
 // happy-dom has no ResizeObserver; the grid only needs it to exist.
 class ResizeObserverStub {
@@ -32,7 +29,7 @@ const DICT: Record<string, string> = {
     "widgetGrid.closeLabel": "Закрыть «{name}»",
 };
 
-const GRID_CONFIG: WidgetGridConfig = {
+const GRID_CONFIG: GridConfig = {
     cols: 12,
     rows: 20,
     margin: [8, 8],
@@ -62,42 +59,37 @@ const widget = (
     },
 });
 
-function makeStore() {
-    const updateLayout = vi.fn<(id: string, layout: LayoutItem) => void>();
-    const syncLayout = vi.fn<(items: LayoutItem[]) => void>();
-    const closeWidget = vi.fn<(id: string) => void>();
-    const bringToFront = vi.fn<(id: string) => void>();
-    const store: WidgetGridStore = {
-        openWidgets: [
-            widget("w-grid"),
-            widget("w-fixed", { fixed: true }),
-            widget("w-auto", { size: "auto" }),
-        ],
-        layoutItems: [
-            { i: "w-grid", x: 0, y: 0, w: 4, h: 5 },
-            { i: "w-fixed", x: 5, y: 0, w: 3, h: 4, static: true },
-            { i: "w-auto", x: 9, y: 0, w: 3, h: 3 },
-        ],
-        gridConfig: GRID_CONFIG,
-        updateLayout,
-        syncLayout,
-        closeWidget,
-        bringToFront,
-    };
-    return { store, updateLayout, closeWidget, bringToFront };
-}
+const WIDGETS = [
+    widget("w-grid"),
+    widget("w-fixed", { fixed: true }),
+    widget("w-auto", { size: "auto" }),
+];
 
-const renderGrid = () => {
-    const mocks = makeStore();
+const LAYOUT: LayoutItem[] = [
+    { i: "w-grid", x: 0, y: 0, w: 4, h: 5 },
+    { i: "w-fixed", x: 5, y: 0, w: 3, h: 4, static: true },
+    { i: "w-auto", x: 9, y: 0, w: 3, h: 3 },
+];
+
+function renderGrid() {
+    const onUpdateLayout = vi.fn<(id: string, item: LayoutItem) => void>();
+    const onCloseWidget = vi.fn<(id: string) => void>();
+    const onFocusWidget = vi.fn<(id: string) => void>();
     render(
         <WidgetGrid
-            store={mocks.store}
+            widgets={WIDGETS}
+            layout={LAYOUT}
+            gridConfig={GRID_CONFIG}
+            onUpdateLayout={onUpdateLayout}
+            onSyncLayout={vi.fn()}
+            onCloseWidget={onCloseWidget}
+            onFocusWidget={onFocusWidget}
             dict={DICT}
             getWidgetName={(id) => WIDGET_NAMES[id] ?? id}
         />,
     );
-    return mocks;
-};
+    return { onUpdateLayout, onCloseWidget, onFocusWidget };
+}
 
 describe("WidgetGrid smoke", () => {
     it("renders a window per grid widget with its name", () => {
@@ -110,22 +102,22 @@ describe("WidgetGrid smoke", () => {
     });
 
     it("closes the window through the close button without raising it", () => {
-        const { closeWidget, bringToFront } = renderGrid();
+        const { onCloseWidget, onFocusWidget } = renderGrid();
 
         fireEvent.click(
             screen.getByRole("button", { name: "Закрыть «Слои»" }),
         );
 
-        expect(closeWidget).toHaveBeenCalledWith("w-grid");
-        expect(bringToFront).not.toHaveBeenCalled();
+        expect(onCloseWidget).toHaveBeenCalledWith("w-grid");
+        expect(onFocusWidget).not.toHaveBeenCalled();
     });
 
     it("raises the window on a click inside it", () => {
-        const { bringToFront } = renderGrid();
+        const { onFocusWidget } = renderGrid();
 
         fireEvent.click(screen.getByText("content of w-grid"));
 
-        expect(bringToFront).toHaveBeenCalledWith("w-grid");
+        expect(onFocusWidget).toHaveBeenCalledWith("w-grid");
     });
 
     it("a fixed window is static and has no close control", () => {
@@ -141,11 +133,11 @@ describe("WidgetGrid smoke", () => {
     });
 
     it("an auto-size window defers sizing while the container is unmeasured", () => {
-        const { updateLayout } = renderGrid();
+        const { onUpdateLayout } = renderGrid();
 
         // happy-dom: the container reports zero width, so the measurer's
         // colWidth guard must hold: no bogus layout writes.
-        expect(updateLayout).not.toHaveBeenCalled();
+        expect(onUpdateLayout).not.toHaveBeenCalled();
         expect(screen.getByText("content of w-auto")).toBeInTheDocument();
     });
 });

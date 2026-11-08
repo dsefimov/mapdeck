@@ -11,32 +11,27 @@ const EDGE_SNAP_THRESHOLD = 1;
 /** Tolerance in grid units for "the widget sits on the grid's cross-axis center". */
 const CENTER_SNAP_THRESHOLD = 3;
 
-/** Grid dimensions the snap math needs. */
+/** Grid geometry: the single shape the snap math and layout rendering need. */
 export interface GridConfig {
     cols: number;
     rows: number;
-    defaultWidth: number;
-    defaultHeight: number;
-}
-
-/** Container geometry for row-height computation. */
-export interface GridLayoutConfig {
     margin: readonly [number, number];
     containerPadding: readonly [number, number];
-    rows: number;
+    defaultWidth: number;
+    defaultHeight: number;
 }
 
 /** Row height that fits `rows` rows into the container height. */
 export const calculateRowHeight = (
     containerHeight: number,
-    layoutConfig: GridLayoutConfig,
+    gridConfig: GridConfig,
 ): number => {
-    const verticalMargin = layoutConfig.margin[1];
-    const verticalPadding = layoutConfig.containerPadding[1];
-    const totalMargins = (layoutConfig.rows - 1) * verticalMargin;
+    const verticalMargin = gridConfig.margin[1];
+    const verticalPadding = gridConfig.containerPadding[1];
+    const totalMargins = (gridConfig.rows - 1) * verticalMargin;
     const availableHeight =
         containerHeight - 2 * verticalPadding - totalMargins;
-    return availableHeight / layoutConfig.rows;
+    return availableHeight / gridConfig.rows;
 };
 
 /** One axis of the grid: which coordinates it uses and where it ends. */
@@ -139,25 +134,23 @@ const computeEdgeProximity = (
 
 const createHorizontalSnapLayout = (
     item: LayoutItem,
-    gridDims: { cols: number; rows: number },
-    defaultHeight: number,
+    gridConfig: GridConfig,
     nearTop: boolean,
 ): LayoutItem => {
-    const layout: LayoutItem = { ...item, x: 0, w: gridDims.cols };
-    layout.h = defaultHeight;
-    layout.y = nearTop ? 0 : gridDims.rows - layout.h;
+    const layout: LayoutItem = { ...item, x: 0, w: gridConfig.cols };
+    layout.h = gridConfig.defaultHeight;
+    layout.y = nearTop ? 0 : gridConfig.rows - layout.h;
     return layout;
 };
 
 const createVerticalSnapLayout = (
     item: LayoutItem,
-    gridDims: { cols: number; rows: number },
-    defaultWidth: number,
+    gridConfig: GridConfig,
     nearLeft: boolean,
 ): LayoutItem => {
-    const layout: LayoutItem = { ...item, y: 0, h: gridDims.rows };
-    layout.w = defaultWidth;
-    layout.x = nearLeft ? 0 : gridDims.cols - layout.w;
+    const layout: LayoutItem = { ...item, y: 0, h: gridConfig.rows };
+    layout.w = gridConfig.defaultWidth;
+    layout.x = nearLeft ? 0 : gridConfig.cols - layout.w;
     return layout;
 };
 
@@ -177,8 +170,7 @@ export const applyDragSnap = (
         if (newItem.x > 0 || newItem.w < gridCols) {
             return createHorizontalSnapLayout(
                 newItem,
-                { cols: gridCols, rows: gridRows },
-                gridConfig.defaultHeight,
+                gridConfig,
                 proximity.nearTop,
             );
         }
@@ -186,8 +178,7 @@ export const applyDragSnap = (
         if (newItem.y > 0 || newItem.h < gridRows) {
             return createVerticalSnapLayout(
                 newItem,
-                { cols: gridCols, rows: gridRows },
-                gridConfig.defaultWidth,
+                gridConfig,
                 proximity.nearLeft,
             );
         }
@@ -196,14 +187,19 @@ export const applyDragSnap = (
     return null;
 };
 
+/** The four drag-target edges of the grid, in render order. */
+export const EDGE_ZONES = ["top", "bottom", "left", "right"] as const;
+
+export type EdgeZone = (typeof EDGE_ZONES)[number];
+
 /** Edge zones highlighted while dragging near an edge. */
 export const computeActiveEdgeZones = (
     newItem: LayoutItem,
     gridConfig: GridConfig,
-): Set<string> => {
+): Set<EdgeZone> => {
     const { cols: gridCols, rows: gridRows } = gridConfig;
     const proximity = computeEdgeProximity(newItem, gridCols, gridRows);
-    const edges = new Set<string>();
+    const edges = new Set<EdgeZone>();
 
     if (proximity.nearTop) edges.add("top");
     if (proximity.nearBottom) edges.add("bottom");

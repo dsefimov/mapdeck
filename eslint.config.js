@@ -261,7 +261,7 @@ export default [
                         {
                             group: ["mobx", "mobx-react-lite", "mobx-react-lite/*"],
                             message:
-                                "Stores are not for the generic kit — the WidgetGrid precedent (AGENTS) is the only reactive consumer.",
+                                "Stores are not for the generic kit — data arrives through props.",
                         },
                     ],
                 },
@@ -277,47 +277,6 @@ export default [
                     selector: "ExportSpecifier[exported.name='default'], ExportSpecifier[exported='default']",
                     message:
                         "The ui kit exports named symbols only — no default re-exports.",
-                },
-            ],
-        },
-    },
-
-    // The one sanctioned reactive kit consumer: the grid renders
-    // store-driven layouts (WidgetGrid precedent, AGENTS dependency graph).
-    {
-        files: ["src/core/ui/composites/widget-grid/**/*.ts", "src/core/ui/composites/widget-grid/**/*.tsx"],
-        rules: {
-            "no-restricted-imports": [
-                "error",
-                {
-                    patterns: [
-                        {
-                            group: [
-                                "@core/common",
-                                "@core/common/*",
-                                "@core/domain",
-                                "@core/domain/*",
-                                "@core/contracts",
-                                "@core/contracts/*",
-                                "@core/shell",
-                                "@core/shell/*",
-                                "@core/store-registry",
-                            ],
-                            message:
-                                "The ui kit imports lib only — inject stores and vocabulary through structural props.",
-                        },
-                        {
-                            group: [
-                                "**/app/**",
-                                "@widgets/*",
-                                "@layer-tools/*",
-                                "@map-tools/*",
-                                "@modules/*",
-                            ],
-                            message:
-                                "The ui kit must not know the application or its extensions.",
-                        },
-                    ],
                 },
             ],
         },

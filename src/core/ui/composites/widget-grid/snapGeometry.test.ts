@@ -13,6 +13,8 @@ const ROWS = 20;
 const GRID: GridConfig = {
     cols: COLS,
     rows: ROWS,
+    margin: [8, 8],
+    containerPadding: [8, 8],
     defaultWidth: 3,
     defaultHeight: 4,
 };
@@ -29,9 +31,10 @@ const item = (over: Partial<LayoutItem>): LayoutItem => ({
 describe("calculateRowHeight", () => {
     it("fits the rows into the container minus padding and margins", () => {
         const height = calculateRowHeight(1000, {
+            ...GRID,
+            rows: 10,
             margin: [8, 8],
             containerPadding: [10, 10],
-            rows: 10,
         });
         // 1000 - 2*10 - 9*8 = 908; 908 / 10 = 90.8
         expect(height).toBeCloseTo(90.8);

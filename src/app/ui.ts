@@ -6,7 +6,8 @@
  * needs, nothing that is application chrome. Grid shells
  * (`WidgetGrid`, `WidgetShell`) and boot screens (`ErrorScreen`,
  * `LoadingScreen`, `ErrorBoundary`) stay internal — they render inside
- * the library's own root component, and the grid is store-driven.
+ * the library's own root component, which wires the grid to the widget
+ * store.
  */
 
 export {
