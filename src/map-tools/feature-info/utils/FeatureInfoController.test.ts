@@ -1,7 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FeatureInfoController } from "./FeatureInfoController";
 import type { FeatureInfoAttachDeps } from "./FeatureInfoController";
 import { FeatureInfoStore } from "./FeatureInfoStore";
+import { showClickMarker } from "./clickMarker";
+import type { Feature } from "@core/contracts";
+
+afterEach(() => {
+    vi.clearAllMocks();
+});
 
 vi.mock("maplibre-gl", () => ({
     default: {
@@ -24,7 +30,7 @@ vi.mock("@deck.gl/core", () => ({
     COORDINATE_SYSTEM: { LNGLAT: 1 },
 }));
 
-type Provider = { collect: (params: unknown) => Promise<never[]> };
+type Provider = { collect: (params: unknown) => Promise<Feature[]> };
 
 function makeDeps(
     provider: Provider,
@@ -76,16 +82,27 @@ describe("FeatureInfoController", () => {
         expect(store.loading).toBe(true);
     });
 
-    it("detach settles the loading flag of the collection it aborts", () => {
+    it("a remount between activation and result keeps the collection alive", async () => {
+        const settle: { resolve: (features: Feature[]) => void } = {
+            resolve: () => {},
+        };
         const provider: Provider = {
-            collect: () => new Promise(() => {}),
+            collect: () =>
+                new Promise<Feature[]>((resolve) => {
+                    settle.resolve = resolve;
+                }),
         };
         const { controller, store, deps } = makeDeps(provider, POINT);
+
         controller.attach(deps);
-        expect(store.loading).toBe(true);
-
+        // The transient unmount/remount React dev mode runs between an
+        // activation and its result.
         controller.detach();
+        controller.attach(deps);
 
-        expect(store.loading).toBe(false);
+        settle.resolve([]);
+        await vi.waitFor(() => expect(store.loading).toBe(false));
+
+        expect(showClickMarker).toHaveBeenCalledTimes(2);
     });
 });

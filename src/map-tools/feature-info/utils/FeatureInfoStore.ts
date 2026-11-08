@@ -1,5 +1,6 @@
 import { makeAutoObservable } from "mobx";
 import type { FeatureGroup } from "@core/contracts";
+import type { ClickPosition } from "./clickMarker";
 
 /**
  * Observable results of a feature-info session. Lives in the state
@@ -10,6 +11,7 @@ export class FeatureInfoStore {
     selectedIndex = 0;
     loading = false;
     hasClicked = false;
+    lastPoint: ClickPosition | null = null;
 
     constructor() {
         makeAutoObservable(this);
@@ -30,8 +32,9 @@ export class FeatureInfoStore {
     }
 
     /** A map click opened a new session: previous results are dropped. */
-    markClicked(): void {
+    markClicked(point: ClickPosition): void {
         this.hasClicked = true;
+        this.lastPoint = point;
         this.selectedIndex = 0;
     }
 }

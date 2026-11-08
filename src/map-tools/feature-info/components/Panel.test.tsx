@@ -63,7 +63,7 @@ afterEach(cleanup);
 describe("FeatureInfoComponent layer dropdown", () => {
     it("switches the selected group through the store", async () => {
         const store = new FeatureInfoStore();
-        store.markClicked();
+        store.markClicked({ lng: 30, lat: 50 });
         store.setGroups([group("towers"), group("wires")]);
         renderPanel(store);
 

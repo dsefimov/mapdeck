@@ -24,7 +24,9 @@ export interface FeatureInfoAttachDeps {
  * Interaction orchestration of the feature-info tool:
  * map click handling, the pending-point reaction, supersede-abort of
  * in-flight collections, and the click marker's lifetime. The panel is a
- * thin observer; session state lives in FeatureInfoStore.
+ * thin observer; session state lives in FeatureInfoStore. A collection
+ * belongs to the session, not to a mount: it is cancelled only by a newer
+ * click, so a transient remount never drops the activation query.
  */
 export class FeatureInfoController {
     private deps: FeatureInfoAttachDeps | null = null;
@@ -36,6 +38,9 @@ export class FeatureInfoController {
         this.deps = deps;
 
         deps.map.on("click", this.handleMapClick);
+        if (deps.store.lastPoint) {
+            showClickMarker(deps.store.lastPoint, deps.overlayManager);
+        }
         this.disposePending = reaction(
             () => deps.context.mapToolState.pendingPoint,
             (pending) => {
@@ -58,11 +63,6 @@ export class FeatureInfoController {
 
         deps.map.off("click", this.handleMapClick);
         removeClickMarker(deps.overlayManager);
-        if (this.abort) {
-            this.abort.abort();
-            this.abort = null;
-            deps.store.setLoading(false);
-        }
         this.disposePending?.();
         this.disposePending = null;
         this.deps = null;
@@ -91,7 +91,7 @@ export class FeatureInfoController {
             { lng: lngLat.lng, lat: lngLat.lat },
             deps.overlayManager,
         );
-        deps.store.markClicked();
+        deps.store.markClicked({ lng: lngLat.lng, lat: lngLat.lat });
         deps.store.setLoading(true);
 
         void new FeatureCollector(deps.context.featureProviders)
