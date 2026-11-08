@@ -24,6 +24,7 @@ export const SwitchInput: (props: SwitchInputProps) => ReactNode = ({
     const field = useFieldAria();
     return (
         <label
+            htmlFor={id}
             className={cn(styles.switch, disabled && styles.disabled, className)}
         >
             <input
