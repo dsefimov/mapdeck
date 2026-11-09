@@ -7,7 +7,8 @@ known limitations. The README keeps a short summary of this page.
 
 - A browser with WebGL2 — both MapLibre GL and deck.gl require it. This excludes
   browsers without hardware or software WebGL2 support.
-- The package targets evergreen browsers; there is no legacy (ES5/UMD) build.
+- No legacy (ES5/UMD) build is provided. Minimum browser versions are not
+  formally specified — WebGL2 support is the practical baseline.
 
 ## Host requirements
 
@@ -32,11 +33,16 @@ known limitations. The README keeps a short summary of this page.
 
 ## Content Security Policy
 
-A page with a CSP needs at least:
+A page with a CSP will typically need to allow:
 
 - `connect-src`: the data source endpoints, the tile/feature endpoints the sources
   use, and the WASM decoder URL for point clouds;
 - `worker-src blob:`: the point-cloud decode worker is inlined as a blob URL.
+
+The exact policy depends on the enabled protocols and the host deployment, and a
+browser's WebAssembly compilation may require further directives — verify the
+deployed configuration against a production build rather than treating the list
+above as complete.
 
 ## MobX configuration
 
