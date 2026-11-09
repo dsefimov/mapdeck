@@ -98,5 +98,5 @@ to direct navigation, a failed point-cloud recolor keeps the current colors unti
 next scheme change, and picking falls back to surface coordinates. Each site carries
 a comment in the source.
 
-The library installs no global handlers — the host owns `window.onerror` and
-`unhandledrejection`.
+The library does not install global error handlers; the host owns `window.onerror`
+and `unhandledrejection`.

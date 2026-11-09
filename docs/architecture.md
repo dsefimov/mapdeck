@@ -84,8 +84,9 @@ Data flows through the following components: a source adapter creates the layer 
 the snapshot resolves layer configurations into render descriptors, and the layer
 manager updates the rendering backends.
 
-1. **Source.** The `SourceAdapter` port (`fetchRoot`/`fetchChildren`) is the tree's
-   only way to the data. The source adapter classifies its assets; priority-ordered
+1. **Source.** The `SourceAdapter` port (`fetchRoot`/`fetchChildren`) is the
+   interface through which the layer tree retrieves source data. The source adapter
+   classifies its assets; priority-ordered
    rules claim each asset, and slot fitness picks the binding (ADR-0018). The boundary
    between source, protocol and core is ADR-0009.
 2. **Layer tree.** `LayerTreeStore` holds nodes in observable maps; the domain
@@ -123,8 +124,8 @@ within the COPC protocol module (ADR-0011).
 - Best-effort paths (report download, point-cloud recolor, picking fallback) degrade
   quietly, with a comment at each site.
 
-The library installs no global handlers — the host owns
-`window.onerror`/`unhandledrejection`.
+The library does not install global error handlers; the host owns `window.onerror`
+and `unhandledrejection`.
 
 ## Source code organization
 

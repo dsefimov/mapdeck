@@ -6,7 +6,7 @@ is in [extensions.md](extensions.md).
 
 ## Source adapters and protocols
 
-Two different jobs:
+A source adapter and a protocol have separate responsibilities:
 
 - A **source adapter** discovers and represents a source's content: it loads the
   catalog hierarchy, classifies its **assets**, routes them through the asset mapping,

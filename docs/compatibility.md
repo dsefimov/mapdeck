@@ -1,7 +1,7 @@
 # Compatibility and limitations
 
-The authoritative list of supported environments, distribution constraints, and
-known limitations. The README keeps a short summary of this page.
+This page documents browser and host requirements, package constraints and known
+limitations. The README provides a short summary.
 
 ## Browser baseline
 
@@ -26,10 +26,10 @@ known limitations. The README keeps a short summary of this page.
 - **ESM only.** There is no CommonJS entry; a `require()` consumer (Jest without
   ESM setup, SSR pipelines) cannot import the package without tooling changes.
 - **No SSR.** Rendering assumes a browser DOM and WebGL.
-- **One instance per page.** The theme root is a page-level singleton, so one
-  `MapdeckRoot` per page; two independent embedded instances are not supported.
-- **Viewport-sized workspace.** The workspace fills the browser viewport
-  (`100vw`/`100vh`); embedding into a smaller container overflows it.
+- **One instance per page.** The theme root is a page-level singleton, so two
+  independent `MapdeckRoot` instances are not supported.
+- **Viewport-sized workspace.** The workspace uses the browser viewport
+  (`100vw`/`100vh`); embedding it in a smaller container may cause overflow.
 
 ## Content Security Policy
 

@@ -1,9 +1,9 @@
 # Extending mapdeck
 
-A practical guide for extension modules — the code a host application adds on top
-of the embedded library. The decision records live in `docs/adr/`; the full contract
-reference (every context member, registration policy, type inventory) is
-[docs/api/extensions.md](api/extensions.md); this page is the how-to.
+This guide shows how to add modules and extensions to an embedded Mapdeck instance.
+Architecture decisions are recorded in `docs/adr/`. The complete extension contract,
+including context members, registration policy and public types, is documented in
+[docs/api/extensions.md](api/extensions.md). This guide focuses on integration examples.
 
 ## Package entry points
 
@@ -17,7 +17,7 @@ reference (every context member, registration policy, type inventory) is
 
 ## Source adapters and protocols
 
-Two different jobs, often confused:
+A source adapter and a protocol have separate responsibilities:
 
 - a **source adapter** discovers a source's content (a STAC catalog) and builds the
   layer tree: groups, layers, bindings, capabilities;
@@ -90,7 +90,7 @@ see [Cleanup and ownership](api/extensions.md#cleanup-and-ownership).
 
 ## A map tool with a panel
 
-The walkthrough above is the complete recipe; the points that matter:
+The walkthrough above is the complete recipe. Key integration details:
 
 - A panel receives `{ context, map, overlayManager, deactivate }`. `map` is the raw
   MapLibre instance — the documented platform-technology exception (ADR-0006);
@@ -150,7 +150,7 @@ family (ADR-0004).
 
 A protocol names how a source renders. Register it with its asset-mapping
 declaration — slot fitness (which node slots it serves and how well) and matching
-rules (which assets it claims) arrive with the protocol in one call:
+rules (which assets it claims) can be registered with the protocol in one call:
 
 ```ts
 import type { Module } from "mapdeck";
@@ -237,12 +237,12 @@ export const terrainModule: Module = {
 };
 ```
 
-Adapters come in two families: native MapLibre layers (as above,
-`nativeLayerOrdering: true`) and overlay layers that draw through
-`ctx.overlayManager` (deck.gl) — the same split the built-ins use
-([api/extensions.md](api/extensions.md#protocol-and-layeradapter)). `ctx.map` in the
-adapter is the MapLibre instance; type it with your own `maplibre-gl@^5`
-dependency, as above.
+Adapters support two rendering paths: native MapLibre layers
+(`nativeLayerOrdering: true`) and overlay layers that draw through
+`ctx.overlayManager` (deck.gl) — the same two integration paths used by the
+built-in adapters ([api/extensions.md](api/extensions.md#protocol-and-layeradapter)).
+`ctx.map` in the adapter is the MapLibre instance; type it with your own
+`maplibre-gl@^5` dependency.
 
 Assets come from the source adapter (the built-in STAC tree maps item assets
 through the same asset mapper), so a protocol registered this way receives nodes
@@ -293,14 +293,14 @@ No registry change is needed.
 
 A module registers its own `SourceAdapter`
 (`context.sourceAdapterFactory.register`) when the data source is not STAC at all;
-the full contract (initialization from the `layer-tree.data-source-url` setting,
+the adapter contract (initialization from the `layer-tree.data-source-url` setting,
 root/children fetching, node construction) is in
 [api/extensions.md](api/extensions.md#source-adapters). The built-in `stac` adapter
 can be replaced the same way — register an adapter of type `"stac"` with
 `{ override: true }`; the replacement then owns the whole catalog-to-tree mapping,
 including asset routing and capability assignment.
 
-## Registration order, duplicates, overrides
+## Registration order and overrides
 
 Built-ins register first, modules in array order, then `settingsOverrides` apply
 and the source fetch runs (ADR-0005). Registries throw on a duplicate id; a

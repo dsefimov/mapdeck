@@ -1,8 +1,7 @@
 # Glossary
 
-Domain terms used across the docs and the code. This file fixes the meaning of
-terms that are specific to Mapdeck or easy to confuse; the public type shapes are
-the reference and live in [docs/api/extensions.md](api/extensions.md).
+Definitions of domain terms used throughout the documentation and code. Public type
+shapes are documented in [docs/api/extensions.md](api/extensions.md).
 
 A layer tool acts on a single tree node; a map tool acts on the map as a whole. The two
 entities are distinct: different stores, different availability rules, different ADRs.

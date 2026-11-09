@@ -35,12 +35,11 @@ dependency rule "`lib` imports nothing" adds a case to square: the geo math in
 The license-check allowlist (`npm run license-check`) is the enforcement common to all
 groups: small, permissive licenses only.
 
-**When a dependency needs an ADR.** The bar is the trigger list in `AGENTS.md`,
-restated for dependencies: a package that changes the architecture, a public contract
-or the execution model, or that materially affects the package's size or compatibility,
-gets an ADR — it names the package, its license and the architectural record it rides,
-if any. An ordinary dependency goes through code review; `npm run license-check` and
-the review verify its license and purpose.
+**When a dependency needs an ADR.** A package requires an ADR if it changes the
+architecture, a public contract or the execution model, or materially affects
+package size or compatibility. The ADR records the package, its license and any
+related architectural decision. An ordinary dependency goes through code review;
+`npm run license-check` and the review verify its license and purpose.
 
 **"`lib` imports nothing" means project layers and frameworks.** The rule has two
 precise parts, and the eslint zone for `lib` enforces exactly them: no upper layer of

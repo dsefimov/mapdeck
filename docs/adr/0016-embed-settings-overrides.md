@@ -32,8 +32,8 @@ precedence, validation, restart — is documented in
 
 A generic dictionary, not a narrow `dataSourceUrl` option: the core carries no
 constants naming a concrete extension (ADR-0004 contract hygiene), so the facade must
-not hardcode knowledge of the layer-tree setting; the same mechanism serves any future
-deployment value (e.g. a deployment's default basemap).
+not hardcode knowledge of the layer-tree setting; the same mechanism can support
+additional deployment-specific values (e.g. a deployment's default basemap).
 
 ## Consequences
 

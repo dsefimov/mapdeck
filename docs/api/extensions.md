@@ -194,7 +194,7 @@ never by protocol id (ADR-0012).
 
 ## Settings
 
-Declared by their owner; values validate against the metadata. The full contract —
+Declared by their owner; values validate against the metadata. The complete contract —
 kinds, defaults, validation, override policy, and the `settingsOverrides` channel —
 is in [configuration.md](configuration.md).
 

@@ -12,8 +12,8 @@ ties protocols to that one source: a consumer can register a protocol
 (`context.protocols.register`), yet no asset routes to it — no matching rule, no
 fitness entry (`unknown protocol id → report row`); Terrain-3D and WFS-3D protocols
 would render nothing. A port on a source module is rejected for the same reason: it
-would tie every protocol module to that source. The seam belongs in the protocols
-domain, where protocol modules already register.
+would couple every protocol module to that source. This boundary belongs in the
+protocols domain, where protocol modules already register.
 
 ## Decision
 

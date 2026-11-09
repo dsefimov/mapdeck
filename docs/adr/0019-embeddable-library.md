@@ -30,11 +30,11 @@ too, but the embed facade owns map creation: a host touches the engine through
 `MapContext` ports and tools (ADR-0010), not by importing the engine alongside the
 library. Peering MapLibre and deck.gl would make every host install and version-align
 two heavyweight packages it never imports; depending on them keeps
-`npm install mapdeck` self-sufficient. The cost is named in Consequences: the engine is
-not public surface. `react-grid-layout` follows the same policy — its React peer
-resolves against the host's copy under normal dedupe, and a host pinning a React
-outside its range gets a package-manager conflict at install time, not broken hooks at
-runtime.
+`npm install mapdeck` self-sufficient. The trade-off is described in Consequences:
+the engine is not public surface. `react-grid-layout` follows the same policy — its
+React peer resolves against the host's copy under normal dedupe, and a host pinning
+a React outside its range gets a package-manager conflict at install time, not
+broken hooks at runtime.
 
 **Prebuilt ESM, one format.** The package ships unminified ESM; minification belongs to
 the host's bundler. ESM is the only format; there is no CommonJS entry.
@@ -54,7 +54,7 @@ Importing `mapdeck/styles.css` is part of the integration contract.
 `src/app/`, each with its own build entry. The `exports` map lists importable entry
 points; the rest of `package.json` (metadata, dependency declarations) is not an API.
 The composition and stability guard of the helper subpaths live in ADR-0017; this
-record is the packaging foundation they ride.
+record defines the package structure used by these assets.
 
 **The only file asset is the wasm.** `laz-perf.wasm` ships as a copy of the library's
 `laz-perf` dependency — its version is locked by the manifest, never chosen by the
