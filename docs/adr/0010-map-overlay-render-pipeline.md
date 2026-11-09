@@ -4,9 +4,10 @@ Status: Accepted · Date: 2026-09-22
 
 ## Context
 
-The map domain turns the layer tree's snapshot into rendered layers. Rendering happens
-on two backends: native MapLibre layers (raster and vector formats) and a deck.gl overlay
-(point clouds). The core must treat both uniformly — the tree, the tools and the sync
+The map domain turns the layer tree's snapshot into rendered layers. Rendering uses
+native MapLibre layers for raster and vector tile formats, and a deck.gl overlay
+for point clouds and feature layers rendered outside MapLibre's native layer
+model. The core must treat both uniformly — the tree, the tools and the sync
 loop work on nodes, not on backends — so the render pipeline knows neither protocols nor
 deck.gl: its input is the structural snapshot (ADR-0008), resolved to descriptors by the
 tree, and its output passes through two narrow ports. The sync problem is the hard part:
@@ -32,10 +33,10 @@ from the map: the flow is map → protocol adapter, never the reverse.
 **The overlay is a port, not a dependency.** `OverlayManager`
 (`contracts/domain/map-context.ts`) is the thin port for the second backend:
 attach/detach, layer lifecycle (`addLayer`, `removeLayer`, `updateLayer`,
-`setLayerVisibility`), and queries (`getMap`, `pickObject`, `pickObjects`). Two kinds of
-consumers use it: the render pipeline (the point-cloud adapter draws through it) and map
-tools (measurement and marker layers attach through it directly, outside the layer
-manager). `DeckOverlayManager` implements the port over a `MapboxOverlay` in interleaved
+`setLayerVisibility`), and queries (`getMap`, `pickObject`, `pickObjects`). The render
+pipeline uses the port for protocols rendered through deck.gl — point clouds and
+feature layers. Map tools also use it directly for measurement and marker
+layers, outside the layer manager. `DeckOverlayManager` implements the port over a `MapboxOverlay` in interleaved
 mode; property updates are batched through a microtask, and picking queries are answered
 from public MapLibre state.
 
@@ -48,12 +49,12 @@ protocol engines (COPC's viewport manager) ask about the camera through them wit
 importing deck, and a second overlay implementation is spared camera math it does not
 own. MapStore builds the context atomically when a map exists, and adapters receive it
 per method call. The manager-provided context always supplies `reportLayerError` — a
-closure into `LayerManager.handleLayerError`; adapters call it defensively and log the
+closure into the manager's error channel; adapters call it defensively and log the
 failure themselves in all cases, because the channel is transport: the map relays
 protocol errors, it does not own them.
 
-**The snapshot resolves descriptors; unrenderable ones are excluded.** The tree's
-`toSnapshotItems` resolves each layer node's renderer binding through
+**The snapshot resolves descriptors; unrenderable ones are excluded.** The tree
+resolves each layer node's renderer binding through
 `protocol.createRenderDescriptor` (node style merged over the protocol default —
 ADR-0009) and skips nodes whose protocol id is not registered or whose resolved
 descriptor has an empty source URL. An unrenderable node stays in the tree and produces
@@ -61,7 +62,7 @@ no map layer; the tree marks such nodes as unsupported, so an inert node is visi
 inert (ADR-0008). A broken assignment is a source-side defect: the source adapter owns
 its diagnostics (the ADR-0009 assignment check covers the unregistered-protocol case).
 Descriptors are computed values, never stored on the node. The snapshot stays the one
-signal: the layer manager reacts to `treeStore.layerSnapshot` and to nothing else.
+signal: the layer manager reacts to the snapshot and to nothing else.
 
 **Render units: one node becomes one unit; grouping is protocol-owned.** A render unit
 is `{id, nodeIds, protocolId, adapter, descriptor}` — the batch of nodes drawn together
@@ -71,27 +72,26 @@ result to every protocol's optional `groupRenderUnits` hook, which mutates the u
 Grouping semantics live in the protocol; the manager applies whatever the map contains
 after the hooks.
 
-**The sync loop is a full-diff reaction.** The manager observes the snapshot, waits for
-the map to load (or for a map replacement), and on every change classifies the difference
-between current and desired units — added, removed, shown, hidden, updated — and applies
-it in a fixed order. The central semantic: a visibility-only change never tears a unit
-down — a hidden unit retains its loaded resources, a shown unit is re-shown without a
-re-add. The no-teardown guarantee is per unit: a change that alters group membership
-recreates the group; grouped units are raster layers without loaded resources, while the
-backends that hold loaded data (point clouds) are never grouped. A descriptor change on
-a live unit yields "updated": descriptors are immutable by construction, and
-`updateConfig` mutates backend state, not the descriptor — the adapter may update visual
-properties in place, otherwise it falls back to remove+add.
+**The sync loop reconciles rendered layers with the snapshot.** The manager observes
+the snapshot, waits for the map to load (or for a map replacement), and on every change
+brings the registered units back in line with it, applying visibility and configuration
+changes without recreating units the adapter can update in place. The central semantic:
+a visibility-only change never tears a unit down — a hidden unit retains its loaded
+resources, a shown unit is re-shown without a re-add. The no-teardown guarantee is per
+unit: a change that alters group membership recreates the group; grouped units are
+raster layers without loaded resources, while the backends that hold loaded data (point
+clouds) are never grouped. A descriptor change on a live unit goes through
+`updateConfig`, which mutates backend state — the adapter may update visual properties
+in place, otherwise it falls back to remove+add. The diff classification and operation
+ordering are implementation details covered by the layer-manager tests.
 
 **Async failures: report, unregister, gated retry, per-node errors.** When an add throws
-or a unit reports failure through `reportLayerError`, the manager logs, unregisters the
-unit, records it as failed, and surfaces a per-node render error in the tree
-(`treeStore.reportRenderError` — the render channel of ADR-0008); a successful add or
-remove clears the node's error. An update failure is lighter: the manager logs it and
-keeps the unit registered with its previous descriptor; when the descriptors still
-differ on the next sync, the unit is classified as updated again — that is the retry. A
-failed unit re-adds only when something changed that could fix it — its nodes were
-hidden at the last refresh, or its descriptor differs — never in a blind loop.
+or a unit reports failure through `reportLayerError`, the manager unregisters the unit,
+records it as failed, and surfaces a per-node render error in the tree (the render
+channel of ADR-0008); a successful add or remove clears the node's error. An update
+failure is lighter: the unit stays registered with its previous descriptor and is
+picked up again on the next sync — that is the retry. A failed unit re-adds only when
+something changed that could fix it, never in a blind loop.
 
 **MapStore owns the map lifecycle.** `setMap` disposes the previous layer manager,
 attaches the overlay, and constructs the manager; `dispose` reverses the sequence. The

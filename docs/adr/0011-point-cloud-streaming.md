@@ -23,57 +23,49 @@ requests, CORS, the WebAssembly decoder — are documented in
 
 ## Decision
 
-**The engine is a cycle: select, evict, plan, load, render.** A camera change (debounced
-`moveend`/`zoomend`/`pitchend`) triggers one cycle. The camera position, the active
-viewport and the frustum planes are read through the map context (ADR-0010); the engine
-names no deck import. Cycles are single-flight: a request that arrives mid-cycle
-supersedes it, and a failed cycle recovers into the next request. The cycle traverses
-the octree top-down and selects nodes by screen-space error, cancels stale loads, evicts,
-plans a load batch within the budget, awaits the drain, and commits the render. The
-traversal, priority, geometry and eviction algorithms live in `engine/` with colocated
-tests; the decisions that outlive their code:
+**The engine is a cycle: select, evict, plan, load, render.** A debounced camera change
+triggers one cycle. The camera position, the active viewport and the frustum planes are
+read through the map context (ADR-0010); the engine names no deck import. Cycles are
+single-flight: a request that arrives mid-cycle supersedes it, and a failed cycle
+recovers into the next request. The cycle traverses the octree top-down and selects
+nodes by screen-space error, cancels stale loads, evicts, plans a load batch within the
+budget, awaits the drain, and commits the render. The traversal, priority, geometry and
+eviction algorithms live in `engine/` with colocated tests; the decisions that outlive
+their code:
 
 - The hierarchy loads lazily, one page per request — the first points render after the
   root page, not a full-tree walk.
 - Distances are meters throughout; degree-valued spacing converts at the extent's center
   latitude; screen-space error is divided by the device pixel ratio.
-- Priority is one comparable number packed from normalized criteria in a fixed order
-  (foveated dominates, depth breaks ties).
+- Priority is a single comparable number — foveated selection dominates, depth breaks
+  ties.
 
-**Budget is counted in points, and eviction serves the current view.** `pointBudget`
+**Budget is counted in points, and eviction serves the current view.** The point budget
 caps the total points across loaded and loading nodes; the adapter sets the baseline
 once at initialization. Eviction runs before planning, targets the unmet demand of the
 current candidates, and ranks victims farthest from the viewport rectangle first; this
 cycle's candidates are untouchable, and a loaded parent whose region is still loading
-stays as the fallback renderer (`engine/eviction/`). Evicted nodes move to a
-byte-budgeted decoded LRU (`DecodedNodeCache`, `decodedCacheBytes`, default 256 MiB); a
-reload restores the payload without refetch or decode.
+stays as the fallback renderer. Evicted nodes move to a byte-budgeted decoded-node
+cache; a reload restores the payload without refetch or decode.
 
 **The render path is a two-part frame: a committed base plus a streaming part.** After
 each cycle's drain the executor computes the visible set — the frustum pass, then the
-SSE pass — and packs per-node typed arrays into contiguous buffers
-(`RenderBufferPool`, positions as offsets from the coordinate origin). The base envelope
+SSE pass — and packs per-node typed arrays into contiguous buffers. The base envelope
 keeps its object reference between pushes, so a renderer holding it skips the re-upload;
 nodes streamed since the last commit pack into a small incoming part, and a commit folds
-the incoming part into a fresh base. The adapter runs two deck layers — the bare id and
-`<id>-incoming`; picking normalizes back to the tree layer id
-(`stripPointCloudLayerSuffix` in contracts). There are no per-node deck layers. Frame
+the incoming part into a fresh base. There are no per-node deck layers; picking
+normalizes back to the tree layer id (`stripPointCloudLayerSuffix` in contracts). Frame
 envelopes are views into pool-owned memory, valid until the next push (the contract on
 `PointCloudFrame`).
 
 **Decode runs in a worker pool; reads are bounded.** The main thread only fetches a
 node's compressed bytes; laz-perf decompression, raw extraction, reprojection and color
-derivation run in the pool's process job (`WorkerPool`, created inside
-`loader.initialize()`; every worker request carries a timeout ceiling that rejects,
-terminates and respawns a wedged worker; dispose rejects everything still pending).
-Every read goes through bounded getters that rebuild copc.js's range wire format, giving
-each request a ceiling and a real `AbortError` on cancellation; copc.js's own fetch path
-is never used. Range requests are sent `no-store`: ranges are unique bytes, and Chrome's
-disk cache intermittently fails ranged responses. The wasm URL is absolutized against
-the page (inline-blob workers cannot resolve relative URLs); the pool queue is
-priority-ordered (interactive recolors ahead of bulk). File and ArrayBuffer sources
-become buffer getters; the point worker always allocates intensity and classification
-arrays — zeros when the source has no channel — so packing stays uniform.
+derivation run in workers. Every read goes through bounded getters that rebuild
+copc.js's range wire format, giving each request a ceiling and a real `AbortError` on
+cancellation; copc.js's own fetch path is never used. Range requests bypass the HTTP
+cache — browser disk caches intermittently fail ranged responses. The wasm URL is
+absolutized against the page (inline-blob workers cannot resolve relative URLs). A
+wedged worker is terminated and replaced; dispose rejects everything still pending.
 
 **Failures: report once, then the channels take over.** An initialization failure
 reports through `reportLayerError`. An `addToMap` failure destroys the unit and rethrows
@@ -82,9 +74,9 @@ the node errored — protected from eviction — and retries with exponential ba
 resets on success. Cancellation aborts the in-flight range request; one in-flight load
 per node key.
 
-**Picking works through the overlay port.** `picking.ts` extracts a picked point from
-the packed buffers, and `OverlayFeatureProvider` implements the shared `FeatureProvider`
-contract over the port's `pickObjects`/`pickObject` queries, falling back to the picked
+**Picking works through the overlay port.** A feature provider implements the shared
+`FeatureProvider` contract over the port's `pickObjects`/`pickObject` queries,
+extracting the picked point from the packed buffers and falling back to the picked
 GeoJSON object for non-point layers.
 
 ## Consequences
