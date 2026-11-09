@@ -24,7 +24,7 @@ Two different jobs, often confused:
 - a **protocol** defines how one node's data is requested and rendered (raster
   tiles, GeoJSON, a point cloud).
 
-A module may register either or both. The built-in STAC adapter and the eight
+A module may register either or both. The built-in STAC adapter and the supported
 built-in protocols are described in [docs/api/protocols.md](api/protocols.md).
 
 ## End-to-end walkthrough
@@ -39,13 +39,11 @@ import { createMapdeck, MapdeckRoot, createToolPanelWidget } from "mapdeck";
 import type { Module, MapTool } from "mapdeck";
 import type { MapToolComponentProps } from "mapdeck/contracts";
 import { ToolPanel } from "mapdeck/ui";
-import { useState } from "react";
 
 // 1. The tool's panel — a plain component over the tool context.
 function DistancePanel({ context }: MapToolComponentProps) {
-    const [precision, setPrecision] = useState(2);
-    // read settings through context, draw with mapdeck/ui…
-    return <ToolPanel title="Distance">{/* … */}</ToolPanel>;
+    const precision = context.settings.getNumberSetting("precision") ?? 2;
+    return <ToolPanel title="Distance">Precision: {precision}</ToolPanel>;
 }
 
 // 2. The tool and the module that carries it.
@@ -116,11 +114,12 @@ The walkthrough above is the complete recipe; the points that matter:
 ```tsx
 import type { Module } from "mapdeck";
 import type { ReactNode } from "react";
+import { ToolPanel } from "mapdeck/ui";
 
-// The panel factory receives the node id and reads the node from the tree by it.
-function OpacitySlider(nodeId: string): ReactNode {
-    // render a control that reads and writes the node's style override
-    return null;
+// Registration snippet. The component factory's only input is the node id
+// of the layer whose menu opened.
+function MyLayerTool(nodeId: string): ReactNode {
+    return <ToolPanel title="My tool">Node {nodeId}</ToolPanel>;
 }
 
 export const layerToolModule: Module = {
@@ -128,10 +127,10 @@ export const layerToolModule: Module = {
     name: "My layer tools",
     register(context) {
         context.layerTools.registerTool({
-            id: "my-opacity",
-            component: OpacitySlider,
+            id: "my-layer-tool",
+            component: MyLayerTool,
         });
-        context.layerTools.bindToolToProtocol("my-protocol", "renderer", "my-opacity");
+        context.layerTools.bindToolToProtocol("my-protocol", "renderer", "my-layer-tool");
     },
 };
 ```
@@ -140,6 +139,12 @@ The binding is what makes the tool available on nodes of that protocol — the s
 link mechanism the built-ins use. The tool still appears only on nodes whose source
 assigned the capability (ADR-0007/0009); a source built on the built-in STAC
 adapter assigns capabilities for registered links automatically.
+
+The factory receives only the node id. Reading and writing the node's state from
+the component — as the built-in opacity slider does — requires tree access that is
+not yet a public port; the built-ins reach it as library-internal code. A public
+node-state path for layer tools would be a new declared point of the context
+family (ADR-0004).
 
 ## A protocol
 
@@ -259,6 +264,12 @@ implementations; they are repository source code, not part of the npm package.
   values initialize to their defaults; a re-declaration follows the owner's
   explicit-override policy (see [api/configuration.md](api/configuration.md)). Per-
   deployment *values* travel through the `settingsOverrides` embed option.
+- Tool panels read current values through the runtime slice:
+  `context.settings.getNumberSetting(id)` — likewise `getStringSetting` /
+  `getBooleanSetting` — returning the value at call time, or `undefined` for an
+  unknown id or a type mismatch. Setting ids are unique across owners, so the
+  bare id (`"precision"` in the walkthrough) is the read key. There is no change
+  subscription: re-read after a value changes.
 - `context.locale.registerTranslations(namespace, { ru: {...} })` — resolution: the
   current language's dictionary for the namespace, or the whole English dictionary
   when that language has no registration. There is no per-key merge across
