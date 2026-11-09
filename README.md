@@ -175,11 +175,13 @@ rendering, copc.js and laz-perf for point-cloud streaming, Turf for geo math.
 Mapdeck follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The public surface is what the package exports map exposes as importable entries:
 the root entry, `mapdeck/contracts`, `mapdeck/ui`, `mapdeck/utils`,
-`mapdeck/styles.css` and `mapdeck/laz-perf.wasm` (plus `mapdeck/package.json`
-metadata). Changes to these entries — types, behavior or removal — follow semver: a
-breaking change bumps the major version, an additive change bumps the minor.
-Everything the exports map does not expose (`src/core/**` internals, the demo
-application) may change in any release.
+`mapdeck/styles.css`, `mapdeck/laz-perf.wasm` and `mapdeck/package.json`. Changes
+to these entries — types, behavior or removal — follow semver: a breaking change
+bumps the major version, an additive change bumps the minor. The
+`mapdeck/package.json` subpath exposes the manifest itself for introspection; the
+manifest's other fields are not part of the API. Everything the exports map does
+not expose (`src/core/**` internals, the demo application) may change in any
+release.
 
 Two boundary notes. `mapdeck/contracts` references the rendering engines' types —
 `maplibregl.Map` in the tool contexts, deck.gl types in the overlay port — without
