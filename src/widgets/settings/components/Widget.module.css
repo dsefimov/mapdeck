@@ -1,9 +1,5 @@
-.settings {
-    padding: var(--space-8);
-}
-
 .settings__group {
-    padding: var(--space-8);
+    margin-bottom: var(--space-16);
 }
 
 .settings__group:last-child {
