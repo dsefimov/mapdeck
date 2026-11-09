@@ -106,6 +106,8 @@ covered by the [code of conduct](CODE_OF_CONDUCT.md).
      `mapdeck/laz-perf.wasm`; run its TypeScript build against the shipped
      declarations, and compile the code examples from `docs/extending.md`
      against them.
+   - Confirm the package entry points table in `docs/api/index.md` against the
+     `exports` map of the package being released.
    - Smoke-test the installed package in a browser: boot, layer tree, one raster
      layer, one point cloud; check the console.
    - Confirm `npm run license-check` passes.
