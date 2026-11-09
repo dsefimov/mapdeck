@@ -31,11 +31,10 @@ assets, slot fitness picks the slot. A node can carry two protocol bindings —
 | `copc` | COPC point cloud | deck.gl overlay (streamed) | yes — point picking | — | point size, color scheme, class filter |
 | `wfs` | OGC WFS GeoJSON | — (data slot only) | — | yes — GetFeature | — |
 | `ogc-features` | OGC API Features | deck.gl overlay | yes — overlay picking | yes — items paging | colors, line width |
-| `cog` | (see note) | — | — | — | — |
 
-`cog` is registered as a protocol but currently declares no slot fitness and no
-matching rule, so no asset maps to it. It is effectively unreachable pending a
-wiring decision; the raster protocols (`xyz`, `wms`) cover tiled raster sources.
+Cloud Optimized GeoTIFF (COG) is not currently supported by the built-in
+asset-routing pipeline; the raster protocols (`xyz`, `wms`) cover tiled raster
+sources.
 
 PMTiles is not a protocol: `pmtiles://` URLs are handled by a scheme handler
 registered with MapLibre, so tile-URL templates (`xyz`, vector sources) accept them.
