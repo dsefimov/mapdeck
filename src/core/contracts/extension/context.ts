@@ -26,7 +26,10 @@ import type {
 } from "../domain/basemap";
 import type { AssetMappingPort } from "../domain/asset-mapping";
 import type { LocaleApi, LocaleRegistrationPort } from "./locale";
-import type { SettingsRegistrationPort } from "./settings";
+import type {
+    SettingsReadPort,
+    SettingsRegistrationPort,
+} from "./settings";
 import type { MapTool, MapToolStatePort } from "./map-tool";
 import type { LayerTool } from "./layer-tool";
 import type { Widget } from "./widget";
@@ -70,6 +73,7 @@ export interface MapToolRegistrationPort {
 export interface ToolRuntimeContext {
     readonly stateStore: StateStore;
     readonly locale: LocaleApi;
+    readonly settings: SettingsReadPort;
     readonly protocols: ProtocolRegistry;
     readonly featureProviders: FeatureProviderRegistry;
     readonly layerTree: LayerCatalogPort;

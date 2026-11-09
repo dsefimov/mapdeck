@@ -108,6 +108,33 @@ describe("RootStore module context: registration surfaces", () => {
         expect(store.settingsStore.getBooleanSetting("module.flag")).toBe(false);
     });
 
+    it("reads settings through the runtime slice and reflects value changes", () => {
+        const store = new RootStore();
+        const settingId = "module.precision";
+
+        store.moduleContext.settings.registerSettings(
+            "module-owner",
+            "Module owner",
+            [
+                {
+                    id: settingId,
+                    label: "Precision",
+                    type: "number",
+                    defaultValue: 2,
+                },
+            ],
+        );
+
+        expect(store.toolContext.settings.getNumberSetting(settingId)).toBe(2);
+
+        store.settingsStore.setSetting(settingId, 4);
+
+        expect(store.toolContext.settings.getNumberSetting(settingId)).toBe(4);
+        expect(
+            store.toolContext.settings.getNumberSetting("module.unknown"),
+        ).toBeUndefined();
+    });
+
     it("registers basemaps through moduleContext.basemap", async () => {
         const store = new RootStore();
         const moduleBasemap: BaseMapConfig = {

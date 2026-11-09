@@ -87,11 +87,25 @@ export interface SettingsGroup {
 }
 
 /**
- * Registration port over the settings subsystem: what modules
- * declare their settings through. A read port joins the runtime slice when
- * a real reader appears.
+ * Runtime read port over the settings subsystem: what tool panels
+ * consume at runtime. Registration is assembly-time only. Values are read
+ * at call time — there is no change subscription; a getter returns
+ * undefined when the id is unknown or the stored variant does not match.
  */
-export interface SettingsRegistrationPort {
+export interface SettingsReadPort {
+    /** The value of a string or select setting. */
+    getStringSetting(settingId: string): string | undefined;
+    /** The value of a number setting. */
+    getNumberSetting(settingId: string): number | undefined;
+    /** The value of a boolean setting. */
+    getBooleanSetting(settingId: string): boolean | undefined;
+}
+
+/**
+ * Registration port over the settings subsystem: what modules
+ * declare their settings through.
+ */
+export interface SettingsRegistrationPort extends SettingsReadPort {
     /**
      * Declare an owner's settings — values initialize to their defaults.
      * Follows the common registration policy: a colliding id without

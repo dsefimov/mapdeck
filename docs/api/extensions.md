@@ -56,6 +56,7 @@ runtime slice:
 |---|---|---|
 | `stateStore` | keyed instance-state container | per-instance controllers: `get(key, factory)`, `remove(key)`, `peek(key)` |
 | `locale` | locale API | translate: `t(namespace)` returns the current dictionary |
+| `settings` | settings read port | typed value reads: `getStringSetting` / `getNumberSetting` / `getBooleanSetting` |
 | `protocols` | protocol registry (read) | resolve descriptors |
 | `featureProviders` | feature-provider registry (read) | feature-info queries |
 | `layerTree` | layer catalog (read) | nodes, visibility, render errors |
@@ -101,8 +102,8 @@ Register the panel yourself: `context.widgets.registerWidget(createToolPanelWidg
 ## LayerTool
 
 Per-node actions in the tree's "More" menu (ADR-0007). Fields: `id`, `component` (a
-factory `(nodeId: string) => ReactNode` — receives the node id, reads the node from
-the tree), optional `localeTranslations`. A tool reaches nodes only through
+factory `(nodeId: string) => ReactNode` — the node id is its only input), optional
+`localeTranslations`. A tool reaches nodes only through
 `context.layerTools.bindToolToProtocol(protocolId, slot, toolId)`; the source must
 still assign the capability to the node.
 
@@ -196,6 +197,12 @@ never by protocol id (ADR-0012).
 Declared by their owner; values validate against the metadata. The full contract —
 kinds, defaults, validation, override policy, and the `settingsOverrides` channel —
 is in [configuration.md](configuration.md).
+
+The runtime slice reads current values through `context.settings`:
+`getStringSetting(id)` (string and select settings), `getNumberSetting(id)`,
+`getBooleanSetting(id)` — the value at call time, `undefined` for an unknown id or
+a type mismatch. Setting ids are unique across owners, so the bare id is the read
+key; there is no change subscription.
 
 ## Locale
 

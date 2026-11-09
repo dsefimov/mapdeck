@@ -75,4 +75,5 @@ Re-declaring an owner's settings follows the registration policy: a colliding id
 throws unless `{ override: true }` is passed, in which case the new batch replaces
 the owner's previous settings (ids dropped from the batch are removed). Runtime value
 changes go through the same validation and are observable (MobX) — the settings
-widget renders them automatically.
+widget renders them automatically. Runtime consumers read values through the
+context's settings read port ([extensions.md](extensions.md#settings)).

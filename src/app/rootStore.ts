@@ -103,6 +103,7 @@ export class RootStore implements StoreRegistry {
         this.toolContext = {
             stateStore: this.stateStore,
             locale: this.localeStore,
+            settings: this.settingsStore,
             protocols: this.protocolRegistry,
             featureProviders: this.featureProviderRegistry,
             layerTree: this.treeStore,
