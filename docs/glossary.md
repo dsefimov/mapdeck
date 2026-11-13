@@ -88,6 +88,6 @@ optional `fetchAttributes` hook, which feeds the attribute table. See ADR-0009.
 ## Attribute value renderer
 
 The per-kind rendering logic for a rich attribute value (ADR-0021): a `matches`
-predicate plus table-cell and fullscreen-viewer renderings. A value opts in by its
+predicate plus table-cell and viewer-window renderings. A value opts in by its
 own shape (a `kind` tag) — there is no column schema. The first registered renderer
 whose predicate accepts a value renders it, on every attribute surface at once.

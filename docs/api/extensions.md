@@ -194,18 +194,17 @@ table and feature info. The contract:
 - `id: string` — registry key, also the name in duplicate-id errors;
 - `matches(value): boolean` — keep it strict (a `kind` tag plus required field
   types): a loose predicate captures foreign JSON;
-- `renderCell(value, api)` — compact table cell; `api.open()` opens the fullscreen
-  viewer, `api.dict` carries the core dictionary (declare the keys you read);
-- `renderViewer?(value, api)` — fullscreen content inside the system lightbox
-  (scrim, Escape, focus) — return content, not chrome; absent means the cell is
-  not clickable;
-- `toText?(value)` — plain-text form for table filtering (default: JSON);
-- `describe?(value, dict)` — accessible name of the fullscreen dialog.
+- `renderCell(value, api)` — compact table cell; `api.open()` opens the viewer,
+  `api.dict` carries the core dictionary (declare the keys you read);
+- `renderViewer?(value, api)` — content of the viewer window (a maximized
+  widget window with the standard chrome) — return content, not chrome; absent
+  means the cell is not clickable;
+- `toText?(value)` — plain-text form for table filtering (default: JSON).
 
 The built-ins (`photo`, `album` over `PhotoAttributeValue`/`AlbumAttributeValue`)
 demonstrate the shape: a feature property
 `{ kind: "photo", url, thumbnailUrl?, title?, description? }` renders as a
-thumbnail opening into a fullscreen photo; `{ kind: "album", photos: [...], title? }`
+thumbnail opening into the viewer window; `{ kind: "album", photos: [...], title? }`
 opens into a carousel with a thumbnail filmstrip.
 
 ## Point-cloud data port

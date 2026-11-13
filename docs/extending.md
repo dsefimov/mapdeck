@@ -318,11 +318,11 @@ context.attributeRenderers.register({
 ```
 
 The first registered renderer whose `matches` accepts a value renders it — in the
-attribute table and in feature info alike; the fullscreen viewer opens inside the
-system lightbox (scrim, Escape, focus handling come for free). Keep the predicate
-strict, and read your strings from `api.dict` with locally declared keys. The
-built-ins `photo` and `album` (`PhotoAttributeValue`, `AlbumAttributeValue`) are
-the reference implementation; the full contract is in
+attribute table and in feature info alike; the viewer opens as a maximized
+widget window (title, close, drag — the standard window chrome comes for free).
+Keep the predicate strict, and read your strings from `api.dict` with locally
+declared keys. The built-ins `photo` and `album` (`PhotoAttributeValue`,
+`AlbumAttributeValue`) are the reference implementation; the full contract is in
 [api/extensions.md](api/extensions.md#attributevaluerenderer).
 
 ## Source adapters

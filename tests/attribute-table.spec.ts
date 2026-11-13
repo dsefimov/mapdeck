@@ -58,22 +58,22 @@ test.describe("attribute table", () => {
         });
         await expect(photoCell).toBeVisible({ timeout: 15_000 });
 
-        const dialog = page.getByRole("dialog");
-        await expect(dialog).toBeHidden();
-
+        // The album preview opens the viewer as a maximized widget window.
         await page
             .getByRole("button", { name: "Paris (3 photos)" })
             .click();
-        await expect(dialog).toBeVisible();
-        await expect(dialog.getByText("1 / 3")).toBeVisible();
+        await expect(page.getByText("Media viewer")).toBeVisible();
+        await expect(page.getByText("1 / 3")).toBeVisible();
 
         await page
             .getByRole("button", { name: "Across the Seine" })
             .click();
-        await expect(dialog.getByText("2 / 3")).toBeVisible();
+        await expect(page.getByText("2 / 3")).toBeVisible();
 
-        await page.keyboard.press("Escape");
-        await expect(dialog).toBeHidden();
+        await page
+            .getByRole("button", { name: "Close Media viewer" })
+            .click();
+        await expect(page.getByText("1 / 3")).toBeHidden();
 
         await console.assertClean("attribute table photos");
     });

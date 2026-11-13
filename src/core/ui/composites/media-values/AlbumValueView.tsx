@@ -86,7 +86,8 @@ export const AlbumValueView: (props: AlbumValueViewProps) => ReactNode = ({
             <div className={styles.stage}>
                 {/* Keyed by index: every switch is a fresh load state. */}
                 <PhotoImage key={index} photo={current} dict={dict} />
-                <Text variant="caption" tone="secondary" className={styles.counter}>
+                <Text variant="body" tone="secondary" className={styles.counter}>
+                    {album.title ? `${album.title} · ` : ""}
                     {index + 1} / {total}
                 </Text>
             </div>

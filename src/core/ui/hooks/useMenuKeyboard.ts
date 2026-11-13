@@ -29,7 +29,7 @@ export interface MenuKeyboardEvent {
 }
 
 /** Focusable, enabled, visible elements of the menu panel, in DOM order. */
-export function focusablesOf(panel: HTMLElement | null): HTMLElement[] {
+function focusablesOf(panel: HTMLElement | null): HTMLElement[] {
     if (!panel) return [];
     return [
         ...panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),

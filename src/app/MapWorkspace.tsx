@@ -6,7 +6,6 @@ import { LOCALE_KEY_WIDGET_NAME } from "@core/contracts";
 import type { WidgetInstance } from "@core/common/widget";
 import { SIDEBAR_ID } from "@widgets/sidebar";
 import { MAP_VIEWER_ID } from "@widgets/map-viewer";
-import { AttributeValueViewerLayer } from "./AttributeValueViewerLayer";
 import styles from "./MapWorkspace.module.css";
 
 /** A widget placed over the map instead of the grid (tool panels). */
@@ -95,8 +94,6 @@ const MapWorkspace: () => ReactNode = observer(() => {
                     </WidgetGridWrapper>
                 </div>
             ) : null}
-
-            <AttributeValueViewerLayer />
         </div>
     );
 });

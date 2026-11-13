@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StoreProvider } from "@core/shell";
 import { AttributeValueStore } from "@core/common/attribute-value";
+import type { CommonRegistry } from "@core/common/common-registry";
 import type { StoreRegistry } from "@core/store-registry";
 import { FeatureInfoComponent } from "./Panel";
 import { FeatureInfoStore } from "../utils/FeatureInfoStore";
@@ -61,7 +62,12 @@ function renderPanel(store: FeatureInfoStore): void {
     // SelectedContent reads the attribute value renderer store through the
     // registry context — the slice it needs is all this fixture provides.
     const registry = {
-        attributeValueStore: new AttributeValueStore(),
+        attributeValueStore: new AttributeValueStore({
+            widgetStore: {
+                openWidget: vi.fn(),
+                isWidgetOpen: () => false,
+            },
+        } as unknown as CommonRegistry),
     } as unknown as StoreRegistry;
     render(
         <StoreProvider store={registry}>

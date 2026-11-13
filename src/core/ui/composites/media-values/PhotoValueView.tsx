@@ -57,31 +57,21 @@ export interface PhotoValueViewProps {
     dict: Dictionary;
 }
 
-/** Fullscreen single-photo viewer content (rendered inside the Lightbox). */
+/**
+ * Single-photo viewer content (rendered inside the Lightbox): the image on
+ * a subtle stage, its description below — the title lives in the window
+ * header.
+ */
 export const PhotoValueView: (props: PhotoValueViewProps) => ReactNode = ({
     photo,
     dict,
-}) => {
-    const captions =
-        photo.title !== undefined || photo.description !== undefined;
-
-    return (
-        <div className={styles.view}>
-            {captions && (
-                <div className={styles.captions}>
-                    {photo.title && (
-                        <Text variant="title" truncate>
-                            {photo.title}
-                        </Text>
-                    )}
-                    {photo.description && (
-                        <Text variant="hint" tone="secondary">
-                            {photo.description}
-                        </Text>
-                    )}
-                </div>
-            )}
-            <PhotoImage photo={photo} dict={dict} />
-        </div>
-    );
-};
+}) => (
+    <div className={styles.view}>
+        <PhotoImage photo={photo} dict={dict} />
+        {photo.description && (
+            <Text variant="caption" tone="secondary" className={styles.description}>
+                {photo.description}
+            </Text>
+        )}
+    </div>
+);

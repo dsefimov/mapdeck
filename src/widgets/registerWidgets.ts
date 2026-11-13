@@ -8,6 +8,7 @@ import {
     ensureAttributeTableState,
     AttributeTableWidget,
 } from "@widgets/attribute-table";
+import MediaViewerWidget from "@widgets/media-viewer";
 import MapToolbarWidget from "@widgets/map-toolbar";
 
 const BUILT_IN_WIDGETS: Widget<{ widgetId: string }>[] = [
@@ -16,6 +17,7 @@ const BUILT_IN_WIDGETS: Widget<{ widgetId: string }>[] = [
     new LayerTreeWidget(),
     new SidebarWidget(),
     new AttributeTableWidget(),
+    new MediaViewerWidget(),
     new MapToolbarWidget(),
 ];
 

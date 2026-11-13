@@ -76,18 +76,4 @@ describe("built-in renderers", () => {
             ),
         ).toBe("First");
     });
-
-    it("describe names the dialog through the value or the dictionary", () => {
-        expect(photoValueRenderer.describe?.(PHOTO, {})).toBe("Alpha");
-        expect(
-            photoValueRenderer.describe?.(photo("/a.png"), {
-                "mediaValue.photo": "Photo",
-            }),
-        ).toBe("Photo");
-        expect(
-            albumValueRenderer.describe?.(ALBUM, {
-                "mediaValue.album": "Album",
-            }),
-        ).toBe("Trip");
-    });
 });

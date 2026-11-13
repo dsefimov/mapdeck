@@ -99,7 +99,9 @@ export class RootStore implements StoreRegistry {
         this.basemapStore = this._track(new BasemapStore(this));
         this.mapToolStore = this._track(new MapToolStore(this));
         this.widgetStore = this._track(new WidgetStore(this));
-        this.attributeValueStore = this._track(new AttributeValueStore());
+        this.attributeValueStore = this._track(
+            new AttributeValueStore(this),
+        );
 
         // Plain views, not wrappers: each store structurally implements its
         // contract port, so the contexts are assembled from the instances.

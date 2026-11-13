@@ -3,10 +3,11 @@
  *
  * Attribute values are open data (`unknown`) — no schema describes them.
  * A value opts into rich rendering by its shape: a renderer whose `matches`
- * accepts the value renders its table cell and, optionally, a fullscreen
- * viewer opened on cell click. Registration order decides precedence: the
- * first registered renderer that matches a value wins, so built-ins stay
- * replaceable through `{ override: true }` or a sharper predicate.
+ * accepts the value renders its table cell and, optionally, the content of
+ * the viewer window opened on cell click. Registration order decides
+ * precedence: the first registered renderer that matches a value wins, so
+ * built-ins stay replaceable through `{ override: true }` or a sharper
+ * predicate.
  */
 import type { ReactNode } from "react";
 import type { RegisterOptions } from "@core/lib/registry";
@@ -46,9 +47,9 @@ export interface AttributeValueViewerApi {
 
 /**
  * Renders attribute values of one shape: a compact cell for the data table
- * and, optionally, a fullscreen viewer. The system supplies the viewer's
- * dialog shell (scrim, Escape, focus), so `renderViewer` returns content,
- * not chrome.
+ * and, optionally, the content of the viewer window. The window chrome —
+ * title, close, drag, resize — belongs to the widget grid, so
+ * `renderViewer` returns content, not chrome.
  */
 export interface AttributeValueRenderer {
     id: string;
@@ -57,8 +58,8 @@ export interface AttributeValueRenderer {
     /** Compact rendering inside a table cell; `api.open` is wired to the viewer. */
     renderCell(value: unknown, api: AttributeValueCellApi): ReactNode;
     /**
-     * Fullscreen content rendered inside the system lightbox. Absent means
-     * the cell is not clickable.
+     * Content of the viewer window opened on cell click. Absent means the
+     * cell is not clickable.
      */
     renderViewer?(value: unknown, api: AttributeValueViewerApi): ReactNode;
     /**
@@ -66,11 +67,6 @@ export interface AttributeValueRenderer {
      * serialization when absent.
      */
     toText?(value: unknown): string;
-    /**
-     * Accessible name of the fullscreen dialog for a value; falls back to
-     * the renderer id.
-     */
-    describe?(value: unknown, dict: Readonly<Record<string, string>>): string;
 }
 
 /** Registration surface for attribute value renderers. */

@@ -4,15 +4,10 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
+    gap: var(--space-8);
 }
 
-.captions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-}
-
+/* A subtle stage gives every photograph a boundary inside the white card. */
 .figure {
     position: relative;
     flex: 1;
@@ -21,6 +16,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--color-bg-subtle);
+    border-radius: var(--radius-sm);
+    padding: var(--space-8);
+    box-sizing: border-box;
 }
 
 .image {
@@ -44,4 +43,9 @@
     justify-content: center;
     gap: var(--space-8);
     color: var(--color-text);
+}
+
+.description {
+    text-align: center;
+    flex-shrink: 0;
 }

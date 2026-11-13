@@ -1,4 +1,3 @@
-export { Lightbox, type LightboxProps } from "./Lightbox";
 export {
     PhotoValueCell,
     type PhotoValueCellProps,

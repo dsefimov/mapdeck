@@ -53,10 +53,6 @@ export const photoValueRenderer: AttributeValueRenderer = {
         ) : null,
     toText: (value) =>
         isPhotoValue(value) ? value.title ?? value.url : String(value),
-    describe: (value, dict) =>
-        isPhotoValue(value)
-            ? value.title ?? dict["mediaValue.photo"] ?? PHOTO_VALUE_RENDERER_ID
-            : PHOTO_VALUE_RENDERER_ID,
 };
 
 export const albumValueRenderer: AttributeValueRenderer = {
@@ -85,10 +81,6 @@ export const albumValueRenderer: AttributeValueRenderer = {
         const first = value.photos[0];
         return value.title ?? first?.title ?? first?.url ?? "";
     },
-    describe: (value, dict) =>
-        isAlbumValue(value)
-            ? value.title ?? dict["mediaValue.album"] ?? ALBUM_VALUE_RENDERER_ID
-            : ALBUM_VALUE_RENDERER_ID,
 };
 
 /**

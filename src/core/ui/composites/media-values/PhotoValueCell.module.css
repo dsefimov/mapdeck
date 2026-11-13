@@ -6,8 +6,10 @@
     border-radius: var(--radius-sm);
     background: var(--color-bg);
     cursor: pointer;
-    /* Fits the table row (min-height --space-32) without growing it —
-       the table's virtualization assumes uniform row heights. */
+    /* The table's cells are top-aligned; the preview centres against the
+       text line and fits the row (min-height --space-32) without growing
+       it — virtualization assumes uniform row heights. */
+    vertical-align: middle;
     height: var(--space-24);
     aspect-ratio: 1;
     overflow: hidden;

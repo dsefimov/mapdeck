@@ -23,8 +23,6 @@ export {
 } from "./data-table";
 
 export {
-    Lightbox,
-    type LightboxProps,
     PhotoValueCell,
     type PhotoValueCellProps,
     PhotoValueView,

@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
-import { useEscapeKey } from "../../hooks/useEscapeKey";
-import { Lightbox } from "./Lightbox";
 import { PhotoValueCell } from "./PhotoValueCell";
 import { PhotoValueView } from "./PhotoValueView";
 import { AlbumValueView } from "./AlbumValueView";
@@ -59,6 +57,7 @@ describe("PhotoValueCell", () => {
         render(
             <PhotoValueCell
                 photo={{ url: FULL_PHOTO_URL }}
+                name="Trip"
                 count={3}
                 dict={DICT}
                 onOpen={vi.fn()}
@@ -67,17 +66,17 @@ describe("PhotoValueCell", () => {
 
         expect(screen.getByRole("presentation")).toHaveAttribute(
             "src",
-            "/photos/a.png",
+            FULL_PHOTO_URL,
         );
         expect(
-            screen.getByRole("button", { name: /Album \(3 photos\)/ }),
+            screen.getByRole("button", { name: /Trip \(3 photos\)/ }),
         ).toBeInTheDocument();
         expect(screen.getByText("3")).toBeInTheDocument();
     });
 });
 
 describe("PhotoValueView", () => {
-    it("shows the caption and surfaces a load failure", () => {
+    it("shows the description and surfaces a load failure", () => {
         render(
             <PhotoValueView
                 photo={{ ...PHOTO, description: "A description" }}
@@ -85,7 +84,6 @@ describe("PhotoValueView", () => {
             />,
         );
 
-        expect(screen.getByText("Alpha")).toBeInTheDocument();
         expect(screen.getByText("A description")).toBeInTheDocument();
 
         fireEvent.error(screen.getByRole("img", { name: "Alpha" }));
@@ -102,102 +100,28 @@ describe("AlbumValueView", () => {
     it("starts on the first photo with a counter", () => {
         renderAlbum();
 
-        expect(screen.getByText("1 / 3")).toBeInTheDocument();
+        expect(screen.getByText("Trip · 1 / 3")).toBeInTheDocument();
         expect(screen.getByRole("img", { name: "Alpha" })).toBeInTheDocument();
     });
 
     it("advances with arrow keys and wraps around", () => {
         renderAlbum();
-        const viewer = screen.getByRole("img", { name: "Alpha" }).closest("div");
+        const viewer = screen
+            .getByRole("img", { name: "Alpha" })
+            .closest("div");
 
         fireEvent.keyDown(viewer as HTMLElement, { key: "ArrowRight" });
-        expect(screen.getByText("2 / 3")).toBeInTheDocument();
+        expect(screen.getByText("Trip · 2 / 3")).toBeInTheDocument();
 
         fireEvent.keyDown(viewer as HTMLElement, { key: "ArrowLeft" });
         fireEvent.keyDown(viewer as HTMLElement, { key: "ArrowLeft" });
-        expect(screen.getByText("3 / 3")).toBeInTheDocument();
+        expect(screen.getByText("Trip · 3 / 3")).toBeInTheDocument();
     });
 
     it("switches to a thumbnail directly", async () => {
         renderAlbum();
 
         await userEvent.click(screen.getByRole("button", { name: "Charlie" }));
-        expect(screen.getByText("3 / 3")).toBeInTheDocument();
-    });
-});
-
-describe("Lightbox", () => {
-    const EscapeProbe = ({
-        onEscape,
-    }: {
-        onEscape: () => void;
-    }) => {
-        useEscapeKey(onEscape);
-        return null;
-    };
-
-    const renderLightbox = (onClose = vi.fn()) =>
-        render(
-            <Lightbox label="Trip" closeLabel="Close" onClose={onClose}>
-                <p>content</p>
-            </Lightbox>,
-        );
-
-    it("renders a named modal dialog in a body portal", () => {
-        renderLightbox();
-
-        const dialog = screen.getByRole("dialog", { name: "Trip" });
-        expect(dialog).toHaveAttribute("aria-modal", "true");
-        expect(document.body.contains(dialog)).toBe(true);
-    });
-
-    it("closes on Escape, the close button, and a scrim press", async () => {
-        const onClose = vi.fn();
-        renderLightbox(onClose);
-
-        fireEvent.keyDown(window, { key: "Escape" });
-        expect(onClose).toHaveBeenCalledTimes(1);
-
-        await userEvent.click(screen.getByRole("button", { name: "Close" }));
-        expect(onClose).toHaveBeenCalledTimes(2);
-
-        const dialog = screen.getByRole("dialog");
-        fireEvent.mouseDown(dialog);
-        expect(onClose).toHaveBeenCalledTimes(3);
-    });
-
-    it("keeps presses inside the content from closing", () => {
-        const onClose = vi.fn();
-        renderLightbox(onClose);
-
-        fireEvent.mouseDown(screen.getByText("content"));
-        expect(onClose).not.toHaveBeenCalled();
-    });
-
-    it("Escape reaches only the topmost layer, then the one below", () => {
-        const onPanelEscape = vi.fn();
-        const onLightboxClose = vi.fn();
-
-        // A tool panel's escape listener, with a lightbox opened over it
-        // later — separate trees, so mount order is temporal as in the app.
-        const panel = render(<EscapeProbe onEscape={onPanelEscape} />);
-        const lightbox = render(
-            <Lightbox
-                label="Trip"
-                closeLabel="Close"
-                onClose={onLightboxClose}
-            >
-                <p>content</p>
-            </Lightbox>,
-        );
-
-        fireEvent.keyDown(window, { key: "Escape" });
-        expect(onLightboxClose).toHaveBeenCalledTimes(1);
-        expect(onPanelEscape).not.toHaveBeenCalled();
-
-        lightbox.unmount();
-        fireEvent.keyDown(window, { key: "Escape" });
-        expect(onPanelEscape).toHaveBeenCalledTimes(1);
-        panel.unmount();
+        expect(screen.getByText("Trip · 3 / 3")).toBeInTheDocument();
     });
 });

@@ -105,12 +105,13 @@ test.describe("feature info", () => {
             .getByRole("button", { name: "Ardennes viewpoint" })
             .click();
 
-        const dialog = page.getByRole("dialog");
-        await expect(dialog).toBeVisible();
-        await expect(dialog.getByText("Ardennes viewpoint")).toBeVisible();
+        await expect(page.getByText("Media viewer")).toBeVisible();
+        await expect(page.getByRole("img", { name: "Ardennes viewpoint" })).toBeVisible();
 
-        await page.keyboard.press("Escape");
-        await expect(dialog).toBeHidden();
+        await page
+            .getByRole("button", { name: "Close Media viewer" })
+            .click();
+        await expect(page.getByText("Media viewer")).toBeHidden();
 
         await console.assertClean("feature info photos");
     });

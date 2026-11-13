@@ -1,7 +1,11 @@
 import { configure } from "mobx";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AttributeValueRenderer } from "@core/contracts";
-import { AttributeValueStore } from "./AttributeValueStore";
+import type { CommonRegistry } from "../common-registry";
+import {
+    ATTRIBUTE_VALUE_VIEWER_WIDGET_ID,
+    AttributeValueStore,
+} from "./AttributeValueStore";
 
 // Reproduce production MobX strictness (src/app/mobxConfig.ts).
 configure({ enforceActions: "always" });
@@ -12,9 +16,18 @@ const renderer = (id: string): AttributeValueRenderer => ({
     renderCell: () => null,
 });
 
+function makeStore() {
+    const openWidget = vi.fn();
+    const rootStore = {
+        widgetStore: { openWidget, isWidgetOpen: () => false },
+    } as unknown as CommonRegistry;
+    const store = new AttributeValueStore(rootStore);
+    return { store, openWidget };
+}
+
 describe("AttributeValueStore", () => {
     it("lists renderers in registration order", () => {
-        const store = new AttributeValueStore();
+        const { store } = makeStore();
         store.register(renderer("photo"));
         store.register(renderer("album"));
 
@@ -25,7 +38,7 @@ describe("AttributeValueStore", () => {
     });
 
     it("throws on a duplicate id and replaces with override", () => {
-        const store = new AttributeValueStore();
+        const { store } = makeStore();
         store.register(renderer("photo"));
 
         expect(() => store.register(renderer("photo"))).toThrow(
@@ -36,22 +49,26 @@ describe("AttributeValueStore", () => {
         expect(store.renderersList).toHaveLength(1);
     });
 
-    it("opens and closes the single view", () => {
-        const store = new AttributeValueStore();
+    it("openView records the view and opens the viewer widget", async () => {
+        const { store, openWidget } = makeStore();
         store.register(renderer("photo"));
+        const value = { kind: "photo", url: "x.png" };
 
-        store.openView("photo", { kind: "photo", url: "x.png" });
-        expect(store.view).toEqual({
-            rendererId: "photo",
-            value: { kind: "photo", url: "x.png" },
-        });
+        store.openView("photo", value);
+        expect(store.view).toEqual({ rendererId: "photo", value });
+        // The open is deferred past the initiating click (see openView).
+        await vi.waitFor(() =>
+            expect(openWidget).toHaveBeenCalledWith(
+                ATTRIBUTE_VALUE_VIEWER_WIDGET_ID,
+            ),
+        );
 
         store.closeView();
         expect(store.view).toBeNull();
     });
 
     it("looks a renderer up by id", () => {
-        const store = new AttributeValueStore();
+        const { store } = makeStore();
         const photo = renderer("photo");
         store.register(photo);
 

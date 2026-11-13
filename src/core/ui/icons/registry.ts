@@ -25,6 +25,7 @@ const iconNames = [
     "file-download",
     "search",
     "angle-down",
+    "photo",
     "close",
 ] as const;
 
