@@ -6,6 +6,7 @@ export * from "./protocol";
 export * from "./asset-mapping";
 export * from "./source";
 export * from "./attribute";
+export * from "./attribute-value";
 export * from "./basemap";
 export * from "./feature-info";
 export * from "./point-cloud";

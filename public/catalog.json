@@ -3,7 +3,7 @@
     "type": "Catalog",
     "stac_version": "1.0.0",
     "title": "MapDeck Demo",
-    "description": "Demo catalog: raster tiles (Esri Living Atlas), vector tiles (MapLibre demo tiles, Natural Earth), and a COPC point cloud (Autzen Stadium, hosted by Hobu Inc.). All assets are fetched live from public sources. Point the 'Data Source URL' setting at any other public STAC catalog or API to load your own data.",
+    "description": "Demo catalog: raster tiles (Esri Living Atlas), vector tiles (MapLibre demo tiles, Natural Earth), a COPC point cloud (Autzen Stadium, hosted by Hobu Inc.), and photo-attribute demo points served from this deployment. Remote assets are fetched live from public sources. Point the 'Data Source URL' setting at any other public STAC catalog or API to load your own data.",
     "links": [
         {
             "rel": "child",
@@ -22,6 +22,12 @@
             "href": "/collections/pointcloud/collection.json",
             "type": "application/json",
             "title": "Point Cloud — Autzen COPC"
+        },
+        {
+            "rel": "child",
+            "href": "/collections/photos/collection.json",
+            "type": "application/json",
+            "title": "Photos — demo points"
         }
     ]
 }

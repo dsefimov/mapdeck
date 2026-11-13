@@ -134,10 +134,12 @@ const AttributeTableWidget = observer<AttributeTableWidgetProps>(
                             sortDirection={store.sortDirection}
                             onSort={store.setSort}
                             onRefresh={store.refreshData}
-                            {...(store.geometryColumn && {
-                                geometryColumn: store.geometryColumn,
-                            })}
-                            dict={coreDict}
+                        {...(store.geometryColumn && {
+                            geometryColumn: store.geometryColumn,
+                        })}
+                        valueRenderers={rootStore.attributeValueStore.renderersList}
+                        onOpenValue={rootStore.attributeValueStore.openView}
+                        dict={coreDict}
                         />
                     </div>
                 )}

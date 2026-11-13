@@ -8,6 +8,7 @@ export const COPC_URL_PATTERN = /autzen-classified\.copc\.laz/;
 export const RASTER_ROW = "Raster — Esri";
 export const VECTOR_ROW = "Vector — MapLibre Demotiles";
 export const CLOUD_ROW = "Point Cloud — Autzen COPC";
+export const PHOTOS_ROW = "Photos — demo points";
 
 /**
  * The demo tree's row order. Text-based row scoping is unreliable here
@@ -15,7 +16,7 @@ export const CLOUD_ROW = "Point Cloud — Autzen COPC";
  * exactly one button per action name — indexing by row order and letting
  * each call assert its effect keeps this honest.
  */
-const ROW_ORDER = [RASTER_ROW, VECTOR_ROW, CLOUD_ROW] as const;
+const ROW_ORDER = [RASTER_ROW, VECTOR_ROW, CLOUD_ROW, PHOTOS_ROW] as const;
 
 export type TreeRow = (typeof ROW_ORDER)[number];
 
@@ -57,6 +58,11 @@ export async function toggleLayer(
         await page.locator(`label[for="visibility-${id}"]`).click();
     }
     await expect(checkbox).toBeChecked({ checked: on });
+}
+
+/** Zoom the camera to a collection row's extent. */
+export async function zoomToExtent(page: Page, row: TreeRow): Promise<void> {
+    await rowButton(page, row, "Zoom to extent").click();
 }
 
 /**

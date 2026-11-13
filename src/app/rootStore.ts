@@ -9,6 +9,7 @@ import {
 } from "@core/domain/protocols";
 import { SettingsStore } from "@core/common/settings";
 import { WidgetStore } from "@core/common/widget";
+import { AttributeValueStore } from "@core/common/attribute-value";
 import { LocaleStore, coreTranslations } from "@core/common/locale";
 import { StateStore } from "@core/lib/state";
 import { logger } from "@core/lib/logger";
@@ -57,6 +58,7 @@ export class RootStore implements StoreRegistry {
     readonly basemapStore: BasemapStore;
     readonly mapToolStore: MapToolStore;
     readonly widgetStore: WidgetStore;
+    readonly attributeValueStore: AttributeValueStore;
 
     /** Declared-points context for tool panels. */
     readonly toolContext: ToolRuntimeContext;
@@ -97,6 +99,7 @@ export class RootStore implements StoreRegistry {
         this.basemapStore = this._track(new BasemapStore(this));
         this.mapToolStore = this._track(new MapToolStore(this));
         this.widgetStore = this._track(new WidgetStore(this));
+        this.attributeValueStore = this._track(new AttributeValueStore());
 
         // Plain views, not wrappers: each store structurally implements its
         // contract port, so the contexts are assembled from the instances.
@@ -124,6 +127,7 @@ export class RootStore implements StoreRegistry {
             layerTools: this.layerToolStore,
             mapTools: this.mapToolStore,
             assetMapping: this.assetMapper,
+            attributeRenderers: this.attributeValueStore,
         };
 
         // Wiring, not state: stable views and teardown bookkeeping stay

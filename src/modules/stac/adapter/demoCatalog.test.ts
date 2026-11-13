@@ -19,6 +19,7 @@ import { ProtocolRegistry } from "@core/domain/protocols/stores/ProtocolRegistry
 import { createXyzProtocol } from "@core/domain/protocols/xyz/XyzProtocol";
 import { VectorTileProtocol } from "@core/domain/protocols/vector-tile/VectorTileProtocol";
 import { CopcProtocol } from "@core/domain/protocols/copc/CopcProtocol";
+import { createGeoJsonTiledProtocol } from "@core/domain/protocols/geojson-tiled/GeoJsonTiledProtocol";
 import { resolveRenderer } from "@core/domain/layer-tree";
 
 const PUBLIC_DIR = resolve(process.cwd(), "public");
@@ -80,7 +81,7 @@ describe("demo catalog (public/) end-to-end", () => {
         vi.stubGlobal("fetch", vi.fn(localFileFetch));
     });
 
-    it("root exposes the three demo collections", async () => {
+    it("root exposes the four demo collections", async () => {
         const adapter = buildAdapter();
         adapter.initialize({ url: CATALOG_URL });
         const groups = (await adapter.fetchRoot()) as GroupNode[];
@@ -89,6 +90,7 @@ describe("demo catalog (public/) end-to-end", () => {
             "Raster — Esri",
             "Vector — MapLibre Demotiles",
             "Point Cloud — Autzen COPC",
+            "Photos — demo points",
         ]);
     });
 
@@ -161,11 +163,26 @@ describe("demo catalog (public/) end-to-end", () => {
         ]);
     });
 
+    it("photo item renders from geojson and serves attributes from ogc-features", async () => {
+        const adapter = buildAdapter();
+        adapter.initialize({ url: CATALOG_URL });
+        const groups = (await adapter.fetchRoot()) as GroupNode[];
+        const children = await adapter.fetchChildren(groups[3]!);
+
+        expect(children).toHaveLength(1);
+        const layer = layersOf(children)[0]!;
+        expect(layer.renderer.protocolId).toBe("geojson-tiled");
+        expect(layer.renderer.sourceUrl).toBe("/collections/photos/items");
+        expect(layer.data?.protocolId).toBe("ogc-features");
+        expect(layer.data?.sourceUrl).toBe("/collections/photos/items");
+    });
+
     it("every demo layer passes the core renderability gate", async () => {
         const registry = new ProtocolRegistry();
         registry.register(createXyzProtocol());
         registry.register(new VectorTileProtocol());
         registry.register(new CopcProtocol());
+        registry.register(createGeoJsonTiledProtocol());
 
         const adapter = buildAdapter();
         adapter.initialize({ url: CATALOG_URL });

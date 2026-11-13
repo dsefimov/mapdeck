@@ -7,10 +7,12 @@ import type { LocaleStore } from "./locale/LocaleStore";
 import type { SettingsStore } from "./settings/SettingsStore";
 import type { StateStore } from "@core/lib/state";
 import type { WidgetStore } from "./widget/WidgetStore";
+import type { AttributeValueStore } from "./attribute-value/AttributeValueStore";
 
 export interface CommonRegistry {
     readonly settingsStore: SettingsStore;
     readonly stateStore: StateStore;
     readonly widgetStore: WidgetStore;
     readonly localeStore: LocaleStore;
+    readonly attributeValueStore: AttributeValueStore;
 }

@@ -1,5 +1,10 @@
 import type { ReactNode } from "react";
-import type { DataTableLabels, GeometryColumnConfig } from "../types";
+import type { Dictionary } from "../../../types";
+import type {
+    DataTableLabels,
+    GeometryColumnConfig,
+    ValueRenderer,
+} from "../types";
 import { ColumnarRow } from "./ColumnarRow";
 
 interface VisibleRowsProps {
@@ -9,7 +14,10 @@ interface VisibleRowsProps {
     displayColumns: string[];
     showRowNumbers: boolean;
     geometryColumn: GeometryColumnConfig | undefined;
+    valueRenderers: readonly ValueRenderer[] | undefined;
+    onOpenValue: ((rendererId: string, value: unknown) => void) | undefined;
     labels: DataTableLabels;
+    dict: Dictionary;
 }
 
 export const VisibleRows: (props: VisibleRowsProps) => ReactNode[] = ({
@@ -19,7 +27,10 @@ export const VisibleRows: (props: VisibleRowsProps) => ReactNode[] = ({
     displayColumns,
     showRowNumbers,
     geometryColumn,
+    valueRenderers,
+    onOpenValue,
     labels,
+    dict,
 }) => {
     const sliced = sortedData.slice(startIndex, endIndex);
     return sliced.map((row, index) => {
@@ -32,7 +43,10 @@ export const VisibleRows: (props: VisibleRowsProps) => ReactNode[] = ({
                 showRowNumbers={showRowNumbers}
                 columns={displayColumns}
                 geometryColumn={geometryColumn}
+                valueRenderers={valueRenderers}
+                onOpenValue={onOpenValue}
                 labels={labels}
+                dict={dict}
             />
         );
     });

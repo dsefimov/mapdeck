@@ -26,4 +26,7 @@
 
     /* Square side of a preview thumbnail grid. */
     --preview-image-size: 128px;
+
+    /* Square side of a media-viewer filmstrip thumbnail. */
+    --media-thumb-size: 96px;
 }

@@ -131,6 +131,7 @@
     --z-modal: 500;
     --z-floating: 1000; /* portaled panels above all chrome (selects) */
     --z-dragging: 10000; /* mid-gesture windows — top of everything */
+    --z-viewer: 20000; /* fullscreen value viewer — modal, above every window */
 
     /* ═══════════════════════════════════════════
      12. ICONS — sizes and artwork tokens

@@ -2,13 +2,20 @@ import type { ReactNode } from "react";
 import { Text } from "../../../components/primitives/text/Text";
 import { ColumnarHeaderRow } from "./ColumnarHeaderRow";
 import { VisibleRows } from "./VisibleRows";
-import type { DataTableLabels, GeometryColumnConfig } from "../types";
+import type { Dictionary } from "../../../types";
+import type {
+    DataTableLabels,
+    GeometryColumnConfig,
+    ValueRenderer,
+} from "../types";
 import styles from "../AttributeTable.module.css";
 
 interface DataTableBodyProps {
     isColumnar: boolean;
     displayColumns: string[];
     geometryColumn: GeometryColumnConfig | undefined;
+    valueRenderers: readonly ValueRenderer[] | undefined;
+    onOpenValue: ((rendererId: string, value: unknown) => void) | undefined;
     sortColumn: string | null;
     sortDirection: "asc" | "desc" | null;
     handleSort: (column: string) => void;
@@ -22,12 +29,15 @@ interface DataTableBodyProps {
     bottomPaddingHeight: number;
     loading: boolean;
     labels: DataTableLabels;
+    dict: Dictionary;
 }
 
 export const DataTableBody: (props: DataTableBodyProps) => ReactNode = ({
     isColumnar,
     displayColumns,
     geometryColumn,
+    valueRenderers,
+    onOpenValue,
     sortColumn,
     sortDirection,
     handleSort,
@@ -41,6 +51,7 @@ export const DataTableBody: (props: DataTableBodyProps) => ReactNode = ({
     bottomPaddingHeight,
     loading,
     labels,
+    dict,
 }) => {
     const columnCount =
         (isColumnar ? 1 : 0) +
@@ -101,7 +112,10 @@ export const DataTableBody: (props: DataTableBodyProps) => ReactNode = ({
                     displayColumns={displayColumns}
                     showRowNumbers={isColumnar}
                     geometryColumn={geometryColumn}
+                    valueRenderers={valueRenderers}
+                    onOpenValue={onOpenValue}
                     labels={labels}
+                    dict={dict}
                 />
                 {bottomPaddingHeight > 0 && (
                     <tr className={styles.spacerRow} data-spacer="">

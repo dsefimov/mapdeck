@@ -1,10 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { collectConsoleErrors } from "./helpers/console";
 import {
+    PHOTOS_ROW,
     VECTOR_ROW,
     expandCollection,
     openLayerTree,
     toggleLayer,
+    zoomToExtent,
 } from "./helpers/map";
 
 test.describe("feature info", () => {
@@ -60,6 +62,57 @@ test.describe("feature info", () => {
         await expect(
             page.getByText("No features found at this location"),
         ).toBeVisible({ timeout: 15_000 });
+    });
+
+    test("a photo point's preview opens the fullscreen viewer", async ({
+        page,
+    }) => {
+        const console = collectConsoleErrors(page);
+        await page.goto("/");
+        await openLayerTree(page);
+        await expandCollection(page, PHOTOS_ROW, "Photo points");
+        await toggleLayer(page, "photo-points", true);
+
+        // The Ardennes demo point sits exactly at the collection bbox
+        // center — fitBounds' symmetric padding puts it under the canvas
+        // center, so the click lands on it deterministically.
+        const itemsLoaded = page.waitForResponse(
+            (res) =>
+                res.url().includes("/collections/photos/items") &&
+                res.status() === 200,
+            { timeout: 15_000 },
+        );
+        await zoomToExtent(page, PHOTOS_ROW);
+        await itemsLoaded;
+        await page.waitForTimeout(500);
+
+        await page.getByRole("button", { name: "Feature Info" }).click();
+        await expect(page.getByText("Feature Info")).toBeVisible();
+
+        const canvas = page.locator(".maplibregl-canvas");
+        const box = await canvas.boundingBox();
+        expect(box).not.toBeNull();
+        await page.mouse.click(
+            box!.x + box!.width / 2,
+            box!.y + box!.height / 2,
+        );
+
+        await expect(
+            page.getByText("No features found at this location"),
+        ).toBeHidden({ timeout: 15_000 });
+
+        await page
+            .getByRole("button", { name: "Ardennes viewpoint" })
+            .click();
+
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByText("Ardennes viewpoint")).toBeVisible();
+
+        await page.keyboard.press("Escape");
+        await expect(dialog).toBeHidden();
+
+        await console.assertClean("feature info photos");
     });
 
     test("activation from the context menu queries the right-clicked point", async ({

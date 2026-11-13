@@ -7,6 +7,7 @@ import {
     screen,
     within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
 import { DataTable } from "./DataTable";
 
@@ -219,5 +220,94 @@ describe("DataTable key-value view", () => {
 
         expect(screen.getByText("10")).toBeInTheDocument();
         expect(screen.queryByText("2")).toBeNull();
+    });
+});
+
+describe("DataTable value renderers", () => {
+    const LINK_URL = "https://example.test";
+    const LINK_VALUE = { kind: "link", url: LINK_URL };
+    const onOpenValue = vi.fn();
+
+    const linkRenderer = {
+        id: "link",
+        matches: (value: unknown) =>
+            typeof value === "object" &&
+            value !== null &&
+            (value as Record<string, unknown>).kind === "link",
+        renderCell: (
+            value: unknown,
+            api: { open(): void; dict: Record<string, string> },
+        ) => (
+            <button onClick={api.open}>
+                {String((value as { url: string }).url)}
+            </button>
+        ),
+        toText: (value: unknown) => `site ${(value as { url: string }).url}`,
+    };
+
+    it("renders matched values through the renderer and reports opens", async () => {
+        render(
+            <DataTable
+                rows={[{ name: "alpha", site: LINK_VALUE }]}
+                columns={["name", "site"]}
+                valueRenderers={[linkRenderer]}
+                onOpenValue={onOpenValue}
+                dict={DICT}
+            />,
+        );
+
+        await userEvent.click(
+            screen.getByRole("button", { name: LINK_URL }),
+        );
+        expect(onOpenValue).toHaveBeenCalledWith("link", LINK_VALUE);
+    });
+
+    it("falls back to default formatting for unmatched values", () => {
+        render(
+            <DataTable
+                rows={[{ name: "alpha", site: "plain string" }]}
+                columns={["name", "site"]}
+                valueRenderers={[linkRenderer]}
+                dict={DICT}
+            />,
+        );
+
+        expect(screen.getByText("plain string")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /example/ })).toBeNull();
+    });
+
+    it("renders renderer cells in the key-value view too", async () => {
+        onOpenValue.mockClear();
+        render(
+            <DataTable
+                rows={[{ site: LINK_VALUE }]}
+                valueRenderers={[linkRenderer]}
+                onOpenValue={onOpenValue}
+                dict={DICT}
+            />,
+        );
+
+        await userEvent.click(screen.getByRole("button", { name: LINK_URL }));
+        expect(onOpenValue).toHaveBeenCalledWith("link", LINK_VALUE);
+    });
+
+    it("filters through the renderer's toText", () => {
+        render(
+            <DataTable
+                rows={[{ site: LINK_VALUE }]}
+                columns={["site"]}
+                valueRenderers={[linkRenderer]}
+                dict={DICT}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: SHOW_FILTERS }));
+        fireEvent.change(screen.getByLabelText("Фильтр: site"), {
+            target: { value: "site https" },
+        });
+
+        expect(
+            screen.getByRole("button", { name: LINK_URL }),
+        ).toBeInTheDocument();
     });
 });

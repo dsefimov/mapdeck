@@ -2,6 +2,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StoreProvider } from "@core/shell";
+import { AttributeValueStore } from "@core/common/attribute-value";
+import type { StoreRegistry } from "@core/store-registry";
 import { FeatureInfoComponent } from "./Panel";
 import { FeatureInfoStore } from "../utils/FeatureInfoStore";
 import type { FeatureGroup, MapToolComponentProps } from "@core/contracts";
@@ -55,7 +58,16 @@ function renderPanel(store: FeatureInfoStore): void {
         deactivate: vi.fn(),
         store,
     } as unknown as MapToolComponentProps & { store: FeatureInfoStore };
-    render(<FeatureInfoComponent {...props} />);
+    // SelectedContent reads the attribute value renderer store through the
+    // registry context — the slice it needs is all this fixture provides.
+    const registry = {
+        attributeValueStore: new AttributeValueStore(),
+    } as unknown as StoreRegistry;
+    render(
+        <StoreProvider store={registry}>
+            <FeatureInfoComponent {...props} />
+        </StoreProvider>,
+    );
 }
 
 afterEach(cleanup);

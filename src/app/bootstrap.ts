@@ -6,6 +6,7 @@ import { registerTools } from "@layer-tools/registerTools";
 import { registerMapTools } from "@map-tools/registerMapTools";
 import { registerBasemaps } from "@map-tools/registerBasemaps";
 import { registerModules } from "@modules/registerModules";
+import { registerAttributeRenderers } from "./attribute-value-renderers";
 import { assertKnownProtocols } from "@core/domain/layer-tree";
 import {
     applySettingsOverrides,
@@ -67,6 +68,7 @@ export async function bootstrap(
                 ? { lazPerfWasmUrl: options.lazPerfWasmUrl }
                 : {},
         );
+        registerAttributeRenderers(rootStore);
         await registerModules(rootStore.moduleContext, options.modules);
         finalizeBasemaps(rootStore);
         assertKnownProtocols(

@@ -37,6 +37,13 @@ const core = {
     "dataTable.zoomToObject": "Zoom to object",
     "dataTable.rowNumber": "#",
 
+    // Media attribute values (photo / album value renderers)
+    "mediaValue.photo": "Photo",
+    "mediaValue.album": "Album",
+    "mediaValue.photoCount": "{count} photos",
+    "mediaValue.expand": "Expand to view",
+    "mediaValue.loadError": "Failed to load the image",
+
     // WidgetGrid
     "widgetGrid.dragToTop":
         "Drag to top edge to stretch horizontally (full width)",

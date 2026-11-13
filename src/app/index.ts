@@ -22,6 +22,12 @@ export type {
     SettingMetadata,
     BaseMapConfig,
     Feature,
+    AttributeValueRenderer,
+    AttributeValueCellApi,
+    AttributeValueViewerApi,
+    AttributeValueRendererRegistrationPort,
+    PhotoAttributeValue,
+    AlbumAttributeValue,
 } from "@core/contracts";
 export type { RegisterOptions } from "@core/lib/registry";
 export { createToolPanelWidget } from "@map-tools/shared/toolPanelWidget";

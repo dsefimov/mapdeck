@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Bbox } from "@core/lib/geo";
 import type { Dictionary } from "../../types";
 
@@ -41,6 +42,23 @@ export interface GeometryColumnConfig {
     onZoom: (bbox: Bbox) => void;
 }
 
+/**
+ * Renders attribute values of one shape inside table cells. Structural
+ * mirror of the contracts' `AttributeValueRenderer` — the kit cannot
+ * import contracts, so the shape is restated here (the `_`-prefix
+ * convention above follows the same rule).
+ */
+export interface ValueRenderer {
+    id: string;
+    matches(value: unknown): boolean;
+    renderCell(
+        value: unknown,
+        api: { open(): void; dict: Dictionary },
+    ): ReactNode;
+    /** Plain-text form used by filtering; falls back to the default formatting. */
+    toText?(value: unknown): string;
+}
+
 export interface DataTableProps {
     rows: Record<string, unknown>[];
     columns?: string[];
@@ -60,6 +78,10 @@ export interface DataTableProps {
     onRefresh?: (() => void) | (() => Promise<void>);
     /** Optional geometry column config — adds a zoom-to-object button per row */
     geometryColumn?: GeometryColumnConfig;
+    /** Attribute value renderers; the first one matching a cell value renders it */
+    valueRenderers?: readonly ValueRenderer[];
+    /** Called when a rendered cell's preview is activated (opens the viewer) */
+    onOpenValue?: (rendererId: string, value: unknown) => void;
     /** Localization dictionary */
     dict: Dictionary;
 }

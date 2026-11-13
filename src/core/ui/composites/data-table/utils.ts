@@ -1,4 +1,4 @@
-import type { SortDirection, DataTableLabels } from "./types";
+import type { SortDirection, DataTableLabels, ValueRenderer } from "./types";
 
 /** One comparison locale for the whole module — not per pair. */
 const COLLATOR = new Intl.Collator();
@@ -62,14 +62,33 @@ export function applyRowFilters(
     row: Record<string, unknown>,
     filters: Record<string, string>,
     labels: DataTableLabels,
+    valueRenderers?: readonly ValueRenderer[],
 ): boolean {
     return Object.entries(filters)
         .filter(([, filterVal]) => filterVal.length > 0)
         .every(([col, filterVal]) =>
-            formatValue(row[col], labels)
+            valueToText(row[col], labels, valueRenderers)
                 .toLowerCase()
                 .includes(filterVal.toLowerCase()),
         );
+}
+
+/** The first renderer claiming the value, in list order. */
+export function resolveValueRenderer(
+    value: unknown,
+    renderers?: readonly ValueRenderer[],
+): ValueRenderer | undefined {
+    return renderers?.find((renderer) => renderer.matches(value));
+}
+
+/** Filterable text of a cell: the matched renderer's `toText` or the default formatting. */
+export function valueToText(
+    value: unknown,
+    labels: DataTableLabels,
+    renderers?: readonly ValueRenderer[],
+): string {
+    const renderer = resolveValueRenderer(value, renderers);
+    return renderer?.toText?.(value) ?? formatValue(value, labels);
 }
 
 /** Column names of the key-value view. */

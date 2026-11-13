@@ -13,7 +13,11 @@ import { TableEmpty } from "./components/TableEmpty";
 import type { DataTableKey, DataTableProps } from "./types";
 import styles from "./AttributeTable.module.css";
 
-export { type DataTableProps, type GeometryColumnConfig } from "./types";
+export {
+    type DataTableProps,
+    type GeometryColumnConfig,
+    type ValueRenderer,
+} from "./types";
 
 /**
  * Data table with a virtualized window. `columns` selects the columnar
@@ -31,6 +35,8 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         fetchMore,
         onRefresh,
         geometryColumn,
+        valueRenderers,
+        onOpenValue,
         pageSize = 50,
         dict,
     } = props;
@@ -70,6 +76,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         sortColumn,
         sortDirection,
         labels,
+        valueRenderers,
     });
 
     const rowCount = sortedData.length;
@@ -110,6 +117,8 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                         isColumnar={isColumnar}
                         displayColumns={displayColumns}
                         geometryColumn={geometryColumn}
+                        valueRenderers={valueRenderers}
+                        onOpenValue={onOpenValue}
                         sortColumn={sortColumn}
                         sortDirection={sortDirection}
                         handleSort={handleSort}
@@ -123,6 +132,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                         bottomPaddingHeight={bottomPaddingHeight}
                         loading={loading}
                         labels={labels}
+                        dict={dict}
                     />
                     {loading && (
                         <div className={styles.loadingContainer}>

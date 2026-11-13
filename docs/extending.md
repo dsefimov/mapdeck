@@ -289,6 +289,42 @@ the icon URL is reachable under the host's CSP:
 
 No registry change is needed.
 
+## Attribute value renderers
+
+A rich attribute kind is a value shape plus one renderer (ADR-0021). The value
+carries its own `kind` tag, so no column schema is involved:
+
+```ts
+// Feature data produced by your protocol/provider:
+attributes: {
+    elevationChart: { kind: "chart", url: "/charts/e12.svg", title: "Profile" },
+}
+```
+
+```ts
+// In your module's register():
+context.attributeRenderers.register({
+    id: "chart",
+    matches: (value) =>
+        typeof value === "object" && value !== null &&
+        (value as Record<string, unknown>).kind === "chart",
+    renderCell: (value, { open, dict }) =>
+        isChartValue(value)
+            ? <ChartCell chart={value} label={dict["chart.open"]} onOpen={open} />
+            : null,
+    renderViewer: (value, { close }) =>
+        isChartValue(value) ? <ChartView chart={value} onClose={close} /> : null,
+});
+```
+
+The first registered renderer whose `matches` accepts a value renders it — in the
+attribute table and in feature info alike; the fullscreen viewer opens inside the
+system lightbox (scrim, Escape, focus handling come for free). Keep the predicate
+strict, and read your strings from `api.dict` with locally declared keys. The
+built-ins `photo` and `album` (`PhotoAttributeValue`, `AlbumAttributeValue`) are
+the reference implementation; the full contract is in
+[api/extensions.md](api/extensions.md#attributevaluerenderer).
+
 ## Source adapters
 
 A module registers its own `SourceAdapter`

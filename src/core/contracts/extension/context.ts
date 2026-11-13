@@ -19,6 +19,7 @@ import type {
     FeatureProviderRegistry,
     FeatureProviderRegistrationPort,
 } from "../domain/feature-info";
+import type { AttributeValueRendererRegistrationPort } from "../domain/attribute-value";
 import type { LayerCatalogPort, BindingSlot } from "../domain/tree";
 import type {
     BasemapPort,
@@ -97,4 +98,5 @@ export interface ModuleContext extends ToolRuntimeContext {
     readonly layerTools: LayerToolRegistrationPort;
     readonly mapTools: MapToolRegistrationPort;
     readonly assetMapping: AssetMappingPort;
+    readonly attributeRenderers: AttributeValueRendererRegistrationPort;
 }

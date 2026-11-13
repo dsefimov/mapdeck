@@ -1,5 +1,5 @@
 import { useDeferredValue, useMemo } from "react";
-import type { SortDirection, DataTableLabels } from "../types";
+import type { SortDirection, DataTableLabels, ValueRenderer } from "../types";
 import { applyRowFilters, compareValues } from "../utils";
 
 interface DataPipelineInput {
@@ -8,6 +8,7 @@ interface DataPipelineInput {
     sortColumn?: string | null;
     sortDirection?: SortDirection;
     labels: DataTableLabels;
+    valueRenderers?: readonly ValueRenderer[] | undefined;
 }
 
 interface DataPipelineResult {
@@ -20,7 +21,8 @@ interface DataPipelineResult {
  * formatted for matching.
  */
 export function useDataPipeline(input: DataPipelineInput): DataPipelineResult {
-    const { rows, filters, sortColumn, sortDirection, labels } = input;
+    const { rows, filters, sortColumn, sortDirection, labels, valueRenderers } =
+        input;
     const deferredFilters = useDeferredValue(filters);
 
     const filteredData = useMemo(() => {
@@ -29,9 +31,9 @@ export function useDataPipeline(input: DataPipelineInput): DataPipelineResult {
         );
         if (!hasFilters) return rows;
         return rows.filter((row) =>
-            applyRowFilters(row, deferredFilters, labels),
+            applyRowFilters(row, deferredFilters, labels, valueRenderers),
         );
-    }, [rows, deferredFilters, labels]);
+    }, [rows, deferredFilters, labels, valueRenderers]);
 
     const sortedData = useMemo(() => {
         if (!sortColumn || !sortDirection) return filteredData;

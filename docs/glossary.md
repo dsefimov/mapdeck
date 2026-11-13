@@ -84,3 +84,10 @@ links. See ADR-0018.
 The port behind point queries (feature info on map click): it collects the features at
 a map position for the protocols that implement one. Distinct from the protocol's
 optional `fetchAttributes` hook, which feeds the attribute table. See ADR-0009.
+
+## Attribute value renderer
+
+The per-kind rendering logic for a rich attribute value (ADR-0021): a `matches`
+predicate plus table-cell and fullscreen-viewer renderings. A value opts in by its
+own shape (a `kind` tag) — there is no column schema. The first registered renderer
+whose predicate accepts a value renders it, on every attribute surface at once.

@@ -19,7 +19,24 @@ export {
     DataTable,
     type DataTableProps,
     type GeometryColumnConfig,
+    type ValueRenderer,
 } from "./data-table";
+
+export {
+    Lightbox,
+    type LightboxProps,
+    PhotoValueCell,
+    type PhotoValueCellProps,
+    PhotoValueView,
+    type PhotoValueViewProps,
+    PhotoImage,
+    AlbumValueView,
+    type AlbumValueViewProps,
+    type AlbumValueItem,
+    type MediaValueKey,
+    type MediaValueLabels,
+    type PhotoValueItem,
+} from "./media-values";
 
 export { ColorPicker, type ColorPickerProps } from "./color-picker";
 
