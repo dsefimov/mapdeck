@@ -5,7 +5,10 @@
     pointer-events: none;
     display: flex;
     padding: var(--space-md);
-    padding-bottom: var(--space-lg);
+    /* Double the side padding: the map's attribution bar sits in the
+       bottom-right corner and must stay clickable and readable below
+       the grid's last row. */
+    padding-bottom: calc(var(--space-lg) * 2);
     padding-right: var(--toolbar-width);
 }
 
