@@ -303,14 +303,15 @@ attributes: {
 
 ```ts
 // In your module's register():
+const t = context.locale.t("my-module");
 context.attributeRenderers.register({
     id: "chart",
     matches: (value) =>
         typeof value === "object" && value !== null &&
         (value as Record<string, unknown>).kind === "chart",
-    renderCell: (value, { open, dict }) =>
+    renderCell: (value, { open }) =>
         isChartValue(value)
-            ? <ChartCell chart={value} label={dict["chart.open"]} onOpen={open} />
+            ? <ChartCell chart={value} label={t("chart.open")} onOpen={open} />
             : null,
     renderViewer: (value, { close }) =>
         isChartValue(value) ? <ChartView chart={value} onClose={close} /> : null,
@@ -320,9 +321,13 @@ context.attributeRenderers.register({
 The first registered renderer whose `matches` accepts a value renders it — in the
 attribute table and in feature info alike; the viewer opens as a maximized
 widget window (title, close, drag — the standard window chrome comes for free).
-Keep the predicate strict, and read your strings from `api.dict` with locally
-declared keys. The built-ins `photo` and `album` (`PhotoAttributeValue`,
-`AlbumAttributeValue`) are the reference implementation; the full contract is in
+Keep the predicate strict. Strings: `api.dict` carries the **core** dictionary
+only — read your own labels through your module's locale namespace (a closure
+over `context.locale.t(...)` re-reads the current language on every render),
+never by registering into `core`. A built-in is replaced by id with
+`{ override: true }` — registration order alone cannot outrank it. The
+built-ins `photo` and `album` (`PhotoAttributeValue`, `AlbumAttributeValue`)
+are the reference implementation; the full contract is in
 [api/extensions.md](api/extensions.md#attributevaluerenderer).
 
 ## Source adapters

@@ -85,8 +85,8 @@ export const albumValueRenderer: AttributeValueRenderer = {
 
 /**
  * Registers the built-in attribute value renderers. Runs before module
- * registration, so a module's renderer can shadow a built-in through
- * `{ override: true }` or a sharper predicate.
+ * registration; a module replaces a built-in by id with
+ * `{ override: true }` — registering later cannot outrank it by order.
  */
 export function registerAttributeRenderers(rootStore: StoreRegistry): void {
     rootStore.attributeValueStore.register(photoValueRenderer);

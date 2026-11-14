@@ -5,10 +5,7 @@ import { mediaViewerTranslations } from "./locale";
 import MediaViewerComponent from "./components/Widget";
 import type { MediaViewerWidgetProps } from "./types";
 
-/**
- * Opens at the full grid — a value view wants the whole workspace — with
- * a floor that keeps manual shrinking useful.
- */
+/** Full grid by default, with a floor that keeps manual shrinking useful. */
 const SIZE: WidgetSizeConfig = {
     defaultWidth: 80,
     defaultHeight: 45,

@@ -35,7 +35,6 @@ interface ValueCellProps {
         | undefined;
 }
 
-/** One data cell: a matched value renderer's cell, or the default text. */
 const ValueCell: (props: ValueCellProps) => ReactNode = ({
     value,
     labels,

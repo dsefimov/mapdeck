@@ -15,8 +15,7 @@ export interface PhotoValueCellProps {
 }
 
 /**
- * Clickable thumbnail for a table cell. Sized to the table row height —
- * the table's virtualization assumes uniform rows, so the preview must
+ * The table's virtualization assumes uniform rows — the preview must
  * never grow the row.
  */
 export const PhotoValueCell: (props: PhotoValueCellProps) => ReactNode = ({

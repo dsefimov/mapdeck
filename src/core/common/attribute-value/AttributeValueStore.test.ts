@@ -14,6 +14,7 @@ const renderer = (id: string): AttributeValueRenderer => ({
     id,
     matches: (value) => value === id,
     renderCell: () => null,
+    renderViewer: () => null,
 });
 
 function makeStore() {
@@ -55,8 +56,9 @@ describe("AttributeValueStore", () => {
         const value = { kind: "photo", url: "x.png" };
 
         store.openView("photo", value);
-        expect(store.view).toEqual({ rendererId: "photo", value });
-        // The open is deferred past the initiating click (see openView).
+        const view = store.view;
+        expect(view?.rendererId).toBe("photo");
+        expect(view?.value).toBe(value);
         await vi.waitFor(() =>
             expect(openWidget).toHaveBeenCalledWith(
                 ATTRIBUTE_VALUE_VIEWER_WIDGET_ID,
@@ -65,6 +67,32 @@ describe("AttributeValueStore", () => {
 
         store.closeView();
         expect(store.view).toBeNull();
+    });
+
+    it("every open gets a fresh seq — the viewer keys its content by it", () => {
+        const { store } = makeStore();
+        store.register(renderer("photo"));
+
+        store.openView("photo", "a");
+        const first = store.view?.seq;
+        store.openView("photo", "b");
+
+        expect(store.view?.seq).not.toBe(first);
+    });
+
+    it("openView without a renderViewer is rejected — nothing opens", async () => {
+        const { store, openWidget } = makeStore();
+        store.register({
+            id: "cell-only",
+            matches: (value) => value === "cell-only",
+            renderCell: () => null,
+        });
+
+        store.openView("cell-only", "x");
+        expect(store.view).toBeNull();
+
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(openWidget).not.toHaveBeenCalled();
     });
 
     it("looks a renderer up by id", () => {

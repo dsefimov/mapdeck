@@ -7,7 +7,6 @@
     gap: var(--space-8);
 }
 
-/* A subtle stage gives every photograph a boundary inside the white card. */
 .figure {
     position: relative;
     flex: 1;

@@ -13,11 +13,7 @@ export interface AlbumValueViewProps {
     dict: Dictionary;
 }
 
-/**
- * Fullscreen album carousel: the current photograph next to a vertical
- * filmstrip of thumbnails (left). Arrow keys wrap around; the active
- * thumbnail scrolls itself into view.
- */
+/** Album carousel: the current photograph beside a vertical thumbnail strip. */
 export const AlbumValueView: (props: AlbumValueViewProps) => ReactNode = ({
     album,
     dict,

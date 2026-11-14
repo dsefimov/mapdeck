@@ -1,26 +1,25 @@
 import { makeAutoObservable, observable, reaction } from "mobx";
 import { Registry, type RegisterOptions } from "@core/lib/registry";
+import { logger } from "@core/lib/logger";
 import type { AttributeValueRenderer } from "@core/contracts";
 import type { CommonRegistry } from "../common-registry";
 
 /**
- * The media viewer widget that `openView` brings up. The id lives here —
- * the widget module imports it; the store cannot import an extension.
+ * The id lives here — the widget module imports it; a common store cannot
+ * import an extension.
  */
 export const ATTRIBUTE_VALUE_VIEWER_WIDGET_ID = "media-viewer-widget";
 
-/** The fullscreen view currently open: which renderer shows which value. */
+let nextViewSeq = 0;
+
+/** The viewer keys its content by `seq`: every open is a fresh state. */
 export interface AttributeValueView {
-    rendererId: string;
-    value: unknown;
+    readonly seq: number;
+    readonly rendererId: string;
+    readonly value: unknown;
 }
 
-/**
- * Attribute value renderer registry plus the one open viewer view. The
- * data table renders cells through the renderer list; `openView` records
- * the click's target and opens the viewer widget that renders it through
- * the renderer's `renderViewer`.
- */
+/** Attribute value renderer registry plus the one open viewer view. */
 export class AttributeValueStore {
     private _renderers = new Registry<AttributeValueRenderer>(
         "Attribute value renderer",
@@ -46,12 +45,19 @@ export class AttributeValueStore {
             (open) => {
                 if (!open) this.closeView();
             },
+            { name: "attribute-value-viewer-window-sync" },
         );
         // Wiring, not state: the disposer stays outside observability
         // (assigned before observability, as RootStore wires its views).
-        makeAutoObservable<this, "_renderers" | "_disposeViewerSync">(this, {
+        makeAutoObservable<
+            this,
+            "_renderers" | "_disposeViewerSync" | "_view"
+        >(this, {
             _renderers: false,
             _disposeViewerSync: false,
+            // Values are open data carried for renderers, not state to
+            // observe: keep the reference as opened, no deep clone.
+            _view: observable.ref,
         });
     }
 
@@ -59,13 +65,12 @@ export class AttributeValueStore {
         this._disposeViewerSync();
     }
 
-    /** Registers a renderer. Duplicate id throws unless `opts.override`. */
     register = (renderer: AttributeValueRenderer, opts?: RegisterOptions): void => {
         this._renderers.register(renderer, opts);
         this._renderersList.replace(this._renderers.getAll());
     };
 
-    /** Registered renderers in registration order — cell matching order. */
+    /** Registration order is the cell-matching precedence order. */
     get renderersList(): readonly AttributeValueRenderer[] {
         return this._renderersList;
     }
@@ -79,7 +84,14 @@ export class AttributeValueStore {
     }
 
     openView = (rendererId: string, value: unknown): void => {
-        this._view = { rendererId, value };
+        const renderer = this._renderers.get(rendererId);
+        if (!renderer?.renderViewer) {
+            logger.warn(
+                `Attribute value renderer "${rendererId}" has no renderViewer — nothing to open`,
+            );
+            return;
+        }
+        this._view = { seq: ++nextViewSeq, rendererId, value };
         // The click that opens the viewer also raises the source window
         // (grid focus) after this handler runs — open past that bump, or
         // the viewer lands underneath the window it was opened from.

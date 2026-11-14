@@ -24,8 +24,9 @@ compact `renderCell`, an optional `renderViewer`, and an optional
 wins — registration order is the precedence order. Built-ins (`photo`,
 `album`, over `PhotoAttributeValue`/`AlbumAttributeValue` with a `kind`
 tag) register in bootstrap before modules; a module registers its own
-kinds through `context.attributeRenderers` and can shadow a built-in
-through `{ override: true }` or a sharper predicate.
+kinds through `context.attributeRenderers`. A built-in can only be
+replaced by id with `{ override: true }` — a module registering later
+cannot outrank it by order.
 
 **The viewer is a widget window, not a dialog.** A cell preview's
 `api.open` records the view on `AttributeValueStore` and opens the
@@ -39,8 +40,10 @@ mirroring the contract as `GeometryColumnConfig` does).
 
 **Renderer strings come from the ambient dictionary.** Both cell and
 viewer apis carry the core `dict`; a renderer declares the keys it reads
-(the kit's local key-union pattern), so built-in and module renderers
-localize without touching the contract's neutral surface.
+(the kit's local key-union pattern). The api serves built-in renderers —
+a module renderer localizes through its own locale namespace (a closure
+over `context.locale.t(...)`), keeping the contract's surface neutral and
+the `core` namespace free of module keys.
 
 ## Consequences
 

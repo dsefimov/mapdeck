@@ -5,7 +5,6 @@
     display: flex;
 }
 
-/* The preview strip is its own panel, separated from the viewing stage. */
 .filmstrip {
     display: flex;
     flex-direction: column;

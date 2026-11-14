@@ -8,7 +8,6 @@ import { cn } from "../../utils/cn";
 import type { MediaValueKey, PhotoValueItem } from "./types";
 import styles from "./PhotoValueView.module.css";
 
-/** Load state of one image URL. */
 type LoadState = "loading" | "loaded" | "error";
 
 interface PhotoImageProps {
@@ -16,7 +15,6 @@ interface PhotoImageProps {
     dict: Dictionary;
 }
 
-/** One full-size photograph: spinner while loading, alert on failure. */
 export const PhotoImage: (props: PhotoImageProps) => ReactNode = ({
     photo,
     dict,
@@ -57,11 +55,7 @@ export interface PhotoValueViewProps {
     dict: Dictionary;
 }
 
-/**
- * Single-photo viewer content (rendered inside the Lightbox): the image on
- * a subtle stage, its description below — the title lives in the window
- * header.
- */
+/** Single-photo viewer content; the photo's title lives in the window header. */
 export const PhotoValueView: (props: PhotoValueViewProps) => ReactNode = ({
     photo,
     dict,

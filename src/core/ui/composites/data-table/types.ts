@@ -45,8 +45,7 @@ export interface GeometryColumnConfig {
 /**
  * Renders attribute values of one shape inside table cells. Structural
  * mirror of the contracts' `AttributeValueRenderer` — the kit cannot
- * import contracts, so the shape is restated here (the `_`-prefix
- * convention above follows the same rule).
+ * import contracts, so the shape is restated here.
  */
 export interface ValueRenderer {
     id: string;
@@ -78,9 +77,9 @@ export interface DataTableProps {
     onRefresh?: (() => void) | (() => Promise<void>);
     /** Optional geometry column config — adds a zoom-to-object button per row */
     geometryColumn?: GeometryColumnConfig;
-    /** Attribute value renderers; the first one matching a cell value renders it */
+    /** Value renderers, tried in order against cell values */
     valueRenderers?: readonly ValueRenderer[];
-    /** Called when a rendered cell's preview is activated (opens the viewer) */
+    /** Opens the viewer for a renderer's cell value */
     onOpenValue?: (rendererId: string, value: unknown) => void;
     /** Localization dictionary */
     dict: Dictionary;

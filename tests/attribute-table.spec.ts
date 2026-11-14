@@ -58,7 +58,6 @@ test.describe("attribute table", () => {
         });
         await expect(photoCell).toBeVisible({ timeout: 15_000 });
 
-        // The album preview opens the viewer as a maximized widget window.
         await page
             .getByRole("button", { name: "Paris (3 photos)" })
             .click();

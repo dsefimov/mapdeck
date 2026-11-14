@@ -1,12 +1,11 @@
+import { Fragment } from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/shell";
 import type { MediaViewerWidgetProps } from "../types";
 import styles from "./Widget.module.css";
 
 /**
- * Media viewer widget: renders the open attribute value through its
- * renderer's `renderViewer` inside a standard grid window. The window
- * chrome (title, close, drag, resize) belongs to the widget grid; the
+ * Media viewer widget: the window chrome belongs to the widget grid; the
  * view's lifetime is tied to the window in AttributeValueStore.
  */
 const MediaViewerComponent = observer<MediaViewerWidgetProps>(
@@ -26,10 +25,13 @@ const MediaViewerComponent = observer<MediaViewerWidgetProps>(
 
         return (
             <div className={`${styles.viewer} ${className}`}>
-                {renderer.renderViewer(view.value, {
-                    close,
-                    dict: localeStore.t("core"),
-                })}
+                {/* Every open is a fresh component state (see AttributeValueView.seq). */}
+                <Fragment key={view.seq}>
+                    {renderer.renderViewer(view.value, {
+                        close,
+                        dict: localeStore.t("core"),
+                    })}
+                </Fragment>
             </div>
         );
     },
