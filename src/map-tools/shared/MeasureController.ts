@@ -187,7 +187,7 @@ export function measureCursor(
     editMode: boolean,
 ): string {
     if (draggingIndex !== null) return "grabbing";
-    return editMode ? "move" : "crosshair";
+    return editMode ? "move" : "pointer";
 }
 
 /**

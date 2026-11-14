@@ -4,7 +4,11 @@ import type { OverlayManager } from "@core/contracts/domain/map-context";
 import type { ToolRuntimeContext } from "@core/contracts";
 import { logger } from "@core/lib/logger";
 import { findBboxProblem, type Bbox } from "@core/lib/geo";
-import type { SelectionRecord, SelectionStore } from "@core/common/selection";
+import {
+    isStableKey,
+    type SelectionRecord,
+    type SelectionStore,
+} from "@core/common/selection";
 import type { SelectionToolStore } from "./SelectionToolStore";
 import { recordFromDeckPick, recordFromNativeFeature } from "./pickedFeature";
 
@@ -22,8 +26,11 @@ export interface SelectionControllerDeps {
 /** Below this travel a drag counts as a click, not a rectangle. */
 const CLICK_THRESHOLD_PX = 3;
 
-/** Deck picks widen a point slightly, as feature-info does. */
-const PICK_RADIUS_PX = 5;
+/**
+ * Deck's rectangle pick has no point radius — a click is a small
+ * square around the cursor, so points and thin lines stay clickable.
+ */
+const CLICK_TOLERANCE_PX = 5;
 
 /** Keep a fitted selection off the viewport edges and below street level. */
 const FIT_BOUNDS_PADDING_PX = 20;
@@ -68,6 +75,10 @@ export class SelectionController {
         deps.map.on("mousedown", this.handleMouseDown);
         deps.map.on("mousemove", this.handleMouseMove);
         deps.map.on("mouseup", this.handleMouseUp);
+        // The canvas never sees a mouseup that happens outside it — a
+        // window-level listener aborts such gestures instead of leaving
+        // them stuck halfway.
+        window.addEventListener("pointerup", this.handleWindowPointerUp);
         deps.map.dragPan.disable();
     }
 
@@ -79,6 +90,7 @@ export class SelectionController {
         deps.map.off("mousedown", this.handleMouseDown);
         deps.map.off("mousemove", this.handleMouseMove);
         deps.map.off("mouseup", this.handleMouseUp);
+        window.removeEventListener("pointerup", this.handleWindowPointerUp);
         deps.map.dragPan.enable();
         deps.toolStore.setDragRect(null);
         this.startPoint = null;
@@ -111,6 +123,12 @@ export class SelectionController {
     private handleMouseMove = (event: maplibregl.MapMouseEvent): void => {
         const start = this.startPoint;
         if (!start) return;
+        // The button was released somewhere the canvas could not report
+        // — the gesture is void, not continued.
+        if (event.originalEvent.buttons === 0) {
+            this.abortGesture();
+            return;
+        }
         this.deps?.toolStore.setDragRect({
             x0: start.x,
             y0: start.y,
@@ -118,6 +136,24 @@ export class SelectionController {
             y1: event.point.y,
         });
     };
+
+    /**
+     * A pointerup the canvas never sees (outside it or the window).
+     * Real browsers deliver window pointerup BEFORE canvas mouseup, so
+     * an up that landed on the canvas itself must pass through — the
+     * map's own mouseup completes that gesture.
+     */
+    private handleWindowPointerUp = (event: PointerEvent): void => {
+        if (!this.startPoint) return;
+        const canvas = this.deps?.map.getCanvas();
+        if (canvas && (event.target as unknown) === canvas) return;
+        this.abortGesture();
+    };
+
+    private abortGesture(): void {
+        this.startPoint = null;
+        this.deps?.toolStore.setDragRect(null);
+    }
 
     private handleMouseUp = (event: maplibregl.MapMouseEvent): void => {
         const start = this.startPoint;
@@ -155,7 +191,7 @@ export class SelectionController {
         if (records.length > 0) {
             deps.selection.markStableIds(
                 target,
-                records.some((record) => record.key.startsWith("feature-")),
+                records.some((record) => isStableKey(record.key)),
             );
         }
     }
@@ -219,12 +255,17 @@ export class SelectionController {
         query: PickQuery,
     ): SelectionRecord[] {
         const { x, y, rect } = query;
-        const picks = rect
-            ? deps.overlayManager.pickObjects(rect.x0, rect.y0, undefined, {
-                  width: rect.x1 - rect.x0,
-                  height: rect.y1 - rect.y0,
-              })
-            : deps.overlayManager.pickObjects(x, y, PICK_RADIUS_PX);
+        const picks = deps.overlayManager.pickObjects(
+            rect ? rect.x0 : x - CLICK_TOLERANCE_PX,
+            rect ? rect.y0 : y - CLICK_TOLERANCE_PX,
+            undefined,
+            rect
+                ? { width: rect.x1 - rect.x0, height: rect.y1 - rect.y0 }
+                : {
+                      width: CLICK_TOLERANCE_PX * 2,
+                      height: CLICK_TOLERANCE_PX * 2,
+                  },
+        );
 
         const records: SelectionRecord[] = [];
         const seen = new Set<string>();

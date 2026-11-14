@@ -62,6 +62,16 @@ describe("renderSelectionHighlight", () => {
         expect(props.data).toHaveLength(3);
     });
 
+    it("paints with the selection color", () => {
+        const [, layer] = highlightTuple([bboxRecord]);
+
+        const props = (layer as unknown as {
+            props: { getFillColor: number[]; getLineColor: number[] };
+        }).props;
+        expect(props.getFillColor).toEqual([255, 212, 0, 70]);
+        expect(props.getLineColor).toEqual([255, 212, 0, 230]);
+    });
+
     it("draws a bbox footprint as its rectangle and a point as a Point", () => {
         const [, layer] = highlightTuple([bboxRecord, pointRecord]);
 

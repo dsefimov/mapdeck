@@ -248,14 +248,17 @@ export class AttributeTableStore {
 
         if (!this.selectedLayerId) return;
 
-        this.dropIndexKeyedSelection(this.selectedLayerId);
         this._cache.invalidate(this._cacheKey(this.selectedLayerId));
 
-        await this._fetch(this.selectedLayerId, {
-            startIndex: 0,
-            maxFeatures: PAGE_SIZE,
-            ...this._sortParams,
-        });
+        await this._fetch(
+            this.selectedLayerId,
+            {
+                startIndex: 0,
+                maxFeatures: PAGE_SIZE,
+                ...this._sortParams,
+            },
+            { dropIndexKeyed: true },
+        );
     };
 
     toggleRowSelection = (feature: FeatureRow): void => {
@@ -292,28 +295,18 @@ export class AttributeTableStore {
     refreshData = async (): Promise<void> => {
         if (!this.selectedLayerId) return;
 
-        this.dropIndexKeyedSelection(this.selectedLayerId);
         this._cache.invalidate(this._cacheKey(this.selectedLayerId));
 
-        await this._fetch(this.selectedLayerId, {
-            startIndex: 0,
-            maxFeatures: PAGE_SIZE,
-            ...this._sortParams,
-        });
+        await this._fetch(
+            this.selectedLayerId,
+            {
+                startIndex: 0,
+                maxFeatures: PAGE_SIZE,
+                ...this._sortParams,
+            },
+            { dropIndexKeyed: true },
+        );
     };
-
-    /**
-     * A refetch or re-sort may silently re-target index-based keys
-     * (`row-<i>`) — those selections cannot survive it. Stable keys
-     * (`feature-<id>`) match by value, so they stay.
-     */
-    private dropIndexKeyedSelection(layerId: string): void {
-        runInAction(() => {
-            if (!this.selection.hasStableIds(layerId)) {
-                this.selection.clearLayer(layerId);
-            }
-        });
-    }
 
     clearError = (): void => {
         if (this.selectedLayerId) {
@@ -328,11 +321,12 @@ export class AttributeTableStore {
     private async _fetch(
         layerId: string,
         request: AttributeFetchRequest,
+        opts: { dropIndexKeyed?: boolean } = {},
     ): Promise<void> {
         const key = this._cacheKey(layerId);
         try {
             await this._cache.fetch(key, (prev) =>
-                this._load(layerId, prev, request),
+                this._load(layerId, prev, request, opts),
             );
         } catch {
             // The failure is recorded on the cache entry and surfaces via
@@ -345,6 +339,7 @@ export class AttributeTableStore {
         layerId: string,
         prev: CachedAttributes | undefined,
         request: AttributeFetchRequest,
+        opts: { dropIndexKeyed?: boolean } = {},
     ): Promise<CachedAttributes> {
         const binding = this._dataBinding(layerId);
         const protocol = this.rootStore.protocolRegistry.getById(
@@ -372,6 +367,12 @@ export class AttributeTableStore {
                     (feature) => stableFeatureKey(feature) !== null,
                 ),
             );
+            // Freshly committed rows may have re-targeted index-based
+            // keys (`row-<i>`) — only on commit, so a failed refetch
+            // keeps the selection along with the previous data.
+            if (opts.dropIndexKeyed) {
+                this.selection.retainStableKeys(layerId);
+            }
         });
         return merged;
     }

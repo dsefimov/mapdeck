@@ -41,7 +41,7 @@ export const FeatureInfoComponent: (
         }, [controller, map, context, overlayManager, store]);
 
         useEscapeKey(deactivate);
-        useMapCursor(map, "crosshair");
+        useMapCursor(map, "pointer");
 
         const { groups, selectedIndex, loading, hasClicked } = store;
 

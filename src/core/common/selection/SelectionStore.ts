@@ -4,6 +4,7 @@ import type { SelectionMode, SelectionRecord } from "./types";
 import type { LayerSelection } from "./logic/selectionOps";
 import {
     applySelection,
+    retainStableKeys,
     toggleRecord,
     unionRecordExtents,
 } from "./logic/selectionOps";
@@ -21,11 +22,11 @@ export class SelectionStore {
     /** Layer node id → its selection; empty layers are absent. */
     readonly layers = new Map<string, LayerSelection>();
 
+    /** Observable: the panel's sync hint reads it reactively. */
     private readonly _stableIds = new Map<string, boolean>();
 
     constructor() {
-        makeAutoObservable<this, "_stableIds">(this, {
-            _stableIds: false,
+        makeAutoObservable(this, {
             layers: observable.shallow,
         });
     }
@@ -46,6 +47,18 @@ export class SelectionStore {
 
     clearLayer(layerId: string): void {
         this.layers.delete(layerId);
+    }
+
+    /**
+     * Drop the index-keyed records of one layer — called by the
+     * attribute table when freshly committed rows may have re-targeted
+     * them (refresh, re-sort). Stable keys are untouched.
+     */
+    retainStableKeys(layerId: string): void {
+        const selection = this.layers.get(layerId);
+        if (!selection) return;
+        const retained = retainStableKeys(selection);
+        if (retained !== selection) this.setLayer(layerId, retained);
     }
 
     clearAll(): void {

@@ -36,9 +36,11 @@ vocabularies that do not match in general.
   properties; only `feature-<id>` keys match across surfaces. Fallbacks
   are surface-local by design — table rows fall back to `row-<i>`, map
   picks to `pick-<i>` — so an unstable id can never sync the wrong
-  rows. The panel and the table surface this as a "no stable ids" hint;
-  a refresh or re-sort drops only index-keyed selections. The target
-  layer defaults to the topmost visible layer.
+  rows. The selection panel surfaces this as a "no stable ids" hint;
+  a refresh or re-sort drops the index-keyed records of the layer when
+  the fresh rows commit (a failed refetch keeps the selection along
+  with the previous data). The target layer defaults to the topmost
+  visible layer.
 - **One map tool, one target layer.** The `selection` interactive map
   tool (`src/map-tools/selection/`) owns interaction only: left-click
   picks the target layer's feature, left-drag picks a rectangle
@@ -53,9 +55,10 @@ vocabularies that do not match in general.
   the union needs no tie-breaking. The target list carries only layers
   whose render protocol declares the `featureSelection` capability
   (`Protocol.featureSelection?: boolean`, the `fetchAttributes`
-  precedent — the protocol's author owns the knowledge); raster and
-  point-cloud protocols do not declare it, so their layers are never
-  selectable targets.
+  precedent — the protocol's author owns the knowledge): vector-tile,
+  geojson-tiled, ogc-features and wfs declare it; raster and
+  point-cloud protocols do not, so their layers are never selectable
+  targets.
 - **Highlight outside the layer manager.** The map viewer mounts
   `useSelectionHighlight`, which renders one `GeoJsonLayer`
   (`selection-highlight`) from the records through `useOverlayLayers` —

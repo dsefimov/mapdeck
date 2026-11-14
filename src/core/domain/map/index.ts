@@ -11,6 +11,5 @@ export { renderTechLayers } from "./adapters/overlay/techLayerRenderer";
 export {
     renderSelectionHighlight,
     SELECTION_HIGHLIGHT_LAYER_ID,
-    SELECTION_LAYER_ID_PREFIX,
 } from "./adapters/overlay/selectionHighlightRenderer";
 export { LayerManager } from "./adapters/LayerManager";

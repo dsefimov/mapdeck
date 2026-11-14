@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { describe, expect, it, vi } from "vitest";
 import { SelectionController } from "./SelectionController";
 import type { SelectionControllerDeps } from "./SelectionController";
@@ -10,12 +11,16 @@ import type { LayerNode } from "@core/contracts";
 
 type Handler = (event: {
     point: { x: number; y: number };
-    originalEvent: { button: number };
+    originalEvent: { button: number; buttons: number };
 }) => void;
 
 const mousedown = (x: number, y: number, button = 0) => ({
     point: { x, y },
-    originalEvent: { button },
+    originalEvent: { button, buttons: 1 },
+});
+const mousemove = (x: number, y: number, buttons = 1) => ({
+    point: { x, y },
+    originalEvent: { button: 0, buttons },
 });
 
 function makeNode(id: string, visible = true): LayerNode {
@@ -38,6 +43,8 @@ interface Harness {
     pickObjects: ReturnType<typeof vi.fn>;
     queryRenderedFeatures: ReturnType<typeof vi.fn>;
     getLayer: ReturnType<typeof vi.fn>;
+    mapOff: ReturnType<typeof vi.fn>;
+    canvas: HTMLCanvasElement;
     dragPan: { disable: ReturnType<typeof vi.fn>; enable: ReturnType<typeof vi.fn> };
 }
 
@@ -49,6 +56,7 @@ function makeHarness(nodes: LayerNode[]): Harness {
     const queryRenderedFeatures = vi.fn((): unknown[] => []);
     const getLayer = vi.fn((): unknown => undefined);
     const dragPan = { disable: vi.fn(), enable: vi.fn() };
+    const canvas = window.document.createElement("canvas");
 
     const map = {
         on: vi.fn((event: string, listener: Handler) =>
@@ -57,6 +65,7 @@ function makeHarness(nodes: LayerNode[]): Harness {
         off: vi.fn(),
         dragPan,
         getLayer,
+        getCanvas: () => canvas,
         queryRenderedFeatures,
     };
 
@@ -78,6 +87,8 @@ function makeHarness(nodes: LayerNode[]): Harness {
         pickObjects,
         queryRenderedFeatures,
         getLayer,
+        mapOff: map.off,
+        canvas,
         dragPan,
     };
 }
@@ -88,7 +99,7 @@ const click = (h: Harness, x: number, y: number): void => {
 };
 
 describe("SelectionController", () => {
-    it("picks the target layer's features on click", () => {
+    it("picks the target layer's features on a click with tolerance", () => {
         const h = makeHarness([makeNode("parcels")]);
         h.toolStore.setTargetLayer("parcels");
         h.pickObjects.mockReturnValue([
@@ -99,7 +110,13 @@ describe("SelectionController", () => {
 
         click(h, 10, 10);
 
-        expect(h.pickObjects).toHaveBeenCalledWith(10, 10, 5);
+        // A click is a small square: deck's pickObjects has no radius.
+        expect(h.pickObjects).toHaveBeenCalledWith(
+            5,
+            5,
+            undefined,
+            { width: 10, height: 10 },
+        );
         expect(h.selection.countFor("parcels")).toBe(2);
         expect(h.selection.hasStableIds("parcels")).toBe(true);
     });
@@ -117,13 +134,13 @@ describe("SelectionController", () => {
         expect(h.selection.countFor("parcels")).toBe(1);
     });
 
-    it("a drag turns into a rectangle pick and clears the preview", () => {
-        const h = makeHarness([makeNode("parcels")]);
+    it("a drag turns into a rectangle pick on both channels", () => {
+        const h = makeHarness([makeNode("parcels"), makeNode("tiles")]);
         h.toolStore.setTargetLayer("parcels");
         h.pickObjects.mockReturnValue([deckPick("parcels", "p1")]);
 
         h.mapHandlers.get("mousedown")!(mousedown(10, 20));
-        h.mapHandlers.get("mousemove")!(mousedown(30, 60));
+        h.mapHandlers.get("mousemove")!(mousemove(30, 60));
         expect(h.toolStore.dragRect).toEqual({
             x0: 10,
             y0: 20,
@@ -133,12 +150,48 @@ describe("SelectionController", () => {
 
         h.mapHandlers.get("mouseup")!(mousedown(30, 60));
 
-        expect(h.pickObjects).toHaveBeenCalledWith(10, 20, undefined, {
-            width: 20,
-            height: 40,
-        });
+        expect(h.pickObjects).toHaveBeenCalledWith(
+            10,
+            20,
+            undefined,
+            { width: 20, height: 40 },
+        );
         expect(h.toolStore.dragRect).toBeNull();
         expect(h.selection.countFor("parcels")).toBe(1);
+    });
+
+    it("passes the rectangle corners to the native query too", () => {
+        const h = makeHarness([makeNode("tiles")]);
+        h.toolStore.setTargetLayer("tiles");
+        h.getLayer.mockReturnValue({});
+
+        h.mapHandlers.get("mousedown")!(mousedown(10, 20));
+        h.mapHandlers.get("mousemove")!(mousemove(30, 60));
+        h.mapHandlers.get("mouseup")!(mousedown(30, 60));
+
+        expect(h.queryRenderedFeatures).toHaveBeenCalledWith(
+            [
+                [10, 20],
+                [30, 60],
+            ],
+            { layers: ["tiles"] },
+        );
+    });
+
+    it("a move below the click threshold stays a point pick", () => {
+        const h = makeHarness([makeNode("parcels")]);
+        h.toolStore.setTargetLayer("parcels");
+
+        h.mapHandlers.get("mousedown")!(mousedown(10, 10));
+        h.mapHandlers.get("mousemove")!(mousemove(12, 11));
+        h.mapHandlers.get("mouseup")!(mousedown(12, 11));
+
+        expect(h.pickObjects).toHaveBeenCalledWith(
+            5,
+            5,
+            undefined,
+            { width: 10, height: 10 },
+        );
     });
 
     it("applies the panel mode to the shared selection", () => {
@@ -175,6 +228,54 @@ describe("SelectionController", () => {
         expect(h.selection.countFor("cloud")).toBe(0);
     });
 
+    it("a mouseup outside the canvas aborts the gesture via window pointerup", () => {
+        const h = makeHarness([makeNode("parcels")]);
+        h.toolStore.setTargetLayer("parcels");
+
+        h.mapHandlers.get("mousedown")!(mousedown(10, 20));
+        h.mapHandlers.get("mousemove")!(mousemove(30, 60));
+        window.dispatchEvent(new Event("pointerup"));
+
+        expect(h.toolStore.dragRect).toBeNull();
+        // The next plain click does not inherit the aborted rectangle.
+        h.pickObjects.mockReturnValue([deckPick("parcels", "p1")]);
+        click(h, 40, 40);
+        expect(h.pickObjects).toHaveBeenLastCalledWith(
+            35,
+            35,
+            undefined,
+            { width: 10, height: 10 },
+        );
+    });
+
+    it("a pointerup on the canvas passes through to the map's mouseup", () => {
+        // Real browsers deliver window pointerup BEFORE canvas mouseup —
+        // an on-canvas up must not abort the click it belongs to.
+        const h = makeHarness([makeNode("parcels")]);
+        h.toolStore.setTargetLayer("parcels");
+        h.pickObjects.mockReturnValue([deckPick("parcels", "p1")]);
+
+        h.mapHandlers.get("mousedown")!(mousedown(10, 10));
+        const pointerOnCanvas = new Event("pointerup");
+        Object.defineProperty(pointerOnCanvas, "target", {
+            value: h.canvas,
+        });
+        window.dispatchEvent(pointerOnCanvas);
+        h.mapHandlers.get("mouseup")!(mousedown(10, 10));
+
+        expect(h.selection.countFor("parcels")).toBe(1);
+    });
+
+    it("a mousemove with the button already released voids the gesture", () => {
+        const h = makeHarness([makeNode("parcels")]);
+        h.toolStore.setTargetLayer("parcels");
+
+        h.mapHandlers.get("mousedown")!(mousedown(10, 20));
+        h.mapHandlers.get("mousemove")!(mousemove(30, 60, 0));
+
+        expect(h.toolStore.dragRect).toBeNull();
+    });
+
     it("ignores non-left buttons and invisible target layers", () => {
         const h = makeHarness([makeNode("hidden", false)]);
         h.toolStore.setTargetLayer("hidden");
@@ -187,14 +288,18 @@ describe("SelectionController", () => {
         expect(h.queryRenderedFeatures).not.toHaveBeenCalled();
     });
 
-    it("suspends map drag-pan while attached and restores it on detach", () => {
+    it("suspends map drag-pan while attached and unwires on detach", () => {
         const h = makeHarness([]);
 
         expect(h.dragPan.disable).toHaveBeenCalledTimes(1);
-        expect(h.dragPan.enable).not.toHaveBeenCalled();
 
+        h.mapHandlers.get("mousedown")!(mousedown(1, 1));
         h.controller.detach();
 
         expect(h.dragPan.enable).toHaveBeenCalledTimes(1);
+        expect(h.toolStore.dragRect).toBeNull();
+        for (const event of ["mousedown", "mousemove", "mouseup"]) {
+            expect(h.mapOff).toHaveBeenCalledWith(event, expect.any(Function));
+        }
     });
 });

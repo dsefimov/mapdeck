@@ -75,4 +75,22 @@ describe("SelectionStore", () => {
 
         expect(store.isEmpty).toBe(true);
     });
+
+    it("retainStableKeys drops only index-keyed records", () => {
+        const store = new SelectionStore();
+        store.applySelection(
+            "a",
+            [record("feature-1"), { key: "row-0", footprint: null }],
+            "new",
+        );
+
+        store.retainStableKeys("a");
+
+        expect(store.keysFor("a")).toEqual(new Set(["feature-1"]));
+
+        // All-stable selections keep their identity (no churn).
+        const before = store.layers.get("a");
+        store.retainStableKeys("a");
+        expect(store.layers.get("a")).toBe(before);
+    });
 });

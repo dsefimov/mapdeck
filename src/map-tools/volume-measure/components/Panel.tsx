@@ -91,7 +91,7 @@ export const VolumeMeasureComponent: (
             deactivate,
         ]);
 
-        useMapCursor(map, volume.isComplete ? "" : "crosshair");
+        useMapCursor(map, volume.isComplete ? "" : "pointer");
 
         const isComplete = volume.isComplete;
         const measurements = volume.measurements ?? EMPTY_VOLUME_MEASUREMENTS;

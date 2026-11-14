@@ -20,6 +20,7 @@ type WfsConfig = {
 export class WfsProtocol implements Protocol<WfsConfig> {
     readonly id = "wfs";
     readonly label = "WFS";
+    readonly featureSelection = true;
     /** Attribute protocol — the STAC module decides which slots it serves. */
     readonly defaultStyle: LayerStyle = {};
     private readonly adapter = new GeoJsonAdapter();

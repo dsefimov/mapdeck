@@ -12,6 +12,8 @@ import { AttributeTableStore } from "./AttributeTableStore";
 // Reproduce production MobX strictness (src/app/mobxConfig.ts).
 configure({ enforceActions: "always" });
 
+const LAYER_ID = "layer-1";
+
 const binding = {
     protocolId: "ogc-features",
     sourceUrl: "https://example.test/items",
@@ -22,7 +24,7 @@ function makeRoot(
     fetchAttributes: ReturnType<typeof vi.fn>,
 ): StoreRegistry {
     const layer = {
-        id: "layer-1",
+        id: LAYER_ID,
         title: "Layer 1",
         type: LayerTreeNodeTypes.Layer,
         renderer: binding,
@@ -33,7 +35,7 @@ function makeRoot(
         stateStore: new StateStore(),
         treeStore: {
             allLayerNodes: [layer],
-            node: (id: string) => (id === "layer-1" ? layer : undefined),
+            node: (id: string) => (id === LAYER_ID ? layer : undefined),
         },
         protocolRegistry: { getById: () => ({ fetchAttributes }) },
     } as unknown as StoreRegistry;
@@ -56,7 +58,7 @@ describe("AttributeTableStore error channel", () => {
         fetchAttributes.mockRejectedValueOnce(new Error("boom"));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
 
         expect(store.error).toBe("boom");
         expect(store.loadedFeatures).toEqual([]);
@@ -68,7 +70,7 @@ describe("AttributeTableStore error channel", () => {
         fetchAttributes.mockRejectedValueOnce(new Error("next page boom"));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
         await store.loadNextPage();
 
         expect(store.error).toBe("next page boom");
@@ -86,7 +88,7 @@ describe("AttributeTableStore error channel", () => {
         fetchAttributes.mockResolvedValueOnce(result(1, 1));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
         expect(store.error).toBe("boom");
 
         await store.refreshData();
@@ -101,7 +103,7 @@ describe("AttributeTableStore error channel", () => {
         fetchAttributes.mockResolvedValue(result(1, 1));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
 
         expect(store.error).toBeNull();
         expect(store.loadedFeatures).toHaveLength(1);
@@ -116,7 +118,7 @@ describe("AttributeTableStore selection", () => {
         fetchAttributes.mockResolvedValue(result(2, 2, null));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
         store.selectAllRows();
         expect(store.selectedRowIds.size).toBe(2);
 
@@ -125,15 +127,65 @@ describe("AttributeTableStore selection", () => {
         expect(store.selectedRowIds.size).toBe(0);
     });
 
+    it("a failed refresh keeps the selection along with the previous data", async () => {
+        const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
+        fetchAttributes.mockResolvedValueOnce(result(2, 2, null));
+        fetchAttributes.mockRejectedValueOnce(new Error("offline"));
+        const store = new AttributeTableStore(makeRoot(fetchAttributes));
+
+        await store.selectLayer(LAYER_ID);
+        store.selectAllRows();
+        expect(store.selectedRowIds.size).toBe(2);
+
+        await store.refreshData();
+
+        expect(store.selectedRowIds.size).toBe(2);
+        expect(store.error).toBe("offline");
+    });
+
+    it("a mixed page keeps stable keys and drops index keys on refresh", async () => {
+        // Row 0 carries an id; row 1 does not — a page some() calls stable.
+        const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
+        fetchAttributes.mockResolvedValue({
+            features: [{ id: "f0" }, { name: "no-id" }],
+            totalFeatures: 2,
+        } as AttributeFetchResult);
+        const store = new AttributeTableStore(makeRoot(fetchAttributes));
+
+        await store.selectLayer(LAYER_ID);
+        store.selectAllRows();
+        expect(store.selectedRowIds).toEqual(
+            new Set([FIRST_ROW_KEY, "row-1"]),
+        );
+
+        await store.refreshData();
+
+        expect(store.selectedRowIds).toEqual(new Set([FIRST_ROW_KEY]));
+    });
+
+    it("pagination keeps index-keyed selections — loaded rows only append", async () => {
+        const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
+        fetchAttributes.mockResolvedValue(result(2, 4, null));
+        const store = new AttributeTableStore(makeRoot(fetchAttributes));
+
+        await store.selectLayer(LAYER_ID);
+        store.selectAllRows();
+        expect(store.selectedRowIds.size).toBe(2);
+
+        await store.loadNextPage();
+
+        expect(store.selectedRowIds.size).toBe(2);
+    });
+
     it("a stable-id selection survives refresh and sort", async () => {
         const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
         fetchAttributes.mockResolvedValue(result(2, 2));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
         store.selectAllRows();
         expect(store.selectedRowIds).toEqual(
-            new Set(["feature-f0", "feature-f1"]),
+            new Set([FIRST_ROW_KEY, "feature-f1"]),
         );
 
         await store.refreshData();
@@ -150,7 +202,7 @@ describe("AttributeTableStore selection", () => {
         fetchAttributes.mockResolvedValue(result(2, 2));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
         const firstRow = store.loadedFeatures.at(0);
         expect(firstRow).toBeDefined();
         store.toggleRowSelection(firstRow!);
@@ -165,7 +217,7 @@ describe("AttributeTableStore selection", () => {
         fetchAttributes.mockResolvedValue(result(1, 1));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
         const firstRow = store.loadedFeatures.at(0);
         expect(firstRow).toBeDefined();
         store.toggleRowSelection(firstRow!);
@@ -174,7 +226,7 @@ describe("AttributeTableStore selection", () => {
 
         expect(store.selectedRowIds.size).toBe(0);
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
 
         expect(store.selectedRowIds).toEqual(new Set([FIRST_ROW_KEY]));
     });
@@ -186,7 +238,7 @@ describe("AttributeTableStore selection", () => {
 
         expect(store.selectionColumn).toBeUndefined();
 
-        await store.selectLayer("layer-1");
+        await store.selectLayer(LAYER_ID);
         expect(store.selectionColumn?.pinSelectedToTop).toBe(false);
 
         store.toggleSelectionPinnedToTop();

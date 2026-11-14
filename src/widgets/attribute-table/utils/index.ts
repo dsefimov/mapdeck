@@ -1,4 +1,7 @@
-import { stableFeatureKey } from "@core/common/selection";
+import {
+    ROW_KEY_PREFIX,
+    stableFeatureKey,
+} from "@core/common/selection";
 
 /** A layer selectable in the attribute table, with its owning group title if any. */
 export interface AttributeLayerInfo {
@@ -15,7 +18,7 @@ export function getFeatureId(
     feature: Record<string, unknown>,
     index: number,
 ): string {
-    return stableFeatureKey(feature) ?? `row-${index}`;
+    return stableFeatureKey(feature) ?? `${ROW_KEY_PREFIX}${index}`;
 }
 
 export { buildAttributeLayers } from "./buildAttributeLayers";

@@ -2,6 +2,7 @@ import type { PickingInfo } from "@deck.gl/core";
 import type maplibregl from "maplibre-gl";
 import { bboxFromGeometry, Bbox } from "@core/lib/geo";
 import {
+    PICK_KEY_PREFIX,
     stableFeatureKey,
     type SelectedGeometry,
     type SelectionFootprint,
@@ -98,7 +99,7 @@ export function recordFromDeckPick(info: PickingInfo): SelectionRecord | null {
     const featureId = object.id as string | number | null | undefined;
     const key =
         stableFeatureKey(properties, featureId) ??
-        `pick-${info.index?.toString() ?? "0"}`;
+        `${PICK_KEY_PREFIX}${info.index?.toString() ?? "0"}`;
     return {
         key,
         footprint: footprintOf(object.geometry, object.position),
@@ -112,7 +113,8 @@ export function recordFromNativeFeature(
 ): SelectionRecord {
     const properties = (feature.properties ?? {}) as Record<string, unknown>;
     const key =
-        stableFeatureKey(properties, feature.id ?? null) ?? `pick-${index}`;
+        stableFeatureKey(properties, feature.id ?? null) ??
+        `${PICK_KEY_PREFIX}${index}`;
     return {
         key,
         footprint: footprintOf(feature.geometry, null),

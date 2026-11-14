@@ -15,9 +15,6 @@ import type { SelectedGeometry, SelectionRecord } from "@core/common/selection";
 /** The overlay layer id picks must skip (tool-owned, like the click marker). */
 export const SELECTION_HIGHLIGHT_LAYER_ID = "selection-highlight";
 
-/** Every layer id the selection feature draws under this prefix. */
-export const SELECTION_LAYER_ID_PREFIX = "selection-";
-
 const FILL_ALPHA = 70;
 const LINE_ALPHA = 230;
 const LINE_WIDTH_PX = 2;

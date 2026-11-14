@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     cleanup,
     fireEvent,
@@ -318,6 +318,12 @@ describe("DataTable row selection", () => {
     const selected = new Set<string>(["row-alpha"]);
     const onToggleRow = vi.fn();
 
+    beforeEach(() => {
+        selected.clear();
+        selected.add("row-alpha");
+        onToggleRow.mockClear();
+    });
+
     const renderSelectable = () =>
         render(
             <DataTable
@@ -350,6 +356,9 @@ describe("DataTable row selection", () => {
         const checkbox = screen.getAllByRole("checkbox").at(0);
         expect(checkbox).toBeDefined();
         await userEvent.click(checkbox!);
+        // The checkbox path fires exactly one toggle — the row-click
+        // guard must not double-fire through the bubbling click.
+        expect(onToggleRow).toHaveBeenCalledTimes(1);
         expect(onToggleRow).toHaveBeenCalledWith(ROWS[0]);
 
         fireEvent.click(
@@ -358,6 +367,36 @@ describe("DataTable row selection", () => {
             }),
         );
         expect(onToggleRow).toHaveBeenCalledWith(ROWS[2]);
+    });
+
+    it("keys id-less rows by source index — sorting keeps the selection on its row", async () => {
+        const indexSelected = new Set<string>(["row-0"]);
+        render(
+            <DataTable
+                rows={ROWS}
+                columns={["name", "points"]}
+                dict={DICT}
+                selection={{
+                    getRowId: (_row, index) => `row-${index}`,
+                    isSelected: (rowId) => indexSelected.has(rowId),
+                    onToggleRow: () => undefined,
+                }}
+            />,
+        );
+        // Source row 0 is bravo; it starts checked.
+        expect(
+            screen.getByRole("row", { name: /bravo/ }).querySelector("input"),
+        ).toBeChecked();
+
+        sortByName();
+
+        // After the client-side sort, bravo is last — still the checked one.
+        expect(
+            screen.getByRole("row", { name: /bravo/ }).querySelector("input"),
+        ).toBeChecked();
+        expect(
+            screen.getByRole("row", { name: /alpha/ }).querySelector("input"),
+        ).not.toBeChecked();
     });
 
     it("keeps a row click on an interactive cell out of the toggle", () => {

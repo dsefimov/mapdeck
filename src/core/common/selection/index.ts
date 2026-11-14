@@ -6,9 +6,16 @@ export {
     DEFAULT_SELECTION_COLOR,
     SELECTION_COLOR_SETTING_ID,
 } from "./constants";
-export { stableFeatureKey } from "./logic/featureKey";
+export {
+    FEATURE_KEY_PREFIX,
+    PICK_KEY_PREFIX,
+    ROW_KEY_PREFIX,
+    isStableKey,
+    stableFeatureKey,
+} from "./logic/featureKey";
 export {
     applySelection,
+    retainStableKeys,
     toggleRecord,
     unionRecordExtents,
     type LayerSelection,

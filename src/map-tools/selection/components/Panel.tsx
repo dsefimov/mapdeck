@@ -78,7 +78,7 @@ export const SelectionComponent: (
         }, [controller, map, context, overlayManager, store, selection]);
 
         useEscapeKey(deactivate);
-        useMapCursor(map, "crosshair");
+        useMapCursor(map, "pointer");
 
         const color =
             context.settings.getStringSetting(SELECTION_COLOR_SETTING_ID) ??
@@ -103,9 +103,20 @@ export const SelectionComponent: (
             }
         }, [store, visibleLayers]);
 
+        const layerNode = (layerId: string) =>
+            context.layerTree.allLayerNodes.find(
+                (node) => node.id === layerId,
+            );
+
         const layerTitle = (layerId: string): string =>
-            context.layerTree.allLayerNodes.find((node) => node.id === layerId)
-                ?.title ?? layerId;
+            layerNode(layerId)?.title ?? layerId;
+
+        // Layers removed from the tree keep their selection in the store;
+        // the panel lists only live nodes.
+        const listedCounts = selection.layerCounts.filter(({ layerId }) =>
+            Boolean(layerNode(layerId)),
+        );
+        const hasSelection = !selection.isEmpty && listedCounts.length > 0;
 
         const showUnstableHint =
             store.targetLayerId !== null &&
@@ -172,11 +183,11 @@ export const SelectionComponent: (
                     ))}
                 </div>
 
-                {selection.isEmpty ? (
+                {!hasSelection ? (
                     <EmptyState message={dict["list.empty"]} />
                 ) : (
                     <div className={styles.layerList}>
-                        {selection.layerCounts.map(({ layerId, count }) => (
+                        {listedCounts.map(({ layerId, count }) => (
                             <div key={layerId} className={styles.layerRow}>
                                 <Text
                                     variant="body"
@@ -192,14 +203,16 @@ export const SelectionComponent: (
                                 >
                                     {count}
                                 </Text>
-                                <IconButton
-                                    icon="attribute-table"
-                                    label={dict["action.viewInTable"]}
-                                    variant="ghost"
-                                    onClick={() =>
-                                        openInAttributeTable(layerId)
-                                    }
-                                />
+                                {layerNode(layerId)?.data && (
+                                    <IconButton
+                                        icon="attribute-table"
+                                        label={dict["action.viewInTable"]}
+                                        variant="ghost"
+                                        onClick={() =>
+                                            openInAttributeTable(layerId)
+                                        }
+                                    />
+                                )}
                                 <IconButton
                                     icon="zoom"
                                     label={dict["action.zoom"]}
@@ -228,7 +241,7 @@ export const SelectionComponent: (
                     </Text>
                 )}
 
-                {!selection.isEmpty && (
+                {hasSelection && (
                     <Button
                         size="sm"
                         fullWidth

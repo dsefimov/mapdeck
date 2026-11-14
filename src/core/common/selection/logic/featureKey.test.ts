@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { stableFeatureKey } from "./featureKey";
+import {
+    isStableKey,
+    stableFeatureKey,
+} from "./featureKey";
+
+describe("isStableKey", () => {
+    it("accepts only the cross-surface key form", () => {
+        expect(isStableKey("feature-1")).toBe(true);
+        expect(isStableKey("row-3")).toBe(false);
+        expect(isStableKey("pick-0")).toBe(false);
+    });
+});
 
 describe("stableFeatureKey", () => {
     it("takes the first id-like field in priority order", () => {

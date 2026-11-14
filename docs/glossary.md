@@ -102,8 +102,10 @@ row. The selection color is the `selection.color` setting.
 
 ## Feature key
 
-The stable identity of a feature within a layer: the first id-like property
-(`id`/`ID`/`Id`/`fid`/`FID`) as `feature-<value>`. Only this form matches across
-the map and the attribute table; fallback keys are surface-local (`row-<i>` in
-the table, `pick-<i>` on the map), so features without an id field select on
-their surface of origin but never sync between the two.
+The stable identity of a feature within a layer: the GeoJSON feature-level id
+first (the attribute pipeline surfaces it as the `_featureId` row field), else
+the first id-like property (`id`/`ID`/`Id`/`fid`/`FID`), as `feature-<value>`.
+Only this form matches across the map and the attribute table; fallback keys
+are surface-local (`row-<i>` in the table, `pick-<i>` on the map), so features
+without an id field select on their surface of origin but never sync between
+the two.

@@ -1,5 +1,6 @@
 import { unionBbox, type Bbox } from "@core/lib/geo";
 import type { SelectionMode, SelectionRecord } from "../types";
+import { isStableKey } from "./featureKey";
 
 /**
  * One layer's selection: feature key → record. Treated as immutable —
@@ -68,4 +69,26 @@ export function unionRecordExtents(
         union = unionBbox(union, record.footprint?.bbox ?? null);
     }
     return union;
+}
+
+/**
+ * Drop the surface-local (index-keyed) records, keeping the stable ones
+ * — a refetch or re-sort may silently re-target index keys, so they
+ * cannot survive new data; stable keys match by value. Returns the same
+ * reference when nothing is removed, so callers keep their identity.
+ */
+export function retainStableKeys(selection: LayerSelection): LayerSelection {
+    let removed = false;
+    for (const key of selection.keys()) {
+        if (!isStableKey(key)) {
+            removed = true;
+            break;
+        }
+    }
+    if (!removed) return selection;
+    const next = new Map<string, SelectionRecord>();
+    for (const [key, record] of selection) {
+        if (isStableKey(key)) next.set(key, record);
+    }
+    return next;
 }

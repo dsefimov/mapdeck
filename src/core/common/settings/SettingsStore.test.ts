@@ -23,11 +23,15 @@ function select(
     return { id, label: id, type: "select", defaultValue, options };
 }
 
-function metadata(id: string, type: "string" | "number" | "boolean"): SettingMetadata {
+function metadata(
+    id: string,
+    type: "string" | "number" | "boolean" | "color",
+): SettingMetadata {
     const defaults = {
         string: "en",
         number: 5,
         boolean: true,
+        color: "#ffd400",
     } as const;
     return {
         id,
@@ -219,6 +223,7 @@ describe("SettingsStore.updateSettingOptions", () => {
 describe("SettingsStore typed getters", () => {
     it.each([
         ["string", "getStringSetting"],
+        ["color", "getStringSetting"],
         ["number", "getNumberSetting"],
         ["boolean", "getBooleanSetting"],
     ] as const)("%s getter serves its own type", (type, getter) => {
@@ -233,6 +238,8 @@ describe("SettingsStore typed getters", () => {
         ["string", "getBooleanSetting"],
         ["number", "getStringSetting"],
         ["boolean", "getStringSetting"],
+        ["color", "getNumberSetting"],
+        ["color", "getBooleanSetting"],
     ] as const)("the %s setting is invisible to %s", (type, getter) => {
         const store = new SettingsStore();
         store.registerSettings(OWNER, "Owner", [metadata("s", type)]);
