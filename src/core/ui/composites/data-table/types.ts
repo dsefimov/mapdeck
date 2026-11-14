@@ -23,6 +23,7 @@ export type DataTableKey =
     | "dataTable.nullValue"
     | "dataTable.retry"
     | "dataTable.rowNumber"
+    | "dataTable.selectRow"
     | "dataTable.show"
     | "dataTable.value"
     | "dataTable.yes"
@@ -40,6 +41,25 @@ export interface GeometryColumnConfig {
     key: string;
     /** Callback when zoom button is clicked */
     onZoom: (bbox: Bbox) => void;
+}
+
+/**
+ * Row selection, wired by the host. Adds a checkbox column (columnar view
+ * only); clicking a row toggles it too, unless the click hits an
+ * interactive element inside the row.
+ */
+export interface SelectionColumnConfig {
+    /** Stable key of a row — computed against the source rows array. */
+    getRowId(row: Record<string, unknown>, index: number): string;
+    /** Whether a row key is currently selected. */
+    isSelected(rowId: string): boolean;
+    /** Toggle one row's selection. */
+    onToggleRow(row: Record<string, unknown>): void;
+    /**
+     * Selected rows move to the top of the view (the QGIS attribute
+     * table's behavior), keeping the sort order within each group.
+     */
+    pinSelectedToTop?: boolean;
 }
 
 /**
@@ -77,6 +97,10 @@ export interface DataTableProps {
     onRefresh?: (() => void) | (() => Promise<void>);
     /** Optional geometry column config — adds a zoom-to-object button per row */
     geometryColumn?: GeometryColumnConfig;
+    /** Optional row selection — adds a checkbox column in the columnar view */
+    selection?: SelectionColumnConfig;
+    /** Host controls appended to the table controls row (e.g. views) */
+    controls?: ReactNode;
     /** Value renderers, tried in order against cell values */
     valueRenderers?: readonly ValueRenderer[];
     /** Opens the viewer for a renderer's cell value */

@@ -36,6 +36,7 @@ const core = {
     "dataTable.filterColumn": "Filter {column}...",
     "dataTable.zoomToObject": "Zoom to object",
     "dataTable.rowNumber": "#",
+    "dataTable.selectRow": "Select row",
 
     // Media attribute values (photo / album value renderers)
     "mediaValue.photo": "Photo",

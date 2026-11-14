@@ -85,7 +85,7 @@ export async function fetchOgcFeaturesPage(
 
         const payload = assertFeatureCollection(await response.json());
         const features = payload.features.map((f) =>
-            featureToRow(f.geometry ?? null, f.properties),
+            featureToRow(f.geometry ?? null, f.properties, f.id ?? null),
         );
 
         return {

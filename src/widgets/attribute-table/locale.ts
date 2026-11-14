@@ -9,5 +9,6 @@ export const attributeTableTranslations: Partial<
         "layerSelector.placeholder": "— Select a layer —",
         "aria.layerSelect": "Select layer for attribute table",
         "empty.noLayers": "No layers with WFS attribute data available",
+        "selection.pinToTop": "Show selected on top",
     },
 };

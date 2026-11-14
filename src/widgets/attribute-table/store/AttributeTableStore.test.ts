@@ -6,6 +6,7 @@ import type {
     LayerNode,
 } from "@core/contracts";
 import { LayerTreeNodeTypes } from "@core/contracts";
+import { StateStore } from "@core/lib/state";
 import { AttributeTableStore } from "./AttributeTableStore";
 
 // Reproduce production MobX strictness (src/app/mobxConfig.ts).
@@ -29,6 +30,7 @@ function makeRoot(
         capabilities: [],
     } as unknown as LayerNode;
     return {
+        stateStore: new StateStore(),
         treeStore: {
             allLayerNodes: [layer],
             node: (id: string) => (id === "layer-1" ? layer : undefined),
@@ -40,8 +42,11 @@ function makeRoot(
 const result = (
     features: number,
     totalFeatures: number,
+    idField: string | null = "id",
 ): AttributeFetchResult => ({
-    features: Array.from({ length: features }, (_, i) => ({ id: `f${i}` })),
+    features: Array.from({ length: features }, (_, i) =>
+        idField ? { [idField]: `f${i}` } : { name: `row ${i}` },
+    ),
     totalFeatures,
 });
 
@@ -104,9 +109,11 @@ describe("AttributeTableStore error channel", () => {
 });
 
 describe("AttributeTableStore selection", () => {
-    it("refreshData drops the row selection — ids are index-based", async () => {
+    const FIRST_ROW_KEY = "feature-f0";
+
+    it("refreshData drops an index-based selection — keys re-target silently", async () => {
         const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
-        fetchAttributes.mockResolvedValue(result(2, 2));
+        fetchAttributes.mockResolvedValue(result(2, 2, null));
         const store = new AttributeTableStore(makeRoot(fetchAttributes));
 
         await store.selectLayer("layer-1");
@@ -116,5 +123,74 @@ describe("AttributeTableStore selection", () => {
         await store.refreshData();
 
         expect(store.selectedRowIds.size).toBe(0);
+    });
+
+    it("a stable-id selection survives refresh and sort", async () => {
+        const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
+        fetchAttributes.mockResolvedValue(result(2, 2));
+        const store = new AttributeTableStore(makeRoot(fetchAttributes));
+
+        await store.selectLayer("layer-1");
+        store.selectAllRows();
+        expect(store.selectedRowIds).toEqual(
+            new Set(["feature-f0", "feature-f1"]),
+        );
+
+        await store.refreshData();
+
+        expect(store.selectedRowIds.size).toBe(2);
+
+        await store.setSort("id", "asc");
+
+        expect(store.selectedRowIds.size).toBe(2);
+    });
+
+    it("toggles rows through the shared selection store", async () => {
+        const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
+        fetchAttributes.mockResolvedValue(result(2, 2));
+        const store = new AttributeTableStore(makeRoot(fetchAttributes));
+
+        await store.selectLayer("layer-1");
+        const firstRow = store.loadedFeatures.at(0);
+        expect(firstRow).toBeDefined();
+        store.toggleRowSelection(firstRow!);
+        expect(store.selectedRowIds).toEqual(new Set([FIRST_ROW_KEY]));
+
+        store.toggleRowSelection(firstRow!);
+        expect(store.selectedRowIds.size).toBe(0);
+    });
+
+    it("switching layers keeps each layer's own selection", async () => {
+        const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
+        fetchAttributes.mockResolvedValue(result(1, 1));
+        const store = new AttributeTableStore(makeRoot(fetchAttributes));
+
+        await store.selectLayer("layer-1");
+        const firstRow = store.loadedFeatures.at(0);
+        expect(firstRow).toBeDefined();
+        store.toggleRowSelection(firstRow!);
+
+        await store.selectLayer(null);
+
+        expect(store.selectedRowIds.size).toBe(0);
+
+        await store.selectLayer("layer-1");
+
+        expect(store.selectedRowIds).toEqual(new Set([FIRST_ROW_KEY]));
+    });
+
+    it("carries the pin-to-top flag into the selection column config", async () => {
+        const fetchAttributes = vi.fn<() => Promise<AttributeFetchResult>>();
+        fetchAttributes.mockResolvedValue(result(1, 1));
+        const store = new AttributeTableStore(makeRoot(fetchAttributes));
+
+        expect(store.selectionColumn).toBeUndefined();
+
+        await store.selectLayer("layer-1");
+        expect(store.selectionColumn?.pinSelectedToTop).toBe(false);
+
+        store.toggleSelectionPinnedToTop();
+        expect(store.selectionPinnedToTop).toBe(true);
+        expect(store.selectionColumn?.pinSelectedToTop).toBe(true);
     });
 });

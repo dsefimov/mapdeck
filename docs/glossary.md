@@ -91,3 +91,19 @@ The per-kind rendering logic for a rich attribute value (ADR-0021): a `matches`
 predicate plus table-cell and viewer-window renderings. A value opts in by its
 own shape (a `kind` tag) — there is no column schema. The first registered renderer
 whose predicate accepts a value renders it, on every attribute surface at once.
+
+## Selection
+
+The per-layer set of chosen features, shared by the selection map tool, the
+attribute table and the on-map highlight through one `StateStore` instance
+(ADR-0022). Selection is session state; it survives tool deactivation but not a
+reload. Three ways to select: a map click, a map rectangle drag, and a table
+row. The selection color is the `selection.color` setting.
+
+## Feature key
+
+The stable identity of a feature within a layer: the first id-like property
+(`id`/`ID`/`Id`/`fid`/`FID`) as `feature-<value>`. Only this form matches across
+the map and the attribute table; fallback keys are surface-local (`row-<i>` in
+the table, `pick-<i>` on the map), so features without an id field select on
+their surface of origin but never sync between the two.

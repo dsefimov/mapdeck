@@ -224,7 +224,7 @@ kinds, defaults, validation, override policy, and the `settingsOverrides` channe
 is in [configuration.md](configuration.md).
 
 The runtime slice reads current values through `context.settings`:
-`getStringSetting(id)` (string and select settings), `getNumberSetting(id)`,
+`getStringSetting(id)` (string, select and color settings), `getNumberSetting(id)`,
 `getBooleanSetting(id)` — the value at call time, `undefined` for an unknown id or
 a type mismatch. Setting ids are unique across owners, so the bare id is the read
 key; there is no change subscription.

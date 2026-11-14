@@ -27,6 +27,7 @@ const iconNames = [
     "angle-down",
     "photo",
     "close",
+    "select",
 ] as const;
 
 export type IconName = (typeof iconNames)[number];

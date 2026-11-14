@@ -13,6 +13,9 @@ export type PickParams = {
     x: number;
     y: number;
     radius?: number;
+    /** Rectangle pick: sizes extend right and down from x/y. */
+    width?: number;
+    height?: number;
     layerIds?: string[];
     unproject3D?: boolean;
 };

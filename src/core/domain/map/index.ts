@@ -8,4 +8,9 @@ export { TechLayerStore } from "./stores/TechLayerStore";
 export type { Geometry, GeometryKind } from "./types";
 export { DeckOverlayManager } from "./adapters/overlay/DeckOverlayManager";
 export { renderTechLayers } from "./adapters/overlay/techLayerRenderer";
+export {
+    renderSelectionHighlight,
+    SELECTION_HIGHLIGHT_LAYER_ID,
+    SELECTION_LAYER_ID_PREFIX,
+} from "./adapters/overlay/selectionHighlightRenderer";
 export { LayerManager } from "./adapters/LayerManager";

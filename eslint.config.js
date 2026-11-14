@@ -97,7 +97,7 @@ export default [
                 "error",
                 {
                     allowAfterThis: true,
-                    allow: ["_bbox"],
+                    allow: ["_bbox", "_featureId"],
                 },
             ],
 

@@ -16,6 +16,7 @@ import styles from "./AttributeTable.module.css";
 export {
     type DataTableProps,
     type GeometryColumnConfig,
+    type SelectionColumnConfig,
     type ValueRenderer,
 } from "./types";
 
@@ -35,6 +36,8 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         fetchMore,
         onRefresh,
         geometryColumn,
+        selection,
+        controls,
         valueRenderers,
         onOpenValue,
         pageSize = 50,
@@ -70,6 +73,18 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         [isColumnar, rows],
     );
 
+    // Sorting and filtering reshuffle the pipeline, so a row's source
+    // index — the one its stable key is derived from — is only known
+    // here. The map keeps the id attached to the row object itself.
+    const rowIds = useMemo(() => {
+        if (!selection) return null;
+        const ids = new WeakMap<object, string>();
+        rows.forEach((row, index) => {
+            ids.set(row, selection.getRowId(row, index));
+        });
+        return ids;
+    }, [rows, selection]);
+
     const { sortedData } = useDataPipeline({
         rows: sourceRows,
         filters,
@@ -79,7 +94,24 @@ export const DataTable = React.memo<DataTableProps>((props) => {
         valueRenderers,
     });
 
-    const rowCount = sortedData.length;
+    // The pinned view keeps the pipeline's order within each group —
+    // only the selected/unselected partition moves (QGIS-like).
+    const orderedData = useMemo(() => {
+        if (!selection?.pinSelectedToTop || !rowIds) return sortedData;
+        const selected: Record<string, unknown>[] = [];
+        const rest: Record<string, unknown>[] = [];
+        for (const row of sortedData) {
+            const rowId = rowIds.get(row);
+            if (rowId !== undefined && selection.isSelected(rowId)) {
+                selected.push(row);
+            } else {
+                rest.push(row);
+            }
+        }
+        return [...selected, ...rest];
+    }, [sortedData, selection, rowIds]);
+
+    const rowCount = orderedData.length;
 
     const {
         containerRef,
@@ -106,7 +138,9 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                     onToggleFilters={toggleShowFilters}
                     onClearFilters={clearFilters}
                     labels={labels}
-                />
+                >
+                    {controls}
+                </TableControls>
                 <div
                     ref={containerRef}
                     className={styles.scrollContainer}
@@ -117,6 +151,8 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                         isColumnar={isColumnar}
                         displayColumns={displayColumns}
                         geometryColumn={geometryColumn}
+                        selection={isColumnar ? selection : undefined}
+                        rowIds={rowIds}
                         valueRenderers={valueRenderers}
                         onOpenValue={onOpenValue}
                         sortColumn={sortColumn}
@@ -125,7 +161,7 @@ export const DataTable = React.memo<DataTableProps>((props) => {
                         showFilters={showFilters}
                         filters={filters}
                         handleFilterChange={handleFilterChange}
-                        sortedData={sortedData}
+                        sortedData={orderedData}
                         startIndex={startIndex}
                         endIndex={endIndex}
                         topPaddingHeight={topPaddingHeight}

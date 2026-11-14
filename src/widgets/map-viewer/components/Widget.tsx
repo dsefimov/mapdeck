@@ -7,6 +7,7 @@ import { LOCALE_KEY_TOOL_NAME } from "@core/contracts";
 import type { MapClickPoint } from "@core/domain/map";
 import { useMapLifecycle } from "../utils/useMapLifecycle";
 import { useMapContextMenuTrigger } from "../utils/useMapContextMenuTrigger";
+import { useSelectionHighlight } from "../utils/useSelectionHighlight";
 import { MapViewerViewModel } from "../viewModel/MapViewerViewModel";
 import { MAP_VIEWER_ID } from "../index";
 import type { MapViewerProps } from "../types";
@@ -20,6 +21,7 @@ const MapViewerComponent = observer(({ className = "" }: MapViewerProps) => {
     const lastRightClickRef = useRef<MapClickPoint | null>(null);
 
     useMapContextMenuTrigger(mapRef, contextMenu, lastRightClickRef);
+    useSelectionHighlight(rootStore);
 
     const viewModel = rootStore.stateStore.get(
         "map-viewer",

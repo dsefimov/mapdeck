@@ -26,7 +26,8 @@ the instance's lifetime, so changing an option means creating a new instance.
 Values for registered settings, applied after all registrations (built-ins and
 modules) and before the first source fetch.
 
-- **Shape**: `settingId → value`, where a value is a string, number, or boolean.
+- **Shape**: `settingId → value`, where a value is a string (including color
+  settings), number, or boolean.
 - **Validation**: each value is checked against the registered setting metadata —
   declared type first, then `min`/`max` for numbers, then option membership for
   selects.
@@ -47,6 +48,7 @@ modules) and before the first source fetch.
 |---|---|---|---|
 | `layer-tree.data-source-url` | string | `"./catalog.json"` | catalog URL for the configured source adapter |
 | `basemap.basemap` | select | first registered basemap | the active basemap id; options come from the registered basemap configs |
+| `selection.color` | color | `"#ffd400"` | color of the selection highlight drawn on the map (ADR-0022) |
 
 A module's own settings register through the same mechanism, so the full id set is
 whatever the assembled modules declared.
@@ -70,6 +72,7 @@ Every variant carries `id` and `label`; the `type` field discriminates:
 | `number` | `defaultValue: number`, optional `min`/`max`/`step` | finite number within range |
 | `select` | `defaultValue: string`, `options: {label, value}[]` | a listed option (an empty options list accepts any string) |
 | `boolean` | `defaultValue: boolean` | boolean |
+| `color` | `defaultValue: string` (`#RRGGBB`) | a hex string that normalizes to `#RRGGBB`; the settings widget renders it as a color picker (ADR-0023) |
 
 Re-declaring an owner's settings follows the registration policy: a colliding id
 throws unless `{ override: true }` is passed, in which case the new batch replaces

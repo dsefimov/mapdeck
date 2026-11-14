@@ -17,6 +17,7 @@ import {
     NumberInput,
 } from "@core/ui/components/primitives/inputs";
 import { Field, Button, Text } from "@core/ui/components";
+import { ColorPicker } from "@core/ui/composites";
 
 import styles from "./Widget.module.css";
 
@@ -117,6 +118,7 @@ const SettingItem: (props: SettingItemProps) => React.ReactNode = observer(
                 <SettingInput
                     key={`${setting.id}-${rejectedEpoch}`}
                     setting={setting}
+                    label={settingLabel}
                     coreDict={coreDict}
                     onChange={handleChange}
                 />
@@ -127,12 +129,18 @@ const SettingItem: (props: SettingItemProps) => React.ReactNode = observer(
 
 interface SettingInputProps {
     setting: RegisteredSetting;
+    label: string;
     coreDict: Record<string, string>;
     onChange: (value: unknown) => void;
 }
 
 /** The `switch` on the discriminated union narrows value and options. */
-const SettingInput = ({ setting, coreDict, onChange }: SettingInputProps) => {
+const SettingInput = ({
+    setting,
+    label,
+    coreDict,
+    onChange,
+}: SettingInputProps) => {
     switch (setting.type) {
         case "string":
             return (
@@ -175,6 +183,15 @@ const SettingInput = ({ setting, coreDict, onChange }: SettingInputProps) => {
                         onChange={onChange}
                     />
                 </label>
+            );
+        case "color":
+            return (
+                <ColorPicker
+                    value={setting.value}
+                    label={label}
+                    dict={coreDict}
+                    onChange={onChange}
+                />
             );
         default:
             return null;

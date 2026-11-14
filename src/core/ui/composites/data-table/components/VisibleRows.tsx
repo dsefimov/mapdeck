@@ -3,6 +3,7 @@ import type { Dictionary } from "../../../types";
 import type {
     DataTableLabels,
     GeometryColumnConfig,
+    SelectionColumnConfig,
     ValueRenderer,
 } from "../types";
 import { ColumnarRow } from "./ColumnarRow";
@@ -14,6 +15,9 @@ interface VisibleRowsProps {
     displayColumns: string[];
     showRowNumbers: boolean;
     geometryColumn: GeometryColumnConfig | undefined;
+    selection: SelectionColumnConfig | undefined;
+    /** Source-index row keys, attached to the row objects (DataTable-built). */
+    rowIds: WeakMap<object, string> | null;
     valueRenderers: readonly ValueRenderer[] | undefined;
     onOpenValue: ((rendererId: string, value: unknown) => void) | undefined;
     labels: DataTableLabels;
@@ -27,6 +31,8 @@ export const VisibleRows: (props: VisibleRowsProps) => ReactNode[] = ({
     displayColumns,
     showRowNumbers,
     geometryColumn,
+    selection,
+    rowIds,
     valueRenderers,
     onOpenValue,
     labels,
@@ -43,6 +49,8 @@ export const VisibleRows: (props: VisibleRowsProps) => ReactNode[] = ({
                 showRowNumbers={showRowNumbers}
                 columns={displayColumns}
                 geometryColumn={geometryColumn}
+                selection={selection}
+                rowId={rowIds?.get(row)}
                 valueRenderers={valueRenderers}
                 onOpenValue={onOpenValue}
                 labels={labels}

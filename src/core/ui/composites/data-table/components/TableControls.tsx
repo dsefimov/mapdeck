@@ -9,6 +9,8 @@ interface TableControlsProps {
     onToggleFilters: () => void;
     onClearFilters: () => void;
     labels: DataTableLabels;
+    /** Host controls appended to the same row (e.g. selection views). */
+    children?: ReactNode;
 }
 
 export const TableControls: (props: TableControlsProps) => ReactNode = ({
@@ -17,6 +19,7 @@ export const TableControls: (props: TableControlsProps) => ReactNode = ({
     onToggleFilters,
     onClearFilters,
     labels,
+    children,
 }) => (
     <div className={styles.controls}>
         <Button size="sm" onClick={onToggleFilters}>
@@ -30,5 +33,6 @@ export const TableControls: (props: TableControlsProps) => ReactNode = ({
                 {labels["dataTable.clearFilters"]}
             </Button>
         )}
+        {children}
     </div>
 );

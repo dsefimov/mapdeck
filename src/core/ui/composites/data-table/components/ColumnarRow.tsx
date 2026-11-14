@@ -1,10 +1,12 @@
-import { memo } from "react";
-import type { ReactNode } from "react";
+import { memo, useId } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { Text } from "../../../components/primitives/text/Text";
+import { CheckboxInput } from "../../../components/primitives/inputs/CheckboxInput";
 import type { Dictionary } from "../../../types";
 import type {
     DataTableLabels,
     GeometryColumnConfig,
+    SelectionColumnConfig,
     ValueRenderer,
 } from "../types";
 import { formatValue, resolveValueRenderer } from "../utils";
@@ -17,6 +19,9 @@ interface ColumnarRowProps {
     showRowNumbers: boolean;
     columns: string[];
     geometryColumn?: GeometryColumnConfig | undefined;
+    selection?: SelectionColumnConfig | undefined;
+    /** The row's selection key, when selection is wired. */
+    rowId?: string | undefined;
     valueRenderers?: readonly ValueRenderer[] | undefined;
     onOpenValue?:
         | ((rendererId: string, value: unknown) => void)
@@ -56,6 +61,12 @@ const ValueCell: (props: ValueCellProps) => ReactNode = ({
     return <Text variant="body">{formatValue(value, labels)}</Text>;
 };
 
+/**
+ * Interactive descendants handle their own clicks — the zoom button,
+ * value cells with openers, the selection checkbox.
+ */
+const INTERACTIVE_SELECTOR = "button, input, a, label, [role='button']";
+
 export const ColumnarRow = memo<ColumnarRowProps>(
     ({
         row,
@@ -63,38 +74,74 @@ export const ColumnarRow = memo<ColumnarRowProps>(
         showRowNumbers,
         columns,
         geometryColumn,
+        selection,
+        rowId,
         valueRenderers,
         onOpenValue,
         labels,
         dict,
-    }) => (
-        <tr>
-            {showRowNumbers && (
-                <td className={styles.rowNumber}>
-                    <Text variant="hint" tone="muted">
-                        {globalIdx + 1}
-                    </Text>
-                </td>
-            )}
-            {geometryColumn && (
-                <ZoomButtonCell
-                    bbox={row[geometryColumn.key]}
-                    onZoom={geometryColumn.onZoom}
-                    labels={labels}
-                />
-            )}
-            {columns.map((col) => (
-                <td key={col}>
-                    <ValueCell
-                        value={row[col]}
+    }) => {
+        const checkboxId = useId();
+        const selected =
+            selection && rowId !== undefined
+                ? selection.isSelected(rowId)
+                : false;
+
+        const handleRowClick =
+            selection && rowId !== undefined
+                ? (event: MouseEvent<HTMLTableRowElement>) => {
+                      if (
+                          (event.target as HTMLElement).closest(
+                              INTERACTIVE_SELECTOR,
+                          )
+                      )
+                          return;
+                      selection.onToggleRow(row);
+                  }
+                : undefined;
+
+        return (
+            <tr
+                className={selected ? styles.rowSelected : undefined}
+                onClick={handleRowClick}
+            >
+                {showRowNumbers && (
+                    <td className={styles.rowNumber}>
+                        <Text variant="hint" tone="muted">
+                            {globalIdx + 1}
+                        </Text>
+                    </td>
+                )}
+                {selection && rowId !== undefined && (
+                    <td className={styles.selectionCell}>
+                        <CheckboxInput
+                            id={`${checkboxId}-select`}
+                            checked={selected}
+                            ariaLabel={labels["dataTable.selectRow"]}
+                            onChange={() => selection.onToggleRow(row)}
+                        />
+                    </td>
+                )}
+                {geometryColumn && (
+                    <ZoomButtonCell
+                        bbox={row[geometryColumn.key]}
+                        onZoom={geometryColumn.onZoom}
                         labels={labels}
-                        dict={dict}
-                        valueRenderers={valueRenderers}
-                        onOpenValue={onOpenValue}
                     />
-                </td>
-            ))}
-        </tr>
-    ),
+                )}
+                {columns.map((col) => (
+                    <td key={col}>
+                        <ValueCell
+                            value={row[col]}
+                            labels={labels}
+                            dict={dict}
+                            valueRenderers={valueRenderers}
+                            onOpenValue={onOpenValue}
+                        />
+                    </td>
+                ))}
+            </tr>
+        );
+    },
 );
 ColumnarRow.displayName = "ColumnarRow";

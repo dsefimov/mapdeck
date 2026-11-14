@@ -265,11 +265,11 @@ implementations; they are repository source code, not part of the npm package.
   explicit-override policy (see [api/configuration.md](api/configuration.md)). Per-
   deployment *values* travel through the `settingsOverrides` embed option.
 - Tool panels read current values through the runtime slice:
-  `context.settings.getNumberSetting(id)` — likewise `getStringSetting` /
-  `getBooleanSetting` — returning the value at call time, or `undefined` for an
-  unknown id or a type mismatch. Setting ids are unique across owners, so the
-  bare id (`"precision"` in the walkthrough) is the read key. There is no change
-  subscription: re-read after a value changes.
+  `context.settings.getNumberSetting(id)` — likewise `getStringSetting` (string,
+  select and color settings) / `getBooleanSetting` — returning the value at call
+  time, or `undefined` for an unknown id or a type mismatch. Setting ids are
+  unique across owners, so the bare id (`"precision"` in the walkthrough) is the
+  read key. There is no change subscription: re-read after a value changes.
 - `context.locale.registerTranslations(namespace, { ru: {...} })` — resolution: the
   current language's dictionary for the namespace, or the whole English dictionary
   when that language has no registration. There is no per-key merge across

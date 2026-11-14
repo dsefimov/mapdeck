@@ -127,4 +127,28 @@ describe("validateSettingValue", () => {
         });
         expect(validateSettingValue(setting, "b")).toEqual({ ok: true, value: "b" });
     });
+
+    it("accepts a hex color and rejects anything else with reason type", () => {
+        const setting = registered({
+            id: "col",
+            label: "Col",
+            type: "color",
+            defaultValue: "#ffd400",
+            ownerId: "o",
+            ownerName: "O",
+            value: "#ffd400",
+        });
+        expect(validateSettingValue(setting, "#00ff00")).toEqual({
+            ok: true,
+            value: "#00ff00",
+        });
+        expect(validateSettingValue(setting, "red")).toEqual({
+            ok: false,
+            reason: "type",
+        });
+        expect(validateSettingValue(setting, 42)).toEqual({
+            ok: false,
+            reason: "type",
+        });
+    });
 });

@@ -28,8 +28,18 @@ export interface OverlayManager<TLayer = unknown> {
     getMap(): maplibregl.Map | null;
     /** Pick a single object at screen coordinates */
     pickObject(x: number, y: number, radius?: number): PickingInfo | null;
-    /** Pick all objects at screen coordinates */
-    pickObjects(x: number, y: number, radius?: number): PickingInfo[];
+    /**
+     * Pick all objects at screen coordinates — a point with `radius`, or a
+     * rectangle whose `size` extends right and down from x/y (deck renders
+     * rectangle picks at a reduced resolution, so small features inside a
+     * large rectangle can be missed).
+     */
+    pickObjects(
+        x: number,
+        y: number,
+        radius?: number,
+        size?: { width: number; height: number },
+    ): PickingInfo[];
     /** Camera of the viewport that renders and picks — input to depth-aware picking. */
     getPickCamera?(): PointPickingCamera | null;
     /** Clean up all resources */

@@ -73,7 +73,7 @@ export async function fetchWfsPageAsFeatures(
     const response = await fetchWfsFeatures(params, signal);
 
     const features = response.features.map((f) =>
-        featureToRow(f.geometry, f.properties),
+        featureToRow(f.geometry, f.properties, f.id ?? null),
     );
 
     return { features, totalFeatures: response.totalFeatures };

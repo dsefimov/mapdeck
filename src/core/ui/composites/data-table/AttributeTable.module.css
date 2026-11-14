@@ -59,6 +59,10 @@
     background: var(--color-hover);
 }
 
+.dataTable tbody tr.rowSelected td {
+    background: var(--color-bg-subtle);
+}
+
 /* Spacer rows — invisible padding to create scroll height */
 .spacerRow td {
     padding: 0;
@@ -140,6 +144,17 @@
 
 .rowNumber {
     text-align: center;
+}
+
+/* ── Selection column ───────────────────────────────────────────── */
+
+.selectionColumnHeader {
+    width: var(--control-height);
+}
+
+.selectionCell {
+    text-align: center;
+    vertical-align: middle;
 }
 
 /* ── Zoom column ────────────────────────────────────────────────── */

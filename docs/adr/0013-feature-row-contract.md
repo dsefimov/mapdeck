@@ -12,12 +12,15 @@ maps would leave the reserved-key rule to comments and an eslint allowlist.
 ## Decision
 
 `contracts/domain/attribute.ts` declares `FeatureRow`: an index signature over data
-properties plus explicitly typed reserved fields (`_bbox?: Bbox`), and
+properties plus explicitly typed reserved fields (`_bbox?: Bbox`, and
+`_featureId?: string | number` — the GeoJSON feature-level id carried through
+from the source feature, added by feature selection, ADR-0022), and
 `AttributeFetchResult.features` becomes `FeatureRow[]`. The JSDoc on the interface
 states the convention: writers spread data properties first, so a data column cannot
 overwrite a reserved value; the generic data table keeps receiving `unknown` cells and
-validates the bbox at render time. Row identity comes from data columns via
-`getFeatureId`, so no `_id` key is reserved. The public meaning of the type is
+validates the bbox at render time. Row identity comes from the feature-level id,
+then data columns, via `getFeatureId` — the shared selection key convention
+(ADR-0022). The public meaning of the type is
 documented in [docs/api/extensions.md](../api/extensions.md).
 
 ## Consequences
@@ -27,4 +30,4 @@ documented in [docs/api/extensions.md](../api/extensions.md).
 - The writer side is checked by convention and tests, not by the compiler — producers
   build plain objects; the documented shape and the colocated tests carry the contract.
 - The eslint `no-underscore-dangle` allowlist keeps documenting direct accesses; it
-  carries `_bbox` alone.
+  carries `_bbox` and `_featureId`.

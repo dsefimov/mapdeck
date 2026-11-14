@@ -5,7 +5,12 @@
 import type { RegisterOptions } from "@core/lib/registry";
 
 /** Value types a setting can hold. */
-export type SettingType = "string" | "number" | "select" | "boolean";
+export type SettingType =
+    | "string"
+    | "number"
+    | "select"
+    | "boolean"
+    | "color";
 
 /** One choice of a select setting. */
 export interface SettingOption {
@@ -46,12 +51,22 @@ export interface BooleanSettingMetadata extends BaseSettingMetadata {
     defaultValue: boolean;
 }
 
+/**
+ * Metadata of a color setting. The value is a `#RRGGBB` hex string; the
+ * settings form renders it as a color picker.
+ */
+export interface ColorSettingMetadata extends BaseSettingMetadata {
+    type: "color";
+    defaultValue: string;
+}
+
 /** Union of every setting-metadata variant. */
 export type SettingMetadata =
     | StringSettingMetadata
     | NumberSettingMetadata
     | SelectSettingMetadata
-    | BooleanSettingMetadata;
+    | BooleanSettingMetadata
+    | ColorSettingMetadata;
 
 // Registered setting with owner info and current value.
 // The value is typed per variant — registration always initializes it to the
@@ -77,6 +92,11 @@ export type RegisteredSetting =
           ownerId: string;
           ownerName: string;
           value: boolean;
+      })
+    | (ColorSettingMetadata & {
+          ownerId: string;
+          ownerName: string;
+          value: string;
       });
 
 /** An owner's registered settings shown as one group. */
@@ -93,7 +113,7 @@ export interface SettingsGroup {
  * undefined when the id is unknown or the stored variant does not match.
  */
 export interface SettingsReadPort {
-    /** The value of a string or select setting. */
+    /** The value of a string, select or color setting. */
     getStringSetting(settingId: string): string | undefined;
     /** The value of a number setting. */
     getNumberSetting(settingId: string): number | undefined;

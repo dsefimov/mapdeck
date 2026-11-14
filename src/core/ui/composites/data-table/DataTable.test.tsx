@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom/vitest";
+import { Bbox } from "@core/lib/geo";
 import { DataTable } from "./DataTable";
 
 // useVirtualWindow observes the scroll container via ResizeObserver.
@@ -40,6 +41,7 @@ const DICT: Record<string, string> = {
     "dataTable.no": "Нет",
     "dataTable.nullValue": "—",
     "dataTable.zoomToObject": "Приблизить",
+    "dataTable.selectRow": "Выбрать строку",
 };
 
 const ROWS = [
@@ -309,5 +311,164 @@ describe("DataTable value renderers", () => {
         expect(
             screen.getByRole("button", { name: LINK_URL }),
         ).toBeInTheDocument();
+    });
+});
+
+describe("DataTable row selection", () => {
+    const selected = new Set<string>(["row-alpha"]);
+    const onToggleRow = vi.fn();
+
+    const renderSelectable = () =>
+        render(
+            <DataTable
+                rows={ROWS}
+                columns={["name", "points"]}
+                dict={DICT}
+                selection={{
+                    getRowId: (row, index) =>
+                        `row-${String(row.name ?? index)}`,
+                    isSelected: (rowId) => selected.has(rowId),
+                    onToggleRow,
+                }}
+            />,
+        );
+
+    it("renders a checkbox column and marks selected rows", () => {
+        renderSelectable();
+
+        const boxes = screen.getAllByRole("checkbox", {
+            name: "Выбрать строку",
+        });
+        expect(boxes).toHaveLength(ROWS.length);
+        expect(boxes[1]).toBeChecked();
+        expect(boxes[0]).not.toBeChecked();
+    });
+
+    it("toggles a row from its checkbox and from a plain row click", async () => {
+        renderSelectable();
+
+        const checkbox = screen.getAllByRole("checkbox").at(0);
+        expect(checkbox).toBeDefined();
+        await userEvent.click(checkbox!);
+        expect(onToggleRow).toHaveBeenCalledWith(ROWS[0]);
+
+        fireEvent.click(
+            screen.getByRole("row", {
+                name: /charlie/,
+            }),
+        );
+        expect(onToggleRow).toHaveBeenCalledWith(ROWS[2]);
+    });
+
+    it("keeps a row click on an interactive cell out of the toggle", () => {
+        const zoom = vi.fn();
+        const toggle = vi.fn();
+        render(
+            <DataTable
+                rows={[{ ...ROWS[0], bbox: new Bbox([0, 0, 1, 1]) }]}
+                columns={["name", "points"]}
+                dict={DICT}
+                geometryColumn={{ key: "bbox", onZoom: zoom }}
+                selection={{
+                    getRowId: (row, index) =>
+                        `row-${String(row.name ?? index)}`,
+                    isSelected: () => false,
+                    onToggleRow: toggle,
+                }}
+            />,
+        );
+
+        const zoomButton = screen
+            .getAllByRole("button", { name: "Приблизить" })
+            .at(0);
+        expect(zoomButton).toBeDefined();
+        fireEvent.click(zoomButton!);
+        expect(zoom).toHaveBeenCalled();
+        expect(toggle).not.toHaveBeenCalled();
+    });
+
+    it("renders the checkbox column before the zoom column", () => {
+        render(
+            <DataTable
+                rows={[{ ...ROWS[0], bbox: new Bbox([0, 0, 1, 1]) }]}
+                columns={["name", "points"]}
+                dict={DICT}
+                geometryColumn={{
+                    key: "bbox",
+                    onZoom: () => undefined,
+                }}
+                selection={{
+                    getRowId: (row, index) =>
+                        `row-${String(row.name ?? index)}`,
+                    isSelected: () => false,
+                    onToggleRow: () => undefined,
+                }}
+            />,
+        );
+
+        const cells = Array.from(
+            screen.getByRole("row", { name: /bravo/ }).querySelectorAll("td"),
+        );
+        const checkboxCell = cells.findIndex((cell) =>
+            cell.querySelector("input[type=checkbox]"),
+        );
+        const zoomCell = cells.findIndex((cell) =>
+            cell.querySelector("button"),
+        );
+        expect(checkboxCell).toBeGreaterThanOrEqual(0);
+        expect(zoomCell).toBeGreaterThan(checkboxCell);
+    });
+
+    it("toggles from the checkbox without zooming", async () => {
+        const zoom = vi.fn();
+        const toggle = vi.fn();
+        render(
+            <DataTable
+                rows={[{ ...ROWS[0], bbox: new Bbox([0, 0, 1, 1]) }]}
+                columns={["name", "points"]}
+                dict={DICT}
+                geometryColumn={{ key: "bbox", onZoom: zoom }}
+                selection={{
+                    getRowId: (row, index) =>
+                        `row-${String(row.name ?? index)}`,
+                    isSelected: () => false,
+                    onToggleRow: toggle,
+                }}
+            />,
+        );
+
+        const checkbox = screen.getAllByRole("checkbox").at(0);
+        expect(checkbox).toBeDefined();
+        await userEvent.click(checkbox!);
+
+        expect(toggle).toHaveBeenCalledWith(
+            expect.objectContaining({ name: "bravo" }),
+        );
+        expect(zoom).not.toHaveBeenCalled();
+    });
+
+    it("pins selected rows to the top, keeping the order within groups", () => {
+        const { rerender } = renderSelectable();
+        expect(rowTexts()[0]).toContain("bravo");
+
+        rerender(
+            <DataTable
+                rows={ROWS}
+                columns={["name", "points"]}
+                dict={DICT}
+                selection={{
+                    getRowId: (row, index) =>
+                        `row-${String(row.name ?? index)}`,
+                    isSelected: (rowId) => selected.has(rowId),
+                    onToggleRow,
+                    pinSelectedToTop: true,
+                }}
+            />,
+        );
+
+        const texts = rowTexts();
+        expect(texts[0]).toContain("alpha");
+        expect(texts[1]).toContain("bravo");
+        expect(texts[2]).toContain("charlie");
     });
 });

@@ -29,6 +29,8 @@ function toRegistered(
             return { ...metadata, ...base, value: metadata.defaultValue };
         case "boolean":
             return { ...metadata, ...base, value: Boolean(metadata.defaultValue) };
+        case "color":
+            return { ...metadata, ...base, value: metadata.defaultValue };
     }
 }
 

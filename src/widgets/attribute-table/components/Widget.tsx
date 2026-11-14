@@ -1,7 +1,13 @@
 import { type ReactNode } from "react";
 import { observer } from "mobx-react-lite";
 import { useRootStore } from "@core/shell";
-import { Field, InlineError, SelectInput, Text } from "@core/ui/components";
+import {
+    Button,
+    Field,
+    InlineError,
+    SelectInput,
+    Text,
+} from "@core/ui/components";
 import type { SelectOption } from "@core/ui/components";
 import { DataTable } from "@core/ui/composites";
 import { AttributeTableStore, PAGE_SIZE } from "../store/AttributeTableStore";
@@ -91,6 +97,10 @@ const AttributeTableWidget = observer<AttributeTableWidgetProps>(
         );
 
         const attributeLayers = store.attributeLayers;
+        // A tracked read of the shared selection: any change (from the
+        // map tool or this table) re-renders the rows — the checkbox
+        // column's isSelected closures live outside this observer.
+        const selectedCount = store.selectedRowIds.size;
 
         return (
             <div className={`${styles.widget} ${className}`}>
@@ -137,6 +147,24 @@ const AttributeTableWidget = observer<AttributeTableWidgetProps>(
                         {...(store.geometryColumn && {
                             geometryColumn: store.geometryColumn,
                         })}
+                        {...(store.selectionColumn && {
+                            selection: store.selectionColumn,
+                        })}
+                        controls={
+                            store.selectedLayerId && selectedCount > 0 ? (
+                                <Button
+                                    size="sm"
+                                    variant={
+                                        store.selectionPinnedToTop
+                                            ? "primary"
+                                            : "default"
+                                    }
+                                    onClick={store.toggleSelectionPinnedToTop}
+                                >
+                                    {dict["selection.pinToTop"]}
+                                </Button>
+                            ) : undefined
+                        }
                         valueRenderers={rootStore.attributeValueStore.renderersList}
                         onOpenValue={rootStore.attributeValueStore.openView}
                         dict={coreDict}

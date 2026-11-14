@@ -32,6 +32,8 @@ function withValue(
             return { ...setting, value: Number(value) };
         case "boolean":
             return { ...setting, value: Boolean(value) };
+        case "color":
+            return { ...setting, value: String(value) };
     }
 }
 
@@ -65,11 +67,15 @@ export class SettingsStore implements SettingsRegistrationPort {
     }
 
     /**
-     * Get a string or select setting value
+     * Get a string, select or color setting value
      */
     getStringSetting(settingId: string): string | undefined {
         const setting = this._settings.get(settingId);
-        if (setting?.type === "string" || setting?.type === "select") {
+        if (
+            setting?.type === "string" ||
+            setting?.type === "select" ||
+            setting?.type === "color"
+        ) {
             return setting.value;
         }
         return undefined;

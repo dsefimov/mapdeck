@@ -22,6 +22,7 @@ interface ColumnarHeaderRowProps {
     filters: Record<string, string>;
     onFilterChange: (column: string, value: string) => void;
     geometryColumn?: GeometryColumnConfig | undefined;
+    hasSelectionColumn?: boolean;
     labels: DataTableLabels;
 }
 
@@ -38,6 +39,7 @@ export const ColumnarHeaderRow: (
     filters,
     onFilterChange,
     geometryColumn,
+    hasSelectionColumn,
     labels,
 }) => (
     <>
@@ -48,6 +50,9 @@ export const ColumnarHeaderRow: (
                         {labels["dataTable.rowNumber"]}
                     </Text>
                 </th>
+            )}
+            {hasSelectionColumn && (
+                <th className={styles.selectionColumnHeader} />
             )}
             {geometryColumn && (
                 <th
@@ -90,6 +95,7 @@ export const ColumnarHeaderRow: (
         {showFilters && (
             <tr>
                 {showRowNumbers && <th />}
+                {hasSelectionColumn && <th />}
                 {geometryColumn && <th />}
                 {columns.map((col) => (
                     <th key={col}>

@@ -7,6 +7,13 @@ import type {
     FeatureRow,
 } from "@core/contracts";
 import { AsyncCache, AsyncState } from "@core/common/state";
+import {
+    ensureSelectionState,
+    stableFeatureKey,
+    type SelectionRecord,
+    type SelectionStore,
+} from "@core/common/selection";
+import type { SelectionColumnConfig } from "@core/ui/composites";
 import type { Bbox } from "@core/lib/geo";
 import {
     buildAttributeLayers,
@@ -28,11 +35,25 @@ type SortParams = { sortBy: string; sortDirection: "asc" | "desc" } | undefined;
 /** One layer's cached attribute page — the utils' structural shape. */
 type CachedAttributes = AttributePage;
 
+/** A row's selection record: the key plus the bbox mark when it has one. */
+function rowRecord(feature: FeatureRow, index: number): SelectionRecord {
+    return {
+        key: getFeatureId(feature, index),
+        footprint: feature._bbox
+            ? { kind: "bbox", bbox: feature._bbox }
+            : null,
+    };
+}
+
 export class AttributeTableStore {
     selectedLayerId: string | null = null;
     sortColumn: string | null = null;
     sortDirection: "asc" | "desc" | null = null;
-    selectedRowIds: Set<string> = new Set();
+    /** Whether selected rows render at the top of the table. */
+    selectionPinnedToTop = false;
+
+    /** The per-layer selection shared with the map tool and the highlight. */
+    readonly selection: SelectionStore;
 
     private readonly maxFeaturesPerRequest: number;
     /** Load/error state of the next-page fetch. */
@@ -47,10 +68,12 @@ export class AttributeTableStore {
         options: { maxFeaturesPerRequest?: number } = {},
     ) {
         this.maxFeaturesPerRequest = options.maxFeaturesPerRequest ?? 1000;
+        this.selection = ensureSelectionState(rootStore);
         makeAutoObservable<this, "_sortParams" | "_pageAsync" | "_cache">(
             this,
             {
                 rootStore: false,
+                selection: false,
                 _sortParams: false,
                 _pageAsync: false,
                 _cache: false,
@@ -137,12 +160,39 @@ export class AttributeTableStore {
         return cached.features.length < cached.totalFeatures;
     }
 
+    /** The displayed layer's selection keys — shared, not widget-local. */
+    get selectedRowIds(): ReadonlySet<string> {
+        if (!this.selectedLayerId) return new Set();
+        return this.selection.keysFor(this.selectedLayerId);
+    }
+
+    /**
+     * Selection wiring for the table's checkbox column. The keys are
+     * read as a snapshot — the tracked read re-evaluates this computed
+     * (and re-renders the table) whenever the layer's selection changes,
+     * whichever surface changed it.
+     */
+    get selectionColumn(): SelectionColumnConfig | undefined {
+        const layerId = this.selectedLayerId;
+        if (!layerId) return undefined;
+        const selectedRowIds = this.selection.keysFor(layerId);
+        return {
+            getRowId: (row, index) => getFeatureId(row as FeatureRow, index),
+            isSelected: (rowId) => selectedRowIds.has(rowId),
+            onToggleRow: (row) => this.toggleRowSelection(row as FeatureRow),
+            pinSelectedToTop: this.selectionPinnedToTop,
+        };
+    }
+
+    toggleSelectionPinnedToTop = (): void => {
+        this.selectionPinnedToTop = !this.selectionPinnedToTop;
+    };
+
     selectLayer = async (layerId: string | null): Promise<void> => {
         runInAction(() => {
             this.selectedLayerId = layerId;
             this.sortColumn = null;
             this.sortDirection = null;
-            this.selectedRowIds.clear();
         });
 
         if (layerId) {
@@ -194,11 +244,11 @@ export class AttributeTableStore {
         runInAction(() => {
             this.sortColumn = column;
             this.sortDirection = direction;
-            this.selectedRowIds.clear();
         });
 
         if (!this.selectedLayerId) return;
 
+        this.dropIndexKeyedSelection(this.selectedLayerId);
         this._cache.invalidate(this._cacheKey(this.selectedLayerId));
 
         await this._fetch(this.selectedLayerId, {
@@ -208,44 +258,41 @@ export class AttributeTableStore {
         });
     };
 
-    toggleRowSelection = (featureId: string): void => {
+    toggleRowSelection = (feature: FeatureRow): void => {
+        const layerId = this.selectedLayerId;
+        if (!layerId) return;
+        const index = this.loadedFeatures.indexOf(feature);
+        if (index < 0) return;
         runInAction(() => {
-            if (this.selectedRowIds.has(featureId)) {
-                this.selectedRowIds.delete(featureId);
-            } else {
-                this.selectedRowIds.add(featureId);
-            }
+            this.selection.toggleRecord(layerId, rowRecord(feature, index));
         });
     };
 
     selectAllRows = (): void => {
-        const features = this.selectedLayerId
-            ? (this._cache.get(this._cacheKey(this.selectedLayerId))
-                  ?.features ?? [])
-            : [];
+        const layerId = this.selectedLayerId;
+        if (!layerId) return;
+        const features = this.loadedFeatures;
         runInAction(() => {
-            this.selectedRowIds.clear();
-            features.forEach((feature, index) => {
-                this.selectedRowIds.add(getFeatureId(feature, index));
-            });
+            this.selection.applySelection(
+                layerId,
+                features.map(rowRecord),
+                "new",
+            );
         });
     };
 
     clearSelection = (): void => {
+        const layerId = this.selectedLayerId;
+        if (!layerId) return;
         runInAction(() => {
-            this.selectedRowIds.clear();
+            this.selection.clearLayer(layerId);
         });
     };
 
     refreshData = async (): Promise<void> => {
         if (!this.selectedLayerId) return;
 
-        // Row ids are index-based for features without ids — a refetch may
-        // silently re-target them, so the selection cannot survive it.
-        runInAction(() => {
-            this.selectedRowIds.clear();
-        });
-
+        this.dropIndexKeyedSelection(this.selectedLayerId);
         this._cache.invalidate(this._cacheKey(this.selectedLayerId));
 
         await this._fetch(this.selectedLayerId, {
@@ -254,6 +301,19 @@ export class AttributeTableStore {
             ...this._sortParams,
         });
     };
+
+    /**
+     * A refetch or re-sort may silently re-target index-based keys
+     * (`row-<i>`) — those selections cannot survive it. Stable keys
+     * (`feature-<id>`) match by value, so they stay.
+     */
+    private dropIndexKeyedSelection(layerId: string): void {
+        runInAction(() => {
+            if (!this.selection.hasStableIds(layerId)) {
+                this.selection.clearLayer(layerId);
+            }
+        });
+    }
 
     clearError = (): void => {
         if (this.selectedLayerId) {
@@ -298,11 +358,22 @@ export class AttributeTableStore {
             binding,
             request,
         );
-        return mergeAttributePage(
+        const merged = mergeAttributePage(
             prev?.features,
             result,
             request.startIndex ?? 0,
         );
+        // The loaded rows are the authority on whether this layer's
+        // features carry an id field — the panel's sync hint reads it.
+        runInAction(() => {
+            this.selection.markStableIds(
+                layerId,
+                merged.features.some(
+                    (feature) => stableFeatureKey(feature) !== null,
+                ),
+            );
+        });
+        return merged;
     }
 
     private _dataBinding(layerId: string): {

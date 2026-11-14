@@ -1,0 +1,39 @@
+.targetRow {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.modeRow {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.modeRow > * {
+    flex: 1;
+}
+
+.layerList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.layerRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.layerRow__title {
+    flex: 1;
+    min-width: 0;
+}
+
+.layerRow__count {
+    font-variant-numeric: tabular-nums;
+}
+
+.unstableHint {
+    margin-top: 0.25rem;
+}

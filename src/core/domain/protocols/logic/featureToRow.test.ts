@@ -36,6 +36,14 @@ describe("featureToRow", () => {
         expect(row._bbox).toMatchObject({ west: 30.5 });
     });
 
+    it("carries the feature-level id as _featureId, omitted when absent", () => {
+        expect(featureToRow(POINT, { name: "A" }, "paris")._featureId).toBe(
+            "paris",
+        );
+        expect(featureToRow(POINT, { name: "A" }, null)._featureId).toBeUndefined();
+        expect(featureToRow(POINT, { name: "A" })._featureId).toBeUndefined();
+    });
+
     it("treats missing properties as an empty row", () => {
         expect(featureToRow(null, undefined)).toEqual({});
     });

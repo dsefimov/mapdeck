@@ -1,4 +1,5 @@
 import type { RegisteredSetting } from "@core/contracts";
+import { normalizeHex } from "@core/lib/color";
 
 export type ValidationResult =
     | { ok: true; value: string | number | boolean }
@@ -50,6 +51,10 @@ function hasValidType(
             return typeof value === "number" && !Number.isNaN(value);
         case "boolean":
             return typeof value === "boolean";
+        case "color":
+            // A color is a hex string in canonical form — anything the
+            // picker or an override hand in must normalize to `#RRGGBB`.
+            return typeof value === "string" && normalizeHex(value) !== null;
     }
 }
 

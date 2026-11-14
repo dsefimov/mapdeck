@@ -6,6 +6,7 @@ import type { Dictionary } from "../../../types";
 import type {
     DataTableLabels,
     GeometryColumnConfig,
+    SelectionColumnConfig,
     ValueRenderer,
 } from "../types";
 import styles from "../AttributeTable.module.css";
@@ -14,6 +15,9 @@ interface DataTableBodyProps {
     isColumnar: boolean;
     displayColumns: string[];
     geometryColumn: GeometryColumnConfig | undefined;
+    selection: SelectionColumnConfig | undefined;
+    /** Source-index row keys, attached to the row objects (DataTable-built). */
+    rowIds: WeakMap<object, string> | null;
     valueRenderers: readonly ValueRenderer[] | undefined;
     onOpenValue: ((rendererId: string, value: unknown) => void) | undefined;
     sortColumn: string | null;
@@ -36,6 +40,8 @@ export const DataTableBody: (props: DataTableBodyProps) => ReactNode = ({
     isColumnar,
     displayColumns,
     geometryColumn,
+    selection,
+    rowIds,
     valueRenderers,
     onOpenValue,
     sortColumn,
@@ -56,6 +62,7 @@ export const DataTableBody: (props: DataTableBodyProps) => ReactNode = ({
     const columnCount =
         (isColumnar ? 1 : 0) +
         (geometryColumn ? 1 : 0) +
+        (selection ? 1 : 0) +
         displayColumns.length;
 
     // KV headers are literals ("attribute"/"value"), not data keys — they
@@ -84,6 +91,7 @@ export const DataTableBody: (props: DataTableBodyProps) => ReactNode = ({
                     filters={filters}
                     onFilterChange={handleFilterChange}
                     geometryColumn={geometryColumn}
+                    hasSelectionColumn={selection !== undefined}
                     labels={labels}
                 />
             </thead>
@@ -112,6 +120,8 @@ export const DataTableBody: (props: DataTableBodyProps) => ReactNode = ({
                     displayColumns={displayColumns}
                     showRowNumbers={isColumnar}
                     geometryColumn={geometryColumn}
+                    selection={selection}
+                    rowIds={rowIds}
                     valueRenderers={valueRenderers}
                     onOpenValue={onOpenValue}
                     labels={labels}

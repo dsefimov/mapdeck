@@ -22,6 +22,8 @@ export interface AttributeFetchRequest {
  */
 export interface FeatureRow {
     [key: string]: unknown;
+    /** GeoJSON feature-level id, when the source feature carried one. */
+    _featureId?: string | number;
     /** Bounding box derived from feature geometry, when available. */
     _bbox?: Bbox;
 }

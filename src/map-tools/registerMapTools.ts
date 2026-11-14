@@ -7,6 +7,7 @@ import { VolumeMeasureTool } from "./volume-measure";
 import { BasemapTool } from "./basemap";
 import { ResetOrientationTool } from "./reset-orientation";
 import { FeatureInfoTool } from "./feature-info";
+import { SelectionTool } from "./selection";
 
 /** Explicit registration of map tools: locale, tool and the panel widget. */
 export function registerMapTools(rootStore: StoreRegistry): void {
@@ -17,6 +18,7 @@ export function registerMapTools(rootStore: StoreRegistry): void {
         VolumeMeasureTool,
         new BasemapTool(rootStore.basemapStore),
         new FeatureInfoTool(),
+        new SelectionTool(),
     ];
 
     for (const tool of tools) {
