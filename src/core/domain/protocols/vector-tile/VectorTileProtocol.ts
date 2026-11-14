@@ -23,6 +23,7 @@ type VectorTileConfig = {
 export class VectorTileProtocol implements Protocol<VectorTileConfig> {
     readonly id = "vector-tile";
     readonly label = "Vector Tiles";
+    readonly featureSelection = true;
     readonly defaultStyle: LayerStyle = {
         type: "fill",
         paint: { "fill-opacity": 1 },

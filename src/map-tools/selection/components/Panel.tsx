@@ -22,6 +22,7 @@ import {
 } from "@core/common/selection";
 import type { SelectionToolStore } from "../utils/SelectionToolStore";
 import { SelectionController } from "../utils/SelectionController";
+import { selectableLayers } from "../utils/selectableLayers";
 import { renderDragPreview } from "../utils/dragPreview";
 import type { SelectionLocaleKey } from "../locale";
 import styles from "./Panel.module.css";
@@ -89,8 +90,9 @@ export const SelectionComponent: (
         );
         useOverlayLayers(overlayManager, previewLayers);
 
-        const visibleLayers = context.layerTree.allLayerNodes.filter(
-            (node) => node.isVisible,
+        const visibleLayers = selectableLayers(
+            context.layerTree.allLayerNodes,
+            context.protocols,
         );
         // The target defaults to the topmost visible layer — an unopened
         // select is one more step before the first click works.

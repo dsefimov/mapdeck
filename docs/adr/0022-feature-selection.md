@@ -50,7 +50,12 @@ vocabularies that do not match in general.
   inside the ADR-0010 exception) for deck layers. The channels cannot
   be told apart by `map.getLayer` — deck's interleaved layers register
   as internal maplibre layers too — and are disjoint by construction, so
-  the union needs no tie-breaking.
+  the union needs no tie-breaking. The target list carries only layers
+  whose render protocol declares the `featureSelection` capability
+  (`Protocol.featureSelection?: boolean`, the `fetchAttributes`
+  precedent — the protocol's author owns the knowledge); raster and
+  point-cloud protocols do not declare it, so their layers are never
+  selectable targets.
 - **Highlight outside the layer manager.** The map viewer mounts
   `useSelectionHighlight`, which renders one `GeoJsonLayer`
   (`selection-highlight`) from the records through `useOverlayLayers` —

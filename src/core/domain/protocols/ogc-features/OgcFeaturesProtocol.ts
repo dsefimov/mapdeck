@@ -23,6 +23,7 @@ type OgcFeaturesConfig = {
 export class OgcFeaturesProtocol implements Protocol<OgcFeaturesConfig> {
     readonly id = "ogc-features";
     readonly label = "OGC API Features";
+    readonly featureSelection = true;
     readonly defaultStyle: LayerStyle = {
         type: "fill",
         paint: { "fill-opacity": 1 },

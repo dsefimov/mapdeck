@@ -93,6 +93,14 @@ export interface Protocol<C = Record<string, unknown>> {
     /** Optional: group render units for batching (e.g. WMS). */
     groupRenderUnits?(renderUnits: Map<string, RenderUnit>): void;
 
+    /**
+     * Whether features of the layers this protocol renders can be
+     * selected on the map. Absence is the honest "no" — raster and
+     * point-cloud protocols do not declare it. Knowledge the protocol's
+     * author owns (ADR-0022), like `fetchAttributes`.
+     */
+    readonly featureSelection?: boolean;
+
     fetchAttributes?(
         binding: ProtocolBinding,
         request: AttributeFetchRequest,

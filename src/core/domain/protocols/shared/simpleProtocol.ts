@@ -30,6 +30,8 @@ export interface SimpleProtocolDescriptor<C> {
     readonly adapter: LayerAdapter;
     /** Builds the protocol-specific config from the resolved inputs. */
     readonly buildConfig: (input: SimpleConfigInput) => C;
+    /** Declared verbatim on the built protocol when set. */
+    readonly featureSelection?: boolean;
 }
 
 /**
@@ -44,6 +46,9 @@ export function createSimpleProtocol<C>(
         id: descriptor.id,
         label: descriptor.label,
         defaultStyle: descriptor.defaultStyle,
+        ...(descriptor.featureSelection
+            ? { featureSelection: descriptor.featureSelection }
+            : {}),
         getLayerAdapter: () => descriptor.adapter,
         createRenderDescriptor(
             sourceUrl: string,

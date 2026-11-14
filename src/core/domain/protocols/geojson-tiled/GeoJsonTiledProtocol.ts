@@ -16,11 +16,12 @@ export function createGeoJsonTiledProtocol(): Protocol<GeoJsonTiledConfig> {
     return createSimpleProtocol<GeoJsonTiledConfig>({
         id: "geojson-tiled",
         label: "GeoJSON Tiled",
-        defaultStyle: {
-            type: "fill",
-            paint: { "fill-opacity": 1 },
-        },
-        adapter: new GeoJsonAdapter(),
+    defaultStyle: {
+        type: "fill",
+        paint: { "fill-opacity": 1 },
+    },
+    featureSelection: true,
+    adapter: new GeoJsonAdapter(),
         buildConfig: ({ sourceUrl, style }) => ({
             type: "geojson-tiled",
             url: sourceUrl,

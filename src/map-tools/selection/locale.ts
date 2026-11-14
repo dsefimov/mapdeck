@@ -7,7 +7,7 @@ const en = {
         "Click or drag a rectangle on the map to select features of the target layer",
     "target.label": "Layer",
     "target.placeholder": "Choose a layer",
-    "target.noLayers": "No layers on the map",
+    "target.noLayers": "No selectable layers on the map",
     "mode.label": "Mode",
     "mode.new": "New",
     "mode.add": "Add",
