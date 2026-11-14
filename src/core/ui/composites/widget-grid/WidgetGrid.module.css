@@ -4,8 +4,8 @@
     z-index: var(--z-sticky);
     pointer-events: none;
     display: flex;
-    padding: var(--space-8);
-    padding-bottom: var(--space-32);
+    padding: var(--space-md);
+    padding-bottom: var(--space-lg);
     padding-right: var(--toolbar-width);
 }
 
@@ -118,11 +118,11 @@
 .windowHeader {
     background-color: var(--color-bg);
     border-bottom: var(--border-sm) solid var(--color-border);
-    padding: var(--space-10);
+    padding: var(--space-md);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-8);
+    gap: var(--space-md);
     cursor: move;
     user-select: none;
 }
@@ -139,7 +139,7 @@
 .windowContent {
     flex: 1;
     overflow: auto;
-    padding: var(--space-10);
+    padding: var(--space-md);
 }
 
 .windowComponent {

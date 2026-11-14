@@ -1,6 +1,7 @@
 # ADR-0014: UI styling and interaction
 
-Status: Accepted · Date: 2026-09-22
+Status: Accepted · Date: 2026-09-22 · spacing scale and token scope amended
+2026-11-14
 
 ## Context
 
@@ -27,6 +28,29 @@ theme tokens and the `mapdeck/ui` theme helpers (`getThemeColor`, `subscribeThem
 are the public customization surface for hosts and modules; component `*.module.css`
 classes are private implementation.
 
+**The spacing scale is three semantic steps, and a length is one of three things.**
+Every padding, gap, margin and inset uses `--space-sm` (4px), `--space-md` (8px) or
+`--space-lg` (16px). Any other length in the UI is either a canonical size token
+(`--icon-sm`, `--icon-lg`, `--control-height`, font sizes, radii, borders) or a
+computed zone — a `calc()` that sums only tokens because the geometry genuinely is a
+sum (`--control-height` is a tile-sm button: glyph + padding + borders;
+`--toolbar-width` is tile + panel chrome). Off-scale literals and step-composition
+calcs (`--space-lg + --space-md`) are not used: a size that fits no step becomes a
+named token, not a number. This replaced the nine-step numeric `--space-N` ladder,
+which let every consumer pick its own number and bred one-off sizes (40px and 42px
+buttons, 29px inputs); the collapse deliberately tightened density in places (widget
+padding 10→8, input padding 12→8) rather than preserve them.
+
+**Token families are public or internal.** Colors, icon artwork tokens
+(`--icon-<name>`) and the documented control metrics hosts size their chrome against
+(`--control-height`, `--toolbar-width`) keep their names across majors — they are the
+customization surface. The spacing steps, radii, borders and z-index are the
+library's internal layout vocabulary: they may be renamed in a minor release, as the
+numeric spacing ladder was. Every control and interactive row is
+`--control-height`, so inputs, boxed icon buttons, sidebar rows, select options,
+context-menu items and tree nodes line up by construction instead of by per-consumer
+tuning.
+
 **Components own their styles.** Each component ships a colocated `*.module.css`;
 `cn()` joins conditional classes; inline styles are reserved for runtime dynamics
 (CSS-variable injection, store-driven z-index).
@@ -51,6 +75,13 @@ registry change. The registry serves autocomplete and the registry↔artwork syn
 
 ## Consequences
 
+- The three-step spacing scale is enforced by review, not tooling: a new off-scale
+  literal or a `calc()` that composes steps instead of naming a token is a review
+  rejection. Content bounds (a menu's min/max width, a scroll cap in `rem`, a `ch`
+  measure) are not control geometry and stay out of the scale.
+- Renaming the spacing ladder was a minor release: the tokens are read only by CSS,
+  are not consumed by the TS bridge and were never documented as a host surface —
+  the public/internal split above is what makes that call honest going forward.
 - Map rendering and DOM chrome resolve the same token values, so themes apply to both.
 - Every new interactive component carries its own accessibility and positioning
   implementation cost — accepted because the interactive surface is small and each

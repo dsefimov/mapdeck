@@ -45,7 +45,11 @@ export const Field: (props: FieldProps) => ReactNode = ({
                 {label}
             </InputLabel>
             <FieldContext.Provider
-                value={{ describedBy, invalid: error !== undefined }}
+                value={{
+                    describedBy,
+                    invalid: error !== undefined,
+                    labelled: true,
+                }}
             >
                 {children}
             </FieldContext.Provider>

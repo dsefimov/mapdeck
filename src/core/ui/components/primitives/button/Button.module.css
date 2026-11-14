@@ -2,10 +2,11 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-8);
+    gap: var(--space-md);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-md);
-    padding: var(--space-10);
+    height: var(--control-height);
+    padding: 0 var(--space-md);
     background-color: var(--color-bg);
     cursor: pointer;
     transition:
@@ -52,5 +53,6 @@
 }
 
 .sm {
-    padding: var(--space-5) var(--space-10);
+    height: auto;
+    padding: var(--space-sm) var(--space-md);
 }

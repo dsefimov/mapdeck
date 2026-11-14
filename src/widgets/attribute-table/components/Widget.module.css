@@ -3,14 +3,14 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
-    padding: var(--space-10);
-    gap: var(--space-10);
+    padding: var(--space-md);
+    gap: var(--space-md);
 }
 
 .layerSelector {
     display: flex;
     flex-direction: column;
-    gap: var(--space-10);
+    gap: var(--space-md);
     flex-shrink: 0;
 }
 

@@ -21,8 +21,8 @@
 
 .track {
     position: relative;
-    width: var(--space-32);
-    height: var(--space-16);
+    width: calc(2 * var(--space-lg));
+    height: var(--space-lg);
     border-radius: var(--radius-full);
     background: var(--color-border);
     opacity: 0.6;
@@ -31,10 +31,10 @@
 
 .thumb {
     position: absolute;
-    top: calc((var(--space-16) - var(--space-10)) / 2);
-    left: calc((var(--space-16) - var(--space-10)) / 2);
-    width: var(--space-10);
-    height: var(--space-10);
+    top: calc((var(--space-lg) - var(--space-md)) / 2);
+    left: calc((var(--space-lg) - var(--space-md)) / 2);
+    width: var(--space-md);
+    height: var(--space-md);
     border-radius: 50%;
     background: var(--color-bg);
     /* Border instead of elevation — the thumb sits on the track, not above the page */
@@ -48,7 +48,7 @@
 }
 
 .input:checked + .track .thumb {
-    transform: translateX(var(--space-16));
+    transform: translateX(var(--space-lg));
 }
 
 .disabled {

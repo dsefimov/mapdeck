@@ -13,7 +13,7 @@
     border-radius: var(--radius-sm);
     display: flex;
     flex-direction: column;
-    padding: var(--space-10);
+    padding: var(--space-md);
 }
 
 /* Header: search + update button side by side */
@@ -21,26 +21,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--space-8);
-    padding-bottom: var(--space-10);
+    gap: var(--space-md);
+    padding-bottom: var(--space-md);
 }
 
 .layerTree__search {
     flex: 1;
     min-width: 0;
-}
-
-/* Mirrors the SearchInput box (inputBase: same height, border, radius) so
-   the refresh button reads as the search icon's twin; the ghost icon inside
-   stays quiet like tree-row buttons. Double selector — overrides the ghost
-   size modifier regardless of CSS-module import order */
-.layerTree__header .layerTree__updateButton {
-    width: calc(var(--space-32) + var(--space-8));
-    height: calc(var(--space-32) + var(--space-8));
-    border: var(--border-sm) solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-    flex-shrink: 0;
 }
 
 .layerTree__nodeContainer {
@@ -49,11 +36,16 @@
     align-items: center;
     cursor: pointer;
     user-select: none;
-    line-height: calc(var(--space-16) + 2 * var(--space-5));
+    line-height: var(--control-height);
+    /* The step (24px) must exceed the parent row's chevron + toggle
+       width, or a child's title starts left of its parent's — the
+       file-explorer rule; the --list-indent-step token (1rem) is too
+       narrow for the tree's two-control rows. */
     padding-left: calc(
-        var(--depth, 0) * var(--list-indent-step) + var(--space-5)
+        var(--depth, 0) * (var(--space-lg) + var(--space-md)) +
+            var(--space-sm)
     );
-    padding-right: var(--space-8);
+    padding-right: var(--space-md);
 }
 
 .layerTree__nodeContainer:hover {
@@ -74,7 +66,7 @@
 .layerTree__rightSection {
     display: flex;
     align-items: center;
-    gap: var(--space-10);
+    gap: var(--space-md);
 }
 
 /* Left section element: expand arrow, eye icon, type icon, title */
@@ -110,9 +102,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: var(--space-16);
-    height: var(--space-16);
-    padding: 0 var(--space-2);
+    min-width: var(--space-lg);
+    height: var(--space-lg);
+    padding: 0 var(--space-sm);
     border-radius: var(--radius-full);
     background: var(--color-error);
     color: var(--color-on-accent);
@@ -127,5 +119,5 @@
    full width is kept deliberately — no depth indent (the panel must not
    shrink on deeply nested rows) */
 .layerTree__menuContainer {
-    margin-block: var(--space-5);
+    margin-block: var(--space-sm);
 }

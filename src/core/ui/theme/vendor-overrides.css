@@ -3,8 +3,8 @@
    ═══════════════════════════════════════════ */
 
 .maplibregl-ctrl-attrib.maplibregl-compact {
-    margin: calc(var(--space-8) / 2) !important;
-    margin-right: var(--space-8) !important;
+    margin: var(--space-sm) !important;
+    margin-right: var(--space-md) !important;
 }
 
 .react-grid-item {
@@ -31,8 +31,8 @@
 
 .react-resizable-handle {
     position: absolute;
-    width: var(--space-16);
-    height: var(--space-16);
+    width: var(--space-lg);
+    height: var(--space-lg);
     bottom: 0;
     right: 0;
     cursor: se-resize;
@@ -54,10 +54,10 @@
 .react-resizable-handle::after {
     content: "";
     position: absolute;
-    width: var(--space-8);
-    height: var(--space-8);
-    bottom: var(--space-8);
-    right: var(--space-8);
+    width: var(--space-md);
+    height: var(--space-md);
+    bottom: var(--space-md);
+    right: var(--space-md);
     border-right: var(--border-md) solid var(--color-border);
     border-bottom: var(--border-md) solid var(--color-border);
 }

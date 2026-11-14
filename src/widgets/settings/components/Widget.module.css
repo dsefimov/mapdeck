@@ -1,15 +1,23 @@
-.settings__group {
-    margin-bottom: var(--space-16);
+.settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
 }
 
-.settings__group:last-child {
-    margin-bottom: 0;
+/* Group card mirrors the WidgetShell chrome (the measure-tool panels). */
+.settings__group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
 }
 
 .settings__group_content {
     display: flex;
     flex-direction: column;
-    gap: var(--space-16);
+    gap: var(--space-md);
 }
 
 /* Group header — title with the reset-all control */
@@ -17,17 +25,12 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-8);
-}
-
-/* Setting item — Field with 8px gap instead of the default 10 */
-.settings__item {
-    gap: var(--space-8);
+    gap: var(--space-md);
 }
 
 .settings__item_checkbox {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
+    gap: var(--space-md);
     cursor: pointer;
 }

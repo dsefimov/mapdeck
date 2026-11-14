@@ -69,17 +69,11 @@
     --shadow-color: #191218;
 
     /* ═══════════════════════════════════════════
-     7. SPACING — pixel scale
-     ═══════════════════════════════════════════ */
-    --space-2: 0.125rem;
-    --space-4: 0.25rem;
-    --space-5: 0.3125rem;
-    --space-8: 0.5rem;
-    --space-10: 0.625rem; /* primary gap, widget padding */
-    --space-12: 0.75rem; /* inputs, triggers */
-    --space-16: 1rem;
-    --space-24: 1.5rem;
-    --space-32: 2rem;
+       7. SPACING — three semantic steps
+       ═══════════════════════════════════════════ */
+    --space-sm: 0.25rem; /* tight gaps, sub-element padding */
+    --space-md: 0.5rem; /* primary rhythm: gaps, control padding */
+    --space-lg: 1rem; /* group insets, menu/sidebar padding */
 
     /* ═══════════════════════════════════════════
      8. TYPOGRAPHY (Roboto)
@@ -141,7 +135,11 @@
     /* ═══════════════════════════════════════════
      12a. CONTROLS — shared box metrics
      ═══════════════════════════════════════════ */
-    --control-height: calc(var(--space-32) + var(--space-2)); /* selects, search, table zoom column */
+    /* Every control and interactive row. Structurally equals a tile-sm
+       icon button: glyph + its padding + both borders. */
+    --control-height: calc(
+        var(--icon-sm) + 2 * var(--space-md) + 2 * var(--border-sm)
+    );
     --opacity-disabled: 0.5;
     --focus-ring: 0 0 0 var(--border-md) var(--color-focus-ring);
 

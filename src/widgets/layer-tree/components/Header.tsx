@@ -41,10 +41,8 @@ const LayerTreeHeader: (props: LayerTreeHeaderProps) => React.ReactNode =
                     <IconButton
                         icon="refresh"
                         label={dict["button.update.title"] ?? "Update"}
+                        variant="tile"
                         onClick={onUpdateClick}
-                        {...(styles.layerTree__updateButton && {
-                            className: styles.layerTree__updateButton,
-                        })}
                     />
                 )}
             </div>

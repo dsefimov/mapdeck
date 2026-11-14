@@ -1,7 +1,7 @@
 .slider {
-    --thumb-size: calc(var(--icon-sm) - var(--space-2)); /* 14px */
+    --thumb-size: var(--icon-sm);
     width: 100%;
-    height: calc(var(--icon-sm) + var(--space-2)); /* 18px — grab zone */
+    height: var(--control-height); /* grab zone */
     appearance: none;
     outline: none;
     cursor: pointer;

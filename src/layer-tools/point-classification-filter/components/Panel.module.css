@@ -10,7 +10,7 @@
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-sm);
     /* A full LAS table runs long — the menu must not grow with it. */
     max-height: 15rem;
     overflow-y: auto;
@@ -19,7 +19,7 @@
 .row {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
+    gap: var(--space-md);
 }
 
 .rowLabel {
@@ -31,12 +31,12 @@
 
 .swatch {
     flex: none;
-    width: var(--space-12);
-    height: var(--space-12);
+    width: var(--space-lg);
+    height: var(--space-lg);
     border-radius: var(--radius-xs);
     border: var(--border-sm) solid var(--color-border);
 }
 
 .empty {
-    padding: var(--space-8) 0;
+    padding: var(--space-md) 0;
 }

@@ -4,6 +4,7 @@ import { interpolate, typedDict } from "@core/lib/text";
 import type { Dictionary } from "../../types";
 import { InputLabel } from "../../components/primitives/inputs/InputLabel";
 import { TextInput } from "../../components/primitives/inputs/TextInput";
+import { useFieldAria } from "../../components/primitives/field/FieldContext";
 import { ColorSlider } from "../../components/primitives/color-slider/ColorSlider";
 import styles from "./ColorPicker.module.css";
 
@@ -82,9 +83,16 @@ export const ColorPicker: (props: ColorPickerProps) => React.ReactNode = ({
     // the slider id their InputLabel points at.
     const hueInputId = React.useId();
 
+    // Inside a Field the Field's label is the visible one — rendering our
+    // own would duplicate it. The slider and hex field keep their aria
+    // names either way.
+    const field = useFieldAria();
+
     return (
         <div className={styles.container}>
-            <InputLabel htmlFor={hueInputId}>{label}</InputLabel>
+            {!field.labelled && (
+                <InputLabel htmlFor={hueInputId}>{label}</InputLabel>
+            )}
             <div className={styles.row}>
                 <div
                     className={styles.swatch}

@@ -14,7 +14,7 @@
     --tool-measure-preview: var(--color-accent);
 
     --toolbar-width: calc(
-        var(--icon-lg) + 4 * var(--border-sm) + 6 * var(--space-8)
+        var(--icon-sm) + 4 * var(--border-sm) + 6 * var(--space-md)
     );
     --tool-panel-width-sm: 10rem;
     --tool-panel-width-lg: 22rem;
@@ -22,7 +22,7 @@
 
     /* Per-step indent of a depth-indented list row (the token
        file names layout roles, not the extensions that consume them). */
-    --list-indent-step: 28px;
+    --list-indent-step: var(--space-lg);
 
     /* Square side of a preview thumbnail grid. */
     --preview-image-size: 128px;

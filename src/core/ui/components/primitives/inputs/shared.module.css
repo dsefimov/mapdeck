@@ -1,6 +1,7 @@
 .inputBase {
     width: 100%;
-    padding: var(--space-12);
+    height: var(--control-height);
+    padding: 0 var(--space-md);
     color: var(--color-text);
     background-color: var(--color-bg);
     border: var(--border-sm) solid var(--color-border);

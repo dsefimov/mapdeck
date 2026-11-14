@@ -6,15 +6,14 @@
 
 .input {
     composes: inputBase from "../inputs/shared.module.css";
-    height: var(--control-height);
     /* left — room for the search icon, right — regular padding */
-    padding: 0 var(--space-12) 0
-        calc(var(--space-12) + var(--icon-sm) + var(--space-8));
+    padding: 0 var(--space-md) 0
+        calc(var(--space-md) + var(--icon-sm) + var(--space-sm));
 }
 
 .searchIcon {
     position: absolute;
-    left: var(--space-12);
+    left: var(--space-md);
     top: 50%;
     transform: translateY(-50%);
     width: var(--icon-sm);

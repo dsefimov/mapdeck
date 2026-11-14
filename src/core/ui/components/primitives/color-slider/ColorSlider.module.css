@@ -1,7 +1,7 @@
 .wrapper {
     position: relative;
     height: var(--icon-sm);
-    padding: var(--space-4);
+    padding: var(--space-sm);
     background: var(--color-border);
     border-radius: var(--radius-lg);
     box-sizing: content-box;
@@ -35,10 +35,10 @@
 .thumb {
     /* Overhangs the track into the wrapper padding, clearing the
        wrapper edge by its own border width */
-    --thumb-w: calc(var(--icon-sm) - var(--space-4));
+    --thumb-w: var(--icon-sm);
     position: absolute;
-    top: calc(var(--border-sm) - var(--space-4));
-    bottom: calc(var(--border-sm) - var(--space-4));
+    top: calc(var(--border-sm) - var(--space-sm));
+    bottom: calc(var(--border-sm) - var(--space-sm));
     left: clamp(0px, var(--pos, 50%), calc(100% - var(--thumb-w)));
     width: var(--thumb-w);
     box-sizing: border-box;

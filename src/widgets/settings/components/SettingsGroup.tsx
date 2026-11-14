@@ -113,7 +113,6 @@ const SettingItem: (props: SettingItemProps) => React.ReactNode = observer(
                 label={settingLabel}
                 htmlFor={setting.id}
                 error={error}
-                className={styles.settings__item}
             >
                 <SettingInput
                     key={`${setting.id}-${rejectedEpoch}`}

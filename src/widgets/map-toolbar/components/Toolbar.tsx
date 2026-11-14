@@ -43,7 +43,6 @@ const ToolbarComponent: (props: ToolbarProps) => React.ReactNode = observer(
                                 icon={tool.icon}
                                 label={toolName}
                                 variant="tile"
-                                size="md"
                                 active={isActive}
                                 onClick={() => {
                                     if (tool.kind === MAP_TOOL_KIND.action) {

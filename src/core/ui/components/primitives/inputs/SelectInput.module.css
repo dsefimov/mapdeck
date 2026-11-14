@@ -3,8 +3,6 @@
     position: relative;
     display: flex;
     align-items: center;
-    height: var(--control-height);
-    padding: 0 var(--space-12);
     cursor: pointer;
     text-align: left;
     font-family: inherit;
@@ -24,7 +22,7 @@
     top: 0;
     right: 0;
     bottom: 0;
-    width: calc(var(--space-32) + var(--space-12));
+    width: calc(var(--icon-sm) + 2 * var(--space-md));
     display: flex;
     align-items: center;
     justify-content: center;
@@ -47,7 +45,7 @@
     z-index: var(--z-floating);
     max-height: 13rem;
     overflow-y: auto;
-    padding: var(--space-4) 0;
+    padding: var(--space-sm) 0;
     background: var(--color-bg);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-md);
@@ -55,11 +53,14 @@
 }
 
 .groupLabel {
-    padding: var(--space-8) var(--space-12);
+    padding: var(--space-sm) var(--space-md);
 }
 
 .option {
-    padding: var(--space-8) var(--space-12);
+    display: flex;
+    align-items: center;
+    height: var(--control-height);
+    padding: 0 var(--space-md);
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
@@ -72,5 +73,5 @@
 }
 
 .empty {
-    padding: var(--space-8) var(--space-12);
+    padding: var(--space-sm) var(--space-md);
 }

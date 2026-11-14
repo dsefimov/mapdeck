@@ -1,9 +1,9 @@
 .summary {
     display: flex;
     flex-direction: column;
-    gap: var(--space-8);
+    gap: var(--space-md);
     border-radius: var(--radius-md);
-    padding: var(--space-10) var(--space-5);
+    padding: var(--space-md) var(--space-sm);
     border: var(--border-sm) solid var(--color-border);
 }
 
@@ -11,19 +11,19 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--space-8);
-    padding: var(--space-5);
+    gap: var(--space-md);
+    padding: var(--space-sm);
 }
 
 .label {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
+    gap: var(--space-md);
 }
 
 .marker {
-    width: var(--space-8);
-    height: var(--space-8);
+    width: var(--space-md);
+    height: var(--space-md);
     border-radius: 50%;
     flex-shrink: 0;
 }

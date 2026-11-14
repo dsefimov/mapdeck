@@ -1,7 +1,7 @@
 .tableContainer {
     display: flex;
     flex-direction: column;
-    gap: var(--space-10);
+    gap: var(--space-md);
     flex: 1;
     min-height: 0;
 }
@@ -9,7 +9,7 @@
 .controls {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-8);
+    gap: var(--space-md);
 }
 
 /* ── Single table layout ────────────────────────────────────────── */
@@ -41,13 +41,13 @@
 
 .dataTable th {
     text-align: left;
-    padding: var(--space-8) var(--space-8);
+    padding: var(--space-md);
     border-bottom: var(--border-sm) solid var(--color-border);
     white-space: nowrap;
 }
 
 .dataTable td {
-    padding: var(--space-8) var(--space-8);
+    padding: var(--space-md);
     border-bottom: var(--border-sm) solid var(--color-border);
     vertical-align: top;
     max-width: var(--column-width);
@@ -80,7 +80,7 @@
 .sortButton {
     display: block;
     width: 100%;
-    padding: var(--space-8) var(--space-8);
+    padding: var(--space-md);
     border: none;
     background: none;
     font: inherit;
@@ -105,7 +105,7 @@
 
 .filterInput {
     width: 100%;
-    padding: var(--space-8) var(--space-8);
+    padding: var(--space-md);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-sm);
     background: var(--color-bg);
@@ -126,7 +126,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     position: relative;
-    min-height: var(--space-32);
+    min-height: var(--control-height);
     flex: 1;
     contain: layout style paint;
 }
@@ -139,7 +139,7 @@
 /* ── Row number column (columnar mode) ──────────────────────────── */
 
 .rowNumberHeader {
-    width: 2.5rem;
+    width: var(--control-height);
     text-align: center;
 }
 
@@ -177,5 +177,5 @@
 .loadingContainer {
     width: 100%;
     height: 100%;
-    min-height: 80px;
+    min-height: calc(var(--control-height) * 2);
 }

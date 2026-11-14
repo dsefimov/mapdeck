@@ -1,12 +1,12 @@
 .targetRow {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--space-sm);
 }
 
 .modeRow {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-md);
 }
 
 .modeRow > * {
@@ -16,13 +16,13 @@
 .layerList {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: var(--space-sm);
 }
 
 .layerRow {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-md);
 }
 
 .layerRow__title {
@@ -35,5 +35,5 @@
 }
 
 .unstableHint {
-    margin-top: 0.25rem;
+    margin-top: var(--space-sm);
 }
