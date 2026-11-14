@@ -151,9 +151,10 @@ const AttributeTableWidget = observer<AttributeTableWidgetProps>(
                             selection: store.selectionColumn,
                         })}
                         controls={
-                            store.selectedLayerId && selectedCount > 0 ? (
+                            store.selectedLayerId ? (
                                 <Button
                                     size="sm"
+                                    disabled={selectedCount === 0}
                                     variant={
                                         store.selectionPinnedToTop
                                             ? "primary"

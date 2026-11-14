@@ -471,4 +471,19 @@ describe("DataTable row selection", () => {
         expect(texts[1]).toContain("bravo");
         expect(texts[2]).toContain("charlie");
     });
+
+    it("renders host controls in the filters row", () => {
+        render(
+            <DataTable
+                rows={ROWS}
+                columns={["name", "points"]}
+                dict={DICT}
+                controls={<button type="button">Host view</button>}
+            />,
+        );
+
+        const hostButton = screen.getByRole("button", { name: "Host view" });
+        const controlsRow = hostButton.closest("div");
+        expect(controlsRow?.textContent).toContain(SHOW_FILTERS);
+    });
 });
