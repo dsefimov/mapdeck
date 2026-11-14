@@ -6,7 +6,7 @@ import type { MeasureController } from "@map-tools/shared/MeasureController";
 import { MeasurePanel } from "@map-tools/shared/MeasurePanel";
 
 import type { MapToolComponentProps } from "@core/contracts";
-import type { Segment } from "@core/ui/composites";
+import type { KeyedListRow } from "@core/ui/composites";
 import { measurePolygonArea } from "../logic/area";
 import type { AreaMeasureLocaleKey } from "../locale";
 import { AREA_MEASURE_ID } from "./Tool";
@@ -22,7 +22,7 @@ export const AreaMeasureComponent: (
 
         const measurements = measurePolygonArea(points);
 
-        const segmentItems: Segment[] = measurements.edges.map((edge, i) => ({
+        const segmentItems: KeyedListRow[] = measurements.edges.map((edge, i) => ({
             label: interpolate(dict["segment.label"], {
                 from: i + 1,
                 to: i + 2,

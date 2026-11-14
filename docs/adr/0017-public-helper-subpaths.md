@@ -16,7 +16,7 @@ Two package entry points, each a thin barrel in `src/app/` (the `app/contracts.t
 precedent) with its own lib-build entry:
 
 - **`mapdeck/ui`** — the panel-building surface: primitives (buttons, inputs, `Icon`,
-  `Text`, `Field`, `Spinner`), panel composites (`ToolPanel`, `SegmentsList`,
+  `Text`, `Field`, `Spinner`), panel composites (`ToolPanel`, `KeyedList`,
   `DataTable`, `ColorPicker`, `SummarySection`), interaction hooks (`useClickOutside`,
   `useEscapeKey`, `useMenuKeyboard`, …), and the theme helpers (`getThemeColor`,
   `DEFAULT_ACCENT_CSS`, `useMeasureColors`, …). Everything styles through the

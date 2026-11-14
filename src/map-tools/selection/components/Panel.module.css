@@ -13,27 +13,6 @@
     flex: 1;
 }
 
-.layerList {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
-}
-
-.layerRow {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-}
-
-.layerRow__title {
-    flex: 1;
-    min-width: 0;
-}
-
-.layerRow__count {
-    font-variant-numeric: tabular-nums;
-}
-
 .unstableHint {
     margin-top: var(--space-sm);
 }

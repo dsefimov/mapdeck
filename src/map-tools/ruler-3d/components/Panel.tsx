@@ -6,7 +6,7 @@ import type { MeasureController } from "@map-tools/shared/MeasureController";
 import { MeasurePanel } from "@map-tools/shared/MeasurePanel";
 
 import type { MapToolComponentProps } from "@core/contracts";
-import type { Segment } from "@core/ui/composites";
+import type { KeyedListRow } from "@core/ui/composites";
 import { measurePolyline3D } from "../logic/distance";
 import type { Ruler3dLocaleKey } from "../locale";
 import { RULER_3D_ID } from "./Tool";
@@ -23,7 +23,7 @@ export const Ruler3DComponent: (
         const { segments, totalDistance, totalHorizontal, totalVertical } =
             measurePolyline3D(points);
 
-        const segmentItems: Segment[] = segments.map((seg, i) => ({
+        const segmentItems: KeyedListRow[] = segments.map((seg, i) => ({
             label: interpolate(dict["segment.label"], {
                 from: i + 1,
                 to: i + 2,

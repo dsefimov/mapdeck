@@ -9,11 +9,11 @@ export {
 } from "./summary-section";
 
 export {
-    SegmentsList,
-    type SegmentsListProps,
-    type Segment,
-    type SegmentDetail,
-} from "./segments-list";
+    KeyedList,
+    type KeyedListProps,
+    type KeyedListRow,
+    type KeyedListDetail,
+} from "./keyed-list";
 
 export {
     DataTable,

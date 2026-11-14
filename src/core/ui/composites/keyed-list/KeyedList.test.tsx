@@ -1,22 +1,22 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { SegmentsList } from "./SegmentsList";
+import { KeyedList } from "./KeyedList";
 
 afterEach(() => {
     cleanup();
 });
 
-describe("SegmentsList", () => {
+describe("KeyedList", () => {
     const TITLE = "Сегменты";
     const FIRST = "Точка 1 → 2";
 
-    it("renders the title and one label/value pair per segment", () => {
+    it("renders the title and one label/value pair per row", () => {
         render(
-            <SegmentsList
+            <KeyedList
                 title={TITLE}
-                segments={[
+                rows={[
                     { label: FIRST, value: "12.3 м" },
                     { label: "Точка 2 → 3", value: "4.5 м" },
                 ]}
@@ -30,11 +30,11 @@ describe("SegmentsList", () => {
         expect(screen.getByText("4.5 м")).toBeInTheDocument();
     });
 
-    it("renders detail sub-rows when a segment has them", () => {
+    it("renders detail sub-rows when a row has them", () => {
         render(
-            <SegmentsList
+            <KeyedList
                 title={TITLE}
-                segments={[
+                rows={[
                     {
                         label: FIRST,
                         value: "12.3 м",
@@ -55,9 +55,9 @@ describe("SegmentsList", () => {
 
     it("omits the details block when details are absent or empty", () => {
         render(
-            <SegmentsList
+            <KeyedList
                 title={TITLE}
-                segments={[
+                rows={[
                     { label: "a", value: "1" },
                     { label: "b", value: "2", details: [] },
                 ]}
@@ -66,5 +66,30 @@ describe("SegmentsList", () => {
 
         expect(screen.getByText("a")).toBeInTheDocument();
         expect(screen.getByText("b")).toBeInTheDocument();
+    });
+
+    it("renders one action node per row", () => {
+        const first = vi.fn();
+        const second = vi.fn();
+        render(
+            <KeyedList
+                title={TITLE}
+                rows={[
+                    { label: "a", value: "1" },
+                    { label: "b", value: "2" },
+                ]}
+                actions={[
+                    <button key="a" onClick={first}>
+                        act-a
+                    </button>,
+                    <button key="b" onClick={second}>
+                        act-b
+                    </button>,
+                ]}
+            />,
+        );
+
+        expect(screen.getByRole("button", { name: "act-a" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "act-b" })).toBeInTheDocument();
     });
 });

@@ -2,9 +2,9 @@ import React from "react";
 import { observer } from "mobx-react-lite";
 import type { MapToolComponentProps } from "@core/contracts";
 import { useMapCursor } from "@core/ui/hooks";
-import { ToolPanel, SegmentsList, SummarySection } from "@core/ui/composites";
+import { ToolPanel, KeyedList, SummarySection } from "@core/ui/composites";
 import { Button } from "@core/ui/components";
-import type { Segment, SummaryItem } from "@core/ui/composites";
+import type { KeyedListRow, SummaryItem } from "@core/ui/composites";
 import { useOverlayLayers } from "@core/domain/map";
 import { useAttachedController, measureCursor, type MeasureController } from "./MeasureController";
 import { useTechLayers } from "./useTechLayers";
@@ -44,7 +44,7 @@ export interface MeasurePanelProps {
     /** Whether the summary shows (each tool has its own minimum). */
     readonly showSummary: boolean;
     readonly summaryItems: SummaryItem[];
-    readonly segmentItems: Segment[];
+    readonly segmentItems: KeyedListRow[];
 }
 
 export const MeasurePanel: (
@@ -106,9 +106,9 @@ export const MeasurePanel: (
             >
                 {showSummary && <SummarySection items={summaryItems} />}
                 {segmentItems.length > 0 && (
-                    <SegmentsList
+                    <KeyedList
                         title={dict["segments.title"]}
-                        segments={segmentItems}
+                        rows={segmentItems}
                     />
                 )}
             </ToolPanel>

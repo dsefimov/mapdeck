@@ -79,10 +79,10 @@ export {
     type SummaryItem,
 } from "@core/ui";
 export {
-    SegmentsList,
-    type SegmentsListProps,
-    type Segment,
-    type SegmentDetail,
+    KeyedList,
+    type KeyedListProps,
+    type KeyedListRow,
+    type KeyedListDetail,
 } from "@core/ui";
 export {
     DataTable,

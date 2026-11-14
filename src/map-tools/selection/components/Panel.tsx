@@ -11,7 +11,7 @@ import {
     SelectInput,
     Text,
 } from "@core/ui/components";
-import { ToolPanel } from "@core/ui/composites";
+import { ToolPanel, KeyedList } from "@core/ui/composites";
 import { useEscapeKey, useMapCursor } from "@core/ui/hooks";
 import { useOverlayLayers } from "@core/domain/map";
 import {
@@ -186,53 +186,48 @@ export const SelectionComponent: (
                 {!hasSelection ? (
                     <EmptyState message={dict["list.empty"]} />
                 ) : (
-                    <div className={styles.layerList}>
-                        {listedCounts.map(({ layerId, count }) => (
-                            <div key={layerId} className={styles.layerRow}>
-                                <Text
-                                    variant="body"
-                                    truncate
-                                    className={styles.layerRow__title}
-                                >
-                                    {layerTitle(layerId)}
-                                </Text>
-                                <Text
-                                    variant="body"
-                                    weight="semibold"
-                                    className={styles.layerRow__count}
-                                >
-                                    {count}
-                                </Text>
-                                {layerNode(layerId)?.data && (
+                    <KeyedList
+                        title={dict["list.header"]}
+                        rows={listedCounts.map(({ layerId, count }) => ({
+                            label: layerTitle(layerId),
+                            value: String(count),
+                        }))}
+                        actions={listedCounts.map(
+                            ({ layerId }) => (
+                                <React.Fragment key={layerId}>
+                                    {layerNode(layerId)?.data && (
+                                        <IconButton
+                                            icon="attribute-table"
+                                            label={dict["action.viewInTable"]}
+                                            variant="ghost"
+                                            onClick={() =>
+                                                openInAttributeTable(layerId)
+                                            }
+                                        />
+                                    )}
                                     <IconButton
-                                        icon="attribute-table"
-                                        label={dict["action.viewInTable"]}
+                                        icon="zoom"
+                                        label={dict["action.zoom"]}
+                                        variant="ghost"
+                                        onClick={() => {
+                                            const extent =
+                                                selection.layerExtent(layerId);
+                                            if (extent)
+                                                controller.zoomToExtent(extent);
+                                        }}
+                                    />
+                                    <IconButton
+                                        icon="close"
+                                        label={dict["action.clearLayer"]}
                                         variant="ghost"
                                         onClick={() =>
-                                            openInAttributeTable(layerId)
+                                            selection.clearLayer(layerId)
                                         }
                                     />
-                                )}
-                                <IconButton
-                                    icon="zoom"
-                                    label={dict["action.zoom"]}
-                                    variant="ghost"
-                                    onClick={() => {
-                                        const extent =
-                                            selection.layerExtent(layerId);
-                                        if (extent)
-                                            controller.zoomToExtent(extent);
-                                    }}
-                                />
-                                <IconButton
-                                    icon="close"
-                                    label={dict["action.clearLayer"]}
-                                    variant="ghost"
-                                    onClick={() => selection.clearLayer(layerId)}
-                                />
-                            </div>
-                        ))}
-                    </div>
+                                </React.Fragment>
+                            ),
+                        )}
+                    />
                 )}
 
                 {showUnstableHint && (

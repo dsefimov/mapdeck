@@ -11,7 +11,7 @@ including context members, registration policy and public types, is documented i
 |---|---|
 | `mapdeck` | `createMapdeck(options)`, `MapdeckRoot`, module/extension types, `createToolPanelWidget` |
 | `mapdeck/contracts` | the full contract barrel: ports (`OverlayManager`, `MapContext`), registration surfaces, asset-mapping types, point-cloud picking |
-| `mapdeck/ui` | the panel-building surface: primitives, inputs, `ToolPanel`/`SegmentsList`/`DataTable`/`ColorPicker`, interaction hooks, theme helpers |
+| `mapdeck/ui` | the panel-building surface: primitives, inputs, `ToolPanel`/`KeyedList`/`DataTable`/`ColorPicker`, interaction hooks, theme helpers |
 | `mapdeck/utils` | pure helpers: geo formatters |
 | `mapdeck/styles.css` | the stylesheet with the design tokens — one file styles built-ins and extensions alike |
 

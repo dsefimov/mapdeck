@@ -29,7 +29,7 @@ const PANEL_SURFACE = [
     "useMenuKeyboard",
     "ToolPanel",
     "SummarySection",
-    "SegmentsList",
+    "KeyedList",
     "DataTable",
     "ColorPicker",
     "getThemeColor",

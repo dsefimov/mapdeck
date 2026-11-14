@@ -1,16 +1,16 @@
-/* ── Segments (used by SegmentsList) ──────────────────────────────────────── */
+/* ── KeyedList ────────────────────────────────────────────────────────── */
 
-.segments {
+.list {
     padding: var(--space-md);
     border: var(--border-sm) solid var(--color-border);
     border-radius: var(--radius-md);
 }
 
-.segmentsTitle {
+.listTitle {
     margin-bottom: var(--space-md);
 }
 
-.segmentsList {
+.rows {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
@@ -19,30 +19,42 @@
     padding-right: var(--space-md);
 }
 
-.segmentItem {
+.row {
     display: flex;
     flex-direction: column;
     border-bottom: var(--border-sm) solid
         color-mix(in srgb, var(--color-border) 50%, transparent);
 }
 
-.segmentItem:last-child {
+.row:last-child {
     border-bottom: none;
 }
 
-.segmentMain {
+.rowMain {
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.segmentComponents {
+.rowEnd {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.rowActions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+}
+
+.rowDetails {
     display: flex;
     flex-direction: column;
     margin-top: var(--space-sm);
 }
 
-.segmentComponent {
+.rowDetail {
     display: flex;
     justify-content: space-between;
     gap: var(--space-md);
