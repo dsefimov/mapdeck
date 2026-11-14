@@ -9,19 +9,33 @@ interface CanvasSource {
 }
 
 /**
- * Sets `cursor` on the map canvas for as long as the component is mounted
- * (re-applied when `cursor` changes) and clears it on cleanup.
+ * Deck's interleaved overlay rewrites the canvas cursor inline on every
+ * render frame (its default getCursor yields grab/grabbing), silently
+ * overwriting any plain inline value set here. The class pairs with a
+ * stylesheet !important rule in vendor-overrides.css, which outranks the
+ * per-frame inline writes; the cursor keyword rides in a CSS variable.
+ */
+const CURSOR_CLASS = "mapdeck-canvas-tool-cursor";
+const CURSOR_VARIABLE = "--mapdeck-canvas-cursor";
+
+/**
+ * Shows `cursor` over the map canvas for as long as the component is
+ * mounted (re-applied when `cursor` changes) and reverts to the map's
+ * own cursor on cleanup.
  *
  * @param map    - Map instance providing the drawing canvas
- * @param cursor - CSS cursor keyword (e.g. `"crosshair"`); empty string resets
+ * @param cursor - CSS cursor keyword (e.g. `"pointer"`); empty string
+ *                 disables the override, leaving the map default
  */
 export function useMapCursor(map: CanvasSource, cursor: string): void {
     useEffect(() => {
         const canvas = map.getCanvas();
-        if (!canvas) return;
-        canvas.style.cursor = cursor;
+        if (!canvas || cursor === "") return;
+        canvas.style.setProperty(CURSOR_VARIABLE, cursor);
+        canvas.classList.add(CURSOR_CLASS);
         return () => {
-            canvas.style.cursor = "";
+            canvas.classList.remove(CURSOR_CLASS);
+            canvas.style.removeProperty(CURSOR_VARIABLE);
         };
     }, [map, cursor]);
 }

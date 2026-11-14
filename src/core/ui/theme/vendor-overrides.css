@@ -61,3 +61,10 @@
     border-right: var(--border-md) solid var(--color-border);
     border-bottom: var(--border-md) solid var(--color-border);
 }
+
+/* deck's interleaved overlay rewrites the canvas cursor inline every
+   frame (default getCursor → grab/grabbing), so a tool's cursor needs
+   !important to outrank it — useMapCursor toggles the class. */
+.mapdeck-canvas-tool-cursor {
+    cursor: var(--mapdeck-canvas-cursor, pointer) !important;
+}
