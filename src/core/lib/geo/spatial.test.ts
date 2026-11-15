@@ -107,10 +107,7 @@ describe("greatCircleDistance", () => {
         );
     });
 
-    it("matches the value turf produced on the Vincenty test pair", () => {
-        // Flinders Peak → Buninyong Gap. The WGS84 geodesic is
-        // 54 972.271 m (Vincenty 1975); the spherical model reads
-        // ~0.085% short — the documented accuracy trade-off.
+    it("reads the Flinders Peak → Buninyong geodesic: matches turf, 0.085% short of Vincenty 1975", () => {
         const d = greatCircleDistance(
             [144.42486789, -37.95103342],
             [143.92649553, -37.65282114],

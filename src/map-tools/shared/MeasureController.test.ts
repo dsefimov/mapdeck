@@ -69,7 +69,7 @@ function createController() {
 }
 
 describe("MeasureController", () => {
-    it("attach wires listeners and starts a drawing; detach unwires", () => {
+    it("attach wires listeners and starts a drawing; detach unwires and is idempotent", () => {
         const map = fakeMap();
         const { store, controller } = createController();
         const onEscape = vi.fn();
@@ -88,7 +88,6 @@ describe("MeasureController", () => {
         controller.detach();
         expect(map.listenerCount("click")).toBe(0);
         expect(map.listenerCount("mousemove")).toBe(0);
-        // Detach is idempotent.
         expect(() => controller.detach()).not.toThrow();
     });
 

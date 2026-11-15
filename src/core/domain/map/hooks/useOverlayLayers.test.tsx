@@ -63,7 +63,6 @@ describe("useOverlayLayers", () => {
             <Harness overlayManager={overlayManager} layers={[["b", layer("b")]]} />,
         );
 
-        // The old tuple unwired, the new one added.
         expect(overlayManager.removeLayer).toHaveBeenCalledWith("a");
         expect(overlayManager.addLayer).toHaveBeenCalledWith("b", expect.anything());
     });

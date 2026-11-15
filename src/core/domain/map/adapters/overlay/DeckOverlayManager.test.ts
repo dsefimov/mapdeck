@@ -191,8 +191,6 @@ describe("DeckOverlayManager terrain-aware camera", () => {
             }
         }
 
-        // The whole screen was sampled, and the flat camera (the bug being
-        // fixed) drops a share of the very same points.
         expect(checked).toBeGreaterThanOrEqual(90);
         expect(flatMisses).toBeGreaterThan(0);
     });

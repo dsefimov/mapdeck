@@ -83,8 +83,6 @@ describe("assignCapabilities", () => {
     });
 
     it("works against a real ToolStore — its methods keep their this", () => {
-        // Regression: passing the store's method as a bare callback used to
-        // detach `this` and crash every item fetch.
         const store = new ToolStore({
             localeStore: { registerTranslations: () => undefined },
         } as unknown as StoreRegistry);

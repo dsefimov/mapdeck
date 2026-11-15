@@ -220,7 +220,6 @@ function pickValidPickedInfo(
     return pickingInfo;
 }
 
-/** Legacy single-pick path: the candidate closest to the cursor on screen. */
 function pickScreenClosest(
     options: PickPointFromCloudOptions,
 ): PickingResult | null {

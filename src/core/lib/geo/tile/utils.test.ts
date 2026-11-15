@@ -39,8 +39,6 @@ describe("tileToQuadkey", () => {
     });
 
     it("matches the Bing tile system example: tile (3, 5, 3) → \"213\"", () => {
-        // The documented reference from Microsoft's Bing Maps Tile
-        // System: tileX 3 = 011₂, tileY 5 = 101₂ → 100111₂ = 213₄.
         expect(tileToQuadkey([3, 5, 3])).toBe("213");
     });
 

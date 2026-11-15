@@ -131,8 +131,6 @@ describe("parseGeoJsonResponse — totals", () => {
                 { ...FULL_PAGE, numberMatched: matched },
                 { pageSize: 500, offset: 500 },
             );
-            // Regression: the estimate used to be offset-blind (`count + 1`),
-            // collapsing the pager as soon as the second page was loaded.
             expect(result.totalFeatures).toBe(1001);
         },
     );

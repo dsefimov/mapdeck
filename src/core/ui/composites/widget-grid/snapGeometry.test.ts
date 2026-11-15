@@ -41,11 +41,7 @@ describe("calculateRowHeight", () => {
     });
 });
 
-describe("calculateEdgeSnap (resize)", () => {
-    // Only the "se" handle is enabled (`resizeHandles={["se"]}`), so resize
-    // grows w/h with x/y fixed: left/top edge snaps are unreachable in the
-    // app (their guard needs the near edge to move) and are not covered
-    // here — the 5.5 collapse drops them.
+describe("calculateEdgeSnap (resize) — the app enables only the se handle, so left/top snaps are unreachable", () => {
     it.each([
         {
             edge: "right",

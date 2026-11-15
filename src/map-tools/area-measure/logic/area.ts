@@ -1,13 +1,3 @@
-/**
- * Pure measurement math for the area tool: great-circle edges, perimeter
- * and projected 2D area of the drawn polygon.
- *
- * Both the turf area and the great-circle perimeter are spherical.
- * The migration path is one local metric frame (the volume-measure
- * pattern): planar shoelace area + planar perimeter in that frame,
- * removing the last @turf dependency and unifying precision with
- * volume-measure.
- */
 import { greatCircleDistance, polygonPerimeter } from "@core/lib/geo";
 import type { GeoPoint } from "@core/lib/geo";
 import area from "@turf/area";
@@ -23,7 +13,7 @@ function calculateArea2D(points: GeoPoint[]): number {
     return area(polygon([coords]));
 }
 
-/** Measure the polygon drawn so far — safe on any prefix of vertices. */
+/** Measure the polygon drawn so far — safe on any prefix of vertices. Edges and area are both spherical. */
 export function measurePolygonArea(points: GeoPoint[]): AreaMeasurements {
     const edges: PolygonEdge[] = [];
     for (let i = 1; i < points.length; i++) {

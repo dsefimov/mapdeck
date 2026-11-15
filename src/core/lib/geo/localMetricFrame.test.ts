@@ -49,8 +49,6 @@ describe("createLocalMetricFrame", () => {
 
         const [x, y] = frame.toMeters(30.001, 56.001);
 
-        // A longitude degree is cos(56°) shorter than a latitude degree —
-        // the confusion this frame exists to prevent.
         expect(x).toBeLessThan(y / 1.7);
     });
 });
