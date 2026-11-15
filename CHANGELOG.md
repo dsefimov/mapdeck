@@ -4,7 +4,7 @@ All notable changes to this project are documented in this file. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); the project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-11-15
 
 ### Added
 
@@ -26,4 +26,5 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `settingsOverrides` embed option: per-deployment setting values with validation.
 - Widget workspace whose layout and z-order persist for the session.
 
-[Unreleased]: https://github.com/dsefimov/mapdeck/commits/main
+[Unreleased]: https://github.com/dsefimov/mapdeck/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/dsefimov/mapdeck/compare/v0.7.0...v1.0.0
