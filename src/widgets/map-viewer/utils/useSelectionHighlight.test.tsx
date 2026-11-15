@@ -103,8 +103,6 @@ describe("useSelectionHighlight", () => {
         });
         rerender();
 
-        // Hidden: the highlight layer is removed even though the
-        // selection itself did not change.
         expect(overlayManager.removeLayer).toHaveBeenCalledWith(
             SELECTION_HIGHLIGHT_LAYER_ID,
         );

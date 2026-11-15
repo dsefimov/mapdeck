@@ -10,7 +10,6 @@ type CogConfig = {
     opacity: number;
 };
 
-/** Cloud-Optimized GeoTIFF through the shared raster adapter. */
 export function createCogProtocol(): Protocol<CogConfig> {
     return createSimpleProtocol<CogConfig>({
         id: "cog",

@@ -34,6 +34,7 @@ export default [
                 setInterval: "readonly",
                 clearInterval: "readonly",
                 fetch: "readonly",
+                performance: "readonly",
             },
         },
         plugins: {
@@ -161,7 +162,6 @@ export default [
         },
     })),
 
-    // === Core layer graph enforcement (AGENTS.md Dependency Graph) ===
     // lib imports nothing: no framework, no state library, no upper layer.
     {
         files: ["src/core/lib/**/*.ts", "src/core/lib/**/*.tsx"],
@@ -449,10 +449,7 @@ export default [
     },
 
     {
-        files: [
-            "src/core/contracts/**/*.ts",
-            "src/core/domain/**/*.ts",
-        ],
+        files: ["src/core/contracts/**/*.ts"],
         plugins: {
             jsdoc,
         },

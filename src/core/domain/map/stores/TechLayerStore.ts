@@ -30,8 +30,6 @@ export class TechLayerStore {
         });
     }
 
-    // === Drawing ===
-
     /** Start drawing a new geometry of the given kind. */
     startDrawing(kind: GeometryKind): void {
         this.drawing = {
@@ -66,8 +64,6 @@ export class TechLayerStore {
         this.drawing = null;
     }
 
-    // === Collection editing ===
-
     /** Remove a completed geometry by id. */
     removeGeometry(id: string): void {
         this.geometries = this.geometries.filter((g) => g.id !== id);
@@ -94,8 +90,6 @@ export class TechLayerStore {
     setPreviewPoint(point: GeoPoint | null): void {
         this.previewPoint = point;
     }
-
-    // === Node editing ===
 
     /** Toggle node-edit mode (dragging existing drawing nodes). */
     toggleEditMode(): void {

@@ -437,8 +437,6 @@ describe("search", () => {
             A1: layerNode("A1", { title: "Orthophoto" }),
         });
         vm.setSearchQuery("ortho");
-        // Before the debounced run fires there are no results yet — expansion
-        // rows stay visible instead of flashing an empty tree.
         expect(vm.visibleRows).toEqual([{ nodeId: "A", depth: 0 }]);
     });
 });

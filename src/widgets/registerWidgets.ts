@@ -21,7 +21,6 @@ const BUILT_IN_WIDGETS: Widget<{ widgetId: string }>[] = [
     new MapToolbarWidget(),
 ];
 
-/** Explicit registration of built-in widgets into the widget store. */
 export function registerWidgets(rootStore: StoreRegistry): void {
     for (const widget of BUILT_IN_WIDGETS) {
         rootStore.widgetStore.registerWidget(widget);

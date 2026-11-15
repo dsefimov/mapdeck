@@ -6,7 +6,6 @@ import { logger } from "@core/lib/logger";
  * asset paths without rebuilding the bundle.
  */
 
-/** The shape of `runtime-config.json`. */
 export interface RuntimeConfig {
     /**
      * Base for bundled binary assets, page-relative when empty. Deploying

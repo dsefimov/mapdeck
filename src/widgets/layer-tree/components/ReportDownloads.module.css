@@ -16,7 +16,6 @@
     gap: var(--space-md);
 }
 
-/* Row action: bordered text button stretching over the row width. */
 .reportButton {
     display: flex;
     align-items: center;

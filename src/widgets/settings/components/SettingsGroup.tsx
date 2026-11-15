@@ -133,7 +133,6 @@ interface SettingInputProps {
     onChange: (value: unknown) => void;
 }
 
-/** The `switch` on the discriminated union narrows value and options. */
 const SettingInput = ({
     setting,
     label,

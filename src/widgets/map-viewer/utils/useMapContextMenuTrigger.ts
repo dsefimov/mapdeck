@@ -1,4 +1,3 @@
-/* global performance */
 import { useEffect, useRef, type RefObject } from "react";
 import maplibregl from "maplibre-gl";
 import type { ContextMenuApi } from "@core/ui/components";

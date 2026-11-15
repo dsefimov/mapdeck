@@ -1,10 +1,10 @@
-/* ═══════════════════════════════════════════════════════════════
-   DESIGN SYSTEM — TOOL / WIDGET-SPECIFIC TOKENS
-   Ownership rule:
-   - inside a component → local declarations in its CSS module;
-   - shared by ≥2 components outside core/ui, or needed by a TS bridge → here;
-   - for a single tool → its CSS module, not here.
-   ═══════════════════════════════════════════════════════════════ */
+/*
+ * DESIGN SYSTEM — TOOL / WIDGET-SPECIFIC TOKENS.
+ * Ownership rule:
+ * - inside a component → local declarations in its CSS module;
+ * - shared by ≥2 components outside core/ui, or needed by a TS bridge → here;
+ * - for a single tool → its CSS module, not here.
+ */
 :root,
 .mapdeck-root {
     /* Measure colors (deck.gl-readable, flat hex).

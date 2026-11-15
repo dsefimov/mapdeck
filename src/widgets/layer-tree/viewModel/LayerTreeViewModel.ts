@@ -12,7 +12,7 @@ export interface VisibleRow {
 }
 
 /**
- * Display model of the Layers widget (Qt QSortFilterProxyModel analogy).
+ * Display model of the Layers widget.
  *
  * Owns all view state — expansion (`expandedIds`), the single open menu
  * (`openMenuId`), and search (`searchQuery`/`matchedIds`) — and computes the

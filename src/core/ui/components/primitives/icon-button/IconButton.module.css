@@ -21,8 +21,6 @@
     opacity: var(--opacity-disabled);
 }
 
-/* ── Variants ───────────────────────────────────────────────────── */
-
 .ghost {
     border: none;
     border-radius: var(--radius-full);
@@ -66,8 +64,6 @@
     border-color: var(--color-accent);
     color: var(--color-on-accent);
 }
-
-/* ── Sizes ──────────────────────────────────────────────────────── */
 
 .sm {
     --icon-button-size: var(--icon-sm);

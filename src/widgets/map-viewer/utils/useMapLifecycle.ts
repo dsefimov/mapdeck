@@ -2,7 +2,7 @@ import { useEffect, useRef, type RefObject } from "react";
 import maplibregl from "maplibre-gl";
 import type { StoreRegistry } from "@core/store-registry";
 
-/** Create/dispose the maplibre map and start basemap sync. Runs once. */
+/** Runs once per mount. */
 export function useMapLifecycle(
     containerRef: RefObject<HTMLDivElement | null>,
     rootStore: StoreRegistry,

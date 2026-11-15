@@ -8,7 +8,6 @@ import { SIDEBAR_ID } from "@widgets/sidebar";
 import { MAP_VIEWER_ID } from "@widgets/map-viewer";
 import styles from "./MapWorkspace.module.css";
 
-/** A widget placed over the map instead of the grid (tool panels). */
 function isMapToolbarWidget(widget: WidgetInstance): boolean {
     return (widget.definition.placement ?? "grid") === "map-toolbar";
 }
@@ -19,7 +18,6 @@ interface WidgetSlotProps {
     readonly className?: string | undefined;
 }
 
-/** Renders a registered widget's component in place, or nothing. */
 function WidgetSlot({
     widget,
     widgetId,
@@ -30,11 +28,6 @@ function WidgetSlot({
     return <Widget widgetId={widgetId} className={className ?? ""} />;
 }
 
-/**
- * The static workspace chrome: the sidebar and the map viewer
- * sit outside the widget grid, map-tool panels render over the map, and
- * the floating widget grid fills the rest.
- */
 const MapWorkspace: () => ReactNode = observer(() => {
     const { widgetStore, localeStore } = useRootStore();
 

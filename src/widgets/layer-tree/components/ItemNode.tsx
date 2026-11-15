@@ -79,9 +79,6 @@ const ItemNode: (props: ItemNodeProps) => React.ReactNode = observer(
     },
 );
 
-/**
- * Separate component to keep ItemNode complexity low.
- */
 const ItemMenu: (props: {
     node: LayerNode;
     tools: LayerTool[];

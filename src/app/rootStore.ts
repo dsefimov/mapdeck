@@ -20,7 +20,6 @@ import type {
 
 import type { StoreRegistry } from "@core/store-registry";
 
-/** A store that releases acquired resources in `dispose()`. */
 interface Disposable {
     dispose(): void;
 }
@@ -60,13 +59,10 @@ export class RootStore implements StoreRegistry {
     readonly widgetStore: WidgetStore;
     readonly attributeValueStore: AttributeValueStore;
 
-    /** Declared-points context for tool panels. */
     readonly toolContext: ToolRuntimeContext;
 
-    /** Declared-points registration context for modules. */
     readonly moduleContext: ModuleContext;
 
-    /** Whether `initialize()` has completed successfully; the App's boot gate. */
     isInitialized = false;
 
     /** Failure message of the last `initialize()` run; null while loading or initialized. */
@@ -148,7 +144,6 @@ export class RootStore implements StoreRegistry {
         return store;
     }
 
-    /** Disposes every store that acquired resources, in reverse construction order. */
     dispose(): void {
         const storesInReverse = [...this._constructionOrder].reverse();
         for (const store of storesInReverse) {
@@ -162,7 +157,7 @@ export class RootStore implements StoreRegistry {
      * (bootstrap) passes it in.
      */
     initialize = flow(function* (this: RootStore, defaultSourceType: string) {
-        this.clearInitError();
+        this.initError = null;
         this.isInitialized = false;
         try {
             if (!defaultSourceType) {
@@ -189,8 +184,4 @@ export class RootStore implements StoreRegistry {
             error instanceof Error ? error.message : "Unknown error";
     }
 
-    /** Clears a stale error without touching the initialized flag. */
-    clearInitError(): void {
-        this.initError = null;
-    }
 }

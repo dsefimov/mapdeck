@@ -1,7 +1,6 @@
 import type { TranslationDict } from "@core/contracts";
 
 const core = {
-    // ErrorScreen / InlineError
     "error.title": "Initialization failed",
     "error.retry": "Retry",
     "error.renderTitle": "Something went wrong",
@@ -12,10 +11,9 @@ const core = {
     // WidgetShell close button
     "aria.close": "Close",
 
-    // SelectInput empty state
     "select.noOptions": "No options",
 
-    // ColorPicker control names ({label} is the caller's label)
+    // {label} is the caller's label
     "colorPicker.hexField": "{label} — hex value",
     "colorPicker.hueField": "{label} — hue",
 
@@ -38,14 +36,12 @@ const core = {
     "dataTable.rowNumber": "#",
     "dataTable.selectRow": "Select row",
 
-    // Media attribute values (photo / album value renderers)
     "mediaValue.photo": "Photo",
     "mediaValue.album": "Album",
     "mediaValue.photoCount": "{count} photos",
     "mediaValue.expand": "Expand to view",
     "mediaValue.loadError": "Failed to load the image",
 
-    // WidgetGrid
     "widgetGrid.dragToTop":
         "Drag to top edge to stretch horizontally (full width)",
     "widgetGrid.dragToBottom":

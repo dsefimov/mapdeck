@@ -20,7 +20,6 @@
     gap: var(--space-md);
 }
 
-/* Group header — title with the reset-all control */
 .settings__group_header {
     display: flex;
     align-items: center;

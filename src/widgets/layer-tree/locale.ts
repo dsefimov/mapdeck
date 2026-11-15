@@ -25,7 +25,6 @@ const en = {
     "unsupported.empty-source-url": "No data source URL",
 };
 
-/** Locale keys of the layer-tree namespace — derived from the en dictionary. */
 export type LayerTreeLocaleKey = keyof typeof en;
 
 export const layerTreeTranslations: Partial<

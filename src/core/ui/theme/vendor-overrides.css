@@ -1,7 +1,3 @@
-/* ═══════════════════════════════════════════
-   Vendor CSS overrides (MapLibre GL, react-grid-layout, etc.)
-   ═══════════════════════════════════════════ */
-
 .maplibregl-ctrl-attrib.maplibregl-compact {
     margin: var(--space-sm) !important;
     margin-right: var(--space-md) !important;

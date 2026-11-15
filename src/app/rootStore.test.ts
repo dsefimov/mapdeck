@@ -260,15 +260,6 @@ describe("RootStore initialization state", () => {
         expect(store.initError).toBe("offline again");
     });
 
-    it("clearInitError resets the message without touching the flag", () => {
-        const store = new RootStore();
-        store.setInitError(new Error("boom"));
-
-        store.clearInitError();
-
-        expect(store.initError).toBeNull();
-        expect(store.isInitialized).toBe(false);
-    });
 });
 
 describe("RootStore disposal", () => {

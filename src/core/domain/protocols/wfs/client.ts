@@ -1,8 +1,3 @@
-/**
- * WFS client — fetch layer with error handling.
- * Depends on pure URL builder and parser.
- */
-
 import type {
     WfsRequestParams,
     WfsResponse,

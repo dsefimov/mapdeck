@@ -51,7 +51,6 @@ interface ActionButtonProps {
     readonly label: string;
     readonly onClick: () => void;
     readonly disabled?: boolean;
-    /** Active state (menu open) — highlighted with the accent */
     readonly active?: boolean;
 }
 
@@ -199,7 +198,6 @@ interface NodeActionsProps {
     readonly onMoreClick: () => void;
 }
 
-/** Right-section controls: error badge, zoom, and the menu opener. */
 function NodeActions({
     flags,
     labels,

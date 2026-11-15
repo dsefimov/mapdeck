@@ -16,7 +16,6 @@ import { groupLayersByTitle } from "../utils/groupLayersByTitle";
 import type { AttributeTableWidgetProps } from "../types";
 import styles from "./Widget.module.css";
 
-/** Select options built from the layer list; same-title layers form sections. */
 function buildSelectOptions(layers: AttributeLayerInfo[]): SelectOption[] {
     const { groups, ungrouped } = groupLayersByTitle(layers);
     return [
@@ -43,7 +42,6 @@ interface LayerSelectProps {
     readonly onSelect: (layerId: string | null) => void;
 }
 
-/** Layer picker (SelectInput with groups instead of a native select/optgroup). */
 function LayerSelect({
     widgetId,
     layers,
@@ -76,11 +74,6 @@ function LayerSelect({
     );
 }
 
-/**
- * Attribute Table Widget.
- * Displays a dropdown to select WFS layers and shows their feature data
- * with lazy loading, sorting, and filtering support.
- */
 const AttributeTableWidget = observer<AttributeTableWidgetProps>(
     ({ widgetId, className = "" }) => {
         const rootStore = useRootStore();

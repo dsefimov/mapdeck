@@ -7,7 +7,6 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import type { MapdeckInstance } from "./embed";
 
 interface MapdeckRootProps {
-    /** The library handle from `createMapdeck`. */
     readonly mapdeck: MapdeckInstance;
 }
 

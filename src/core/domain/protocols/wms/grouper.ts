@@ -1,9 +1,4 @@
-/**
- * WMS grouper — groups consecutive WMS layers into batch render units.
- *
- * Pure functions — no MobX, no MapLibre dependencies.
- * Used by WmsProtocol.groupRenderUnits().
- */
+/** Pure functions — no MobX, no MapLibre dependencies. */
 import type {
     WmsGroupConfig,
     WmsGroupKey,

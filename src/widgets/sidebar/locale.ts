@@ -5,7 +5,6 @@ const en = {
     "aria.selectWidget": "Select {name} widget",
 };
 
-/** Locale keys of the sidebar namespace — derived from the en dictionary. */
 export type SidebarLocaleKey = keyof typeof en;
 
 export const sidebarTranslations: Partial<

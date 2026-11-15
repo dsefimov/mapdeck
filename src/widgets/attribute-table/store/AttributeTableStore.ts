@@ -49,7 +49,6 @@ export class AttributeTableStore {
     selectedLayerId: string | null = null;
     sortColumn: string | null = null;
     sortDirection: "asc" | "desc" | null = null;
-    /** Whether selected rows render at the top of the table. */
     selectionPinnedToTop = false;
 
     /** The per-layer selection shared with the map tool and the highlight. */

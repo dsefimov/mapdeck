@@ -1,8 +1,3 @@
-/**
- * Core widget interface that all widgets must implement
- * This defines the metadata and contract for widgets in the Mapdeck system
- */
-
 import type React from "react";
 import type { SettingMetadata } from "./settings";
 import type { TranslationDict } from "./locale";
@@ -17,12 +12,10 @@ export type WidgetPlacement = "grid" | "map-toolbar";
 
 /** Contract every widget implements: id, component, and optional groups. */
 export interface Widget<TProps extends { widgetId: string }> {
-    // === Required Properties ===
     readonly id: string;
     readonly icon: string;
     readonly component: WidgetComponent<TProps>;
 
-    // === Optional Size Constraints (grouped) ===
     /**
      * Size configuration (grid units), falling back to core defaults per
      * field, or `"auto"` to adapt the size to the widget's content.

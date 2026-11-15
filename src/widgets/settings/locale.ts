@@ -10,7 +10,6 @@ const en = {
     "action.resetAll": "Reset to defaults",
 };
 
-/** Locale keys of the settings namespace — derived from the en dictionary. */
 export type SettingsLocaleKey = keyof typeof en;
 
 export const settingsTranslations: Partial<
