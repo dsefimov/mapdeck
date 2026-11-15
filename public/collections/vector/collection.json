@@ -1,0 +1,48 @@
+{
+    "id": "demotiles-vector",
+    "type": "Collection",
+    "stac_version": "1.0.0",
+    "title": "Vector — MapLibre Demotiles",
+    "description": "Mapbox Vector Tiles from MapLibre's public demo endpoint (Natural Earth data): country polygons, geographic lines and country centroids. Each layer selects one source layer of the tileset.",
+    "license": "public-domain",
+    "providers": [
+        {
+            "name": "MapLibre",
+            "roles": ["producer", "host"],
+            "url": "https://demotiles.maplibre.org"
+        }
+    ],
+    "extent": {
+        "spatial": {
+            "bbox": [[-180.0, -85.05, 180.0, 85.05]]
+        },
+        "temporal": {
+            "interval": [["2024-01-01T00:00:00Z", null]]
+        }
+    },
+    "links": [
+        {
+            "rel": "license",
+            "href": "https://www.naturalearthdata.com/about/terms-of-use/",
+            "title": "Natural Earth terms of use (public domain)"
+        },
+        {
+            "rel": "item",
+            "href": "/collections/vector/item-demotiles-countries.json",
+            "type": "application/geo+json",
+            "title": "Countries"
+        },
+        {
+            "rel": "item",
+            "href": "/collections/vector/item-demotiles-geolines.json",
+            "type": "application/geo+json",
+            "title": "Rivers and geolines"
+        },
+        {
+            "rel": "item",
+            "href": "/collections/vector/item-demotiles-centroids.json",
+            "type": "application/geo+json",
+            "title": "Country centroids"
+        }
+    ]
+}

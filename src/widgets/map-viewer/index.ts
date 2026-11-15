@@ -1,4 +1,5 @@
-import type { Widget } from "@core/framework/types";
+import type { Widget, WidgetSizeConfig } from "@core/contracts";
+import { readWidgetConfig } from "@core/contracts";
 import icon from "@core/ui/icons/map.svg";
 import { mapViewerTranslations } from "./locale";
 import MapViewerComponent from "./components/Widget";
@@ -7,13 +8,25 @@ import config from "./config.json";
 
 export const MAP_VIEWER_ID = "map-viewer" as const;
 
-const MapViewer: Widget<MapViewerProps> = {
-    id: MAP_VIEWER_ID,
-    icon: icon,
-    localeTranslations: mapViewerTranslations,
-    component: MapViewerComponent,
-    showInSidebar: config.base?.showInSidebar ?? true,
-    ...config.size,
-};
+/** The map viewer widget: the MapLibre canvas with the tools overlay. */
+export class MapViewerWidget implements Widget<MapViewerProps> {
+    readonly id = MAP_VIEWER_ID;
+    readonly icon = icon;
+    readonly localeTranslations = mapViewerTranslations;
+    readonly component = MapViewerComponent;
+    readonly showInSidebar: boolean;
+    readonly size?: WidgetSizeConfig;
 
-export default MapViewer;
+    constructor() {
+        const { showInSidebar, size } = readWidgetConfig(
+            MAP_VIEWER_ID,
+            config,
+        );
+        this.showInSidebar = showInSidebar;
+        if (size) {
+            this.size = size;
+        }
+    }
+}
+
+export default MapViewerWidget;

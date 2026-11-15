@@ -1,4 +1,6 @@
 import React, { type ReactNode } from "react";
+import { WidgetShell } from "../widget-shell/WidgetShell";
+import { cn } from "../../utils/cn";
 import styles from "./ToolPanel.module.css";
 
 export interface ToolPanelProps {
@@ -10,32 +12,35 @@ export interface ToolPanelProps {
     actions?: ReactNode;
     /** Tool-specific content */
     children?: ReactNode;
-    className?: string;
+    className?: string | undefined;
 }
 
 /**
- * Generic panel chrome for map tools.
+ * Generic panel chrome for map tools — inherits WidgetShell
+ * (14px bold title, padding/gap 10, radius 6), adds a
+ * fixed width for the tool panel.
  *
  * Renders title → children → actions → hint
  * in a fixed visual structure.
  */
-export const ToolPanel: React.FC<ToolPanelProps> = ({
+export const ToolPanel: (props: ToolPanelProps) => React.ReactNode = ({
     title,
     hint,
     actions,
     children,
     className,
 }) => {
-    const panelClass = [styles.panel, className].filter(Boolean).join(" ");
+    const panelClass = cn(styles.panel, className);
 
     return (
-        <div className={panelClass}>
-            <div className={styles.title}>{title}</div>
+        <WidgetShell
+            title={title}
+            hint={hint}
+            actions={actions}
+            className={panelClass}
+        >
             {children}
-            {actions && <div className={styles.actions}>{actions}</div>}
-            {hint && <div className={styles.hint}>{hint}</div>}
-        </div>
+        </WidgetShell>
     );
 };
 
-export default ToolPanel;

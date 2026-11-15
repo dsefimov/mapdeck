@@ -1,0 +1,22 @@
+{
+    "stac_version": "1.0.0",
+    "type": "Feature",
+    "id": "demotiles-geolines",
+    "bbox": [-180.0, -85.05, 180.0, 85.05],
+    "properties": {
+        "title": "Rivers and geolines (MapLibre demotiles)",
+        "description": "Named rivers and other geographic lines from the Natural Earth dataset. Line layer up to zoom 6.",
+        "datetime": "2024-01-01T00:00:00Z"
+    },
+    "assets": {
+        "tiles": {
+            "href": "https://demotiles.maplibre.org/tiles/{z}/{x}/{y}.pbf",
+            "roles": ["vector-tile"],
+            "title": "MapLibre demo tiles",
+            "type": "application/vnd.mapbox-vector-tile",
+            "vector:layer": "geolines",
+            "vector:layer-type": "line",
+            "vector:max-zoom": 6
+        }
+    }
+}

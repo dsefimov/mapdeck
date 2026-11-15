@@ -1,7 +1,7 @@
-import type { SupportedLanguage, TranslationDict } from "@core/framework/types";
+import type { TranslationDict } from "@core/contracts";
 
 export const viewAttributeTableTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en: {
         "tool.name": "Attribute Table",

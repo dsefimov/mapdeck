@@ -1,1 +1,0 @@
-export { registerBasemaps } from "./registerBasemaps";

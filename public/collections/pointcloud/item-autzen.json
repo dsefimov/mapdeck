@@ -1,0 +1,22 @@
+{
+    "stac_version": "1.0.0",
+    "type": "Feature",
+    "id": "autzen-stadium",
+    "bbox": [
+        -123.074987, 44.049719, 406.14,
+        -123.057836, 44.062885, 5061.69
+    ],
+    "properties": {
+        "title": "Autzen Stadium LiDAR",
+        "description": "Classified point cloud of the Autzen Stadium area in Eugene, Oregon (~81 MB, LAS 1.4 / COPC). Vertical units are US feet (NAVD88). Demonstrates viewport-based octree streaming of a COPC file over HTTP range requests.",
+        "datetime": "2010-01-01T00:00:00Z"
+    },
+    "assets": {
+        "copc": {
+            "href": "https://hobu-lidar.s3.amazonaws.com/autzen-classified.copc.laz",
+            "roles": ["point-cloud"],
+            "title": "Autzen classified COPC",
+            "type": "application/vnd.laszip+copc"
+        }
+    }
+}

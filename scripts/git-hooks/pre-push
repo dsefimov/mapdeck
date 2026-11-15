@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# The AGENTS.md stage gate, final half: the production build. Types, lint
+# and tests already ran per commit; the build is the only unexercised part
+# of the gate. Escape hatch: git push --no-verify.
+
+set -e
+
+echo "[pre-push] build (tsc + vite)"
+npm run --silent build

@@ -1,0 +1,23 @@
+.wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input {
+    composes: inputBase from "../inputs/shared.module.css";
+    /* left — room for the search icon, right — regular padding */
+    padding: 0 var(--space-md) 0
+        calc(var(--space-md) + var(--icon-sm) + var(--space-sm));
+}
+
+.searchIcon {
+    position: absolute;
+    left: var(--space-md);
+    top: 50%;
+    transform: translateY(-50%);
+    width: var(--icon-sm);
+    height: var(--icon-sm);
+    pointer-events: none;
+    opacity: 0.6;
+}

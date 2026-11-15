@@ -1,52 +1,13 @@
-import { makeObservable, observable } from "mobx";
-import React from "react";
-import maplibregl from "maplibre-gl";
-
-import type {
-    MapTool,
-    MapToolPlacement,
-    MapToolComponentProps,
-} from "@core/framework/types";
-import type { IconName } from "@core/ui/components";
-import { MeasureToolStore } from "@map-tools/shared/MeasureToolStore";
+import { createTechLayerTool, createMeasureController } from "@map-tools/shared/createTechLayerTool";
 import { Ruler3DComponent } from "./Panel";
 import { ruler3dTranslations } from "../locale";
 
-export class Ruler3DTool implements MapTool {
-    readonly id = "ruler-3d";
-    readonly icon: IconName = "ruler";
-    readonly placement: MapToolPlacement = "top-right";
-    readonly order = 20;
-    readonly localeTranslations = ruler3dTranslations;
+export const RULER_3D_ID = "ruler-3d";
 
-    /** Shared measurement state */
-    readonly measureStore = new MeasureToolStore();
-
-    readonly component: React.ComponentType<MapToolComponentProps>;
-
-    isActive = false;
-
-    constructor() {
-        const store = this.measureStore;
-        const Wrapper: React.FC<MapToolComponentProps> = (props) => (
-            <Ruler3DComponent {...props} store={store} />
-        );
-        Wrapper.displayName = "Ruler3DToolComponent";
-        this.component = Wrapper;
-
-        makeObservable(this, {
-            isActive: observable,
-        });
-    }
-
-    activate(_map: maplibregl.Map): void {
-        this.isActive = true;
-        this.measureStore.reset();
-    }
-
-    deactivate(): void {
-        this.isActive = false;
-    }
-}
-
-export default Ruler3DTool;
+export const Ruler3DTool = createTechLayerTool({
+    id: RULER_3D_ID,
+    icon: "ruler",
+    localeTranslations: ruler3dTranslations,
+    createController: createMeasureController(RULER_3D_ID, "polyline"),
+    panel: Ruler3DComponent,
+});

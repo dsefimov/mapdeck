@@ -1,29 +1,25 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
+import { Text } from "../text/Text";
 import styles from "./InputLabel.module.css";
 
 export interface InputLabelProps {
     /** Maps to native `for` attribute, associates label with an input */
     htmlFor: string;
     /** Label content (text, formatted messages, etc.) */
-    children: React.ReactNode;
-    /** Visual variant: "default" for body text, "caption" for small uppercase */
-    variant?: "default" | "caption";
-    className?: string;
+    children: ReactNode;
+    /** `Text` variant of the label content */
+    variant?: "body" | "caption" | undefined;
+    className?: string | undefined;
 }
 
-export const InputLabel: React.FC<InputLabelProps> = ({
+export const InputLabel: (props: InputLabelProps) => ReactNode = ({
     htmlFor,
     children,
-    variant = "default",
+    variant = "body",
     className,
-}) => {
-    return (
-        <label
-            htmlFor={htmlFor}
-            className={cn(styles.label, styles[variant], className)}
-        >
-            {children}
-        </label>
-    );
-};
+}) => (
+    <label htmlFor={htmlFor} className={cn(styles.label, className)}>
+        <Text variant={variant}>{children}</Text>
+    </label>
+);

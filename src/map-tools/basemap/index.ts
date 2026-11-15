@@ -1,1 +1,2 @@
-export { BasemapTool, BASEMAP_TOOL_ID } from "./components/Tool";
+export { BasemapTool } from "./components/Tool";
+export { BASEMAP_TOOL_ID } from "./toolId";

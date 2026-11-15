@@ -3,9 +3,6 @@
  * @see https://github.com/stac-extensions/pointcloud
  */
 
-export const POINTCLOUD_SCHEMA =
-    "https://stac-extensions.github.io/pointcloud/v1.0.0/schema.json";
-
 export interface PointcloudSchema {
     readonly name: string;
     readonly size: number;

@@ -7,8 +7,7 @@
  * @see {@link https://github.com/radiantearth/stac-spec} STAC Specification
  */
 
-export type STACVersion = "1.0.0" | string;
-
+/** STAC spec version string (e.g. "1.0.0") — no closed union: servers move faster. */
 export type STACCatalogType = "Catalog";
 export type STACCollectionType = "Collection";
 export type STACFeatureType = "Feature";
@@ -51,7 +50,14 @@ export interface STACAsset {
     readonly "wms:layers"?: string;
     readonly "wms:styles"?: string;
     readonly "wms:dimensions"?: Record<string, string>;
-    // Extension fields via index signature
+    // Vector tiles extension fields (unofficial): the MVT source layer
+    // to render and the MapLibre layer geometry type.
+    readonly "vector:layer"?: string;
+    readonly "vector:layer-type"?: "fill" | "line" | "circle" | "symbol";
+    readonly "vector:max-zoom"?: number;
+    // Raster tiles extension fields (unofficial): the tile pyramid's top
+    // level — the source overzooms parent tiles beyond it.
+    readonly "raster:max-zoom"?: number;
     readonly [key: string]: unknown;
 }
 
@@ -75,7 +81,7 @@ export interface STACExtent {
 export interface STACCatalog {
     readonly id: string;
     readonly type: STACCatalogType;
-    readonly stac_version: STACVersion;
+    readonly stac_version: string;
     readonly title?: string;
     readonly description?: string;
     readonly links: readonly STACLink[];
@@ -88,11 +94,16 @@ export interface STACCatalog {
 export interface STACCollection {
     readonly id: string;
     readonly type: STACCollectionType;
-    readonly stac_version: STACVersion;
+    readonly stac_version: string;
     readonly stac_extensions?: readonly string[];
     readonly title?: string;
     readonly description: string;
-    readonly extent: STACExtent;
+    /**
+     * Required by the STAC 1.0.0 schema, yet real-world catalogs regularly
+     * omit it — treated as optional so a sloppy collection degrades to a
+     * node without a bbox instead of dropping it (or its whole branch).
+     */
+    readonly extent?: STACExtent;
     readonly links: readonly STACLink[];
     readonly assets?: Readonly<Record<string, STACAsset>>;
 }
@@ -108,7 +119,7 @@ export interface STACItemProperties {
  * @see https://github.com/radiantearth/stac-spec/blob/master/item-spec/item-spec.md
  */
 export interface STACItem {
-    readonly stac_version: STACVersion;
+    readonly stac_version: string;
     readonly stac_extensions?: readonly string[];
     readonly type: STACFeatureType;
     readonly id: string;
@@ -125,7 +136,7 @@ export interface STACItem {
  */
 export interface STACFeatureCollection {
     readonly type: STACFeatureCollectionType;
-    readonly stac_version?: STACVersion;
+    readonly stac_version?: string;
     readonly features: STACItem[];
     readonly links?: readonly STACLink[];
 }
@@ -157,13 +168,4 @@ export function isSTACItem(entity: STACEntity): entity is STACItem {
     return entity.type === "Feature";
 }
 
-export function assetHasRole(asset: STACAsset, role: string): boolean {
-    return asset.roles?.includes(role) ?? false;
-}
 
-export function getAssetsByRole(
-    assets: Readonly<Record<string, STACAsset>>,
-    role: string,
-): STACAsset[] {
-    return Object.values(assets).filter((asset) => assetHasRole(asset, role));
-}

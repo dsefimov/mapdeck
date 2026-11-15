@@ -1,0 +1,133 @@
+{
+    "type": "FeatureCollection",
+    "numberReturned": 5,
+    "numberMatched": 5,
+    "features": [
+        {
+            "type": "Feature",
+            "id": "paris",
+            "geometry": { "type": "Point", "coordinates": [2.2945, 48.8583] },
+            "properties": {
+                "name": "Eiffel Tower",
+                "city": "Paris",
+                "category": "landmark",
+                "photo": {
+                    "kind": "photo",
+                    "url": "/photos/paris-1.png",
+                    "thumbnailUrl": "/photos/paris-1-thumb.png",
+                    "title": "Eiffel Tower from Champ de Mars",
+                    "description": "Single photo attribute value"
+                },
+                "album": {
+                    "kind": "album",
+                    "title": "Paris",
+                    "photos": [
+                        {
+                            "kind": "photo",
+                            "url": "/photos/paris-1.png",
+                            "thumbnailUrl": "/photos/paris-1-thumb.png",
+                            "title": "From Champ de Mars"
+                        },
+                        {
+                            "kind": "photo",
+                            "url": "/photos/paris-2.png",
+                            "thumbnailUrl": "/photos/paris-2-thumb.png",
+                            "title": "Across the Seine"
+                        },
+                        {
+                            "kind": "photo",
+                            "url": "/photos/paris-3.png",
+                            "thumbnailUrl": "/photos/paris-3-thumb.png",
+                            "title": "At dusk"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "london",
+            "geometry": { "type": "Point", "coordinates": [-0.0754, 51.5055] },
+            "properties": {
+                "name": "Tower Bridge",
+                "city": "London",
+                "category": "bridge",
+                "album": {
+                    "kind": "album",
+                    "title": "Tower Bridge",
+                    "photos": [
+                        {
+                            "kind": "photo",
+                            "url": "/photos/london-1.png",
+                            "thumbnailUrl": "/photos/london-1-thumb.png",
+                            "title": "From the south bank"
+                        },
+                        {
+                            "kind": "photo",
+                            "url": "/photos/london-2.png",
+                            "thumbnailUrl": "/photos/london-2-thumb.png",
+                            "title": "Glass walkway"
+                        },
+                        {
+                            "kind": "photo",
+                            "url": "/photos/london-3.png",
+                            "thumbnailUrl": "/photos/london-3-thumb.png",
+                            "title": "Night lift"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "berlin",
+            "geometry": { "type": "Point", "coordinates": [13.3777, 52.5163] },
+            "properties": {
+                "name": "Brandenburg Gate",
+                "city": "Berlin",
+                "category": "landmark",
+                "photo": {
+                    "kind": "photo",
+                    "url": "/photos/berlin-1.png",
+                    "thumbnailUrl": "/photos/berlin-1-thumb.png",
+                    "title": "Brandenburg Gate at noon",
+                    "description": "Single photo attribute value"
+                }
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "amsterdam",
+            "geometry": { "type": "Point", "coordinates": [4.8952, 52.3702] },
+            "properties": {
+                "name": "Canal ring",
+                "city": "Amsterdam",
+                "category": "district",
+                "photo": {
+                    "kind": "photo",
+                    "url": "/photos/amsterdam-1.png",
+                    "thumbnailUrl": "/photos/amsterdam-1-thumb.png",
+                    "title": "Herengracht in the morning",
+                    "description": "Single photo attribute value"
+                }
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "ardennes",
+            "geometry": { "type": "Point", "coordinates": [6.64, 50.69] },
+            "properties": {
+                "name": "Ardennes viewpoint",
+                "city": "Wallonia",
+                "category": "viewpoint",
+                "photo": {
+                    "kind": "photo",
+                    "url": "/photos/paris-2.png",
+                    "thumbnailUrl": "/photos/paris-2-thumb.png",
+                    "title": "Ardennes viewpoint",
+                    "description": "Sits at the collection bbox center — the zoom-to-extent camera lands on it"
+                }
+            }
+        }
+    ]
+}

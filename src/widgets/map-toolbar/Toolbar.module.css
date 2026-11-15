@@ -1,0 +1,20 @@
+.overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.toolbar {
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-md);
+    pointer-events: auto;
+}

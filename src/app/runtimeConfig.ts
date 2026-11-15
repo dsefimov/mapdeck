@@ -1,0 +1,57 @@
+import { logger } from "@core/lib/logger";
+
+/**
+ * Deployment configuration that changes per install, not per build: read
+ * from `runtime-config.json` next to `index.html`, so a deployment retunes
+ * asset paths without rebuilding the bundle.
+ */
+
+export interface RuntimeConfig {
+    /**
+     * Base for bundled binary assets, page-relative when empty. Deploying
+     * under a sub-path or serving wasm from a sibling directory sets it
+     * (e.g. "assets/" or "/portal/").
+     */
+    readonly assetsBase: string;
+}
+
+const DEFAULT_CONFIG: RuntimeConfig = {
+    assetsBase: "",
+};
+
+/**
+ * Load the runtime config. A missing or malformed file is not an error —
+ * the defaults describe the same-origin root deployment the bundle ships
+ * with, and the log says which of the two happened.
+ */
+export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
+    try {
+        const response = await fetch("runtime-config.json");
+        if (!response.ok) {
+            logger.debug(
+                `runtime-config.json: ${response.status} — using defaults`,
+            );
+            return DEFAULT_CONFIG;
+        }
+        return parseRuntimeConfig(await response.json());
+    } catch {
+        logger.debug("runtime-config.json: not readable — using defaults");
+        return DEFAULT_CONFIG;
+    }
+}
+
+/** Join an asset base with a file name, tolerating a missing trailing slash. */
+export function joinAssetBase(base: string, name: string): string {
+    if (base === "") return name;
+    return base.endsWith("/") ? `${base}${name}` : `${base}/${name}`;
+}
+
+/** Validate an unknown payload; unknown keys are ignored, bad ones fall back. */
+export function parseRuntimeConfig(raw: unknown): RuntimeConfig {
+    if (typeof raw !== "object" || raw === null) return DEFAULT_CONFIG;
+    const record = raw as Record<string, unknown>;
+    return {
+        assetsBase:
+            typeof record.assetsBase === "string" ? record.assetsBase : "",
+    };
+}

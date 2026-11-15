@@ -1,0 +1,18 @@
+.targetRow {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+}
+
+.modeRow {
+    display: flex;
+    gap: var(--space-md);
+}
+
+.modeRow > * {
+    flex: 1;
+}
+
+.unstableHint {
+    margin-top: var(--space-sm);
+}

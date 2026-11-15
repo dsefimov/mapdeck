@@ -1,10 +1,11 @@
 /**
  * STAC HTTP client
- * Replaces api.ts with a class-based approach
  */
 
-import { logger } from "@core/shared/diagnostics/logger";
+import { logger } from "@core/lib/logger";
+import { boundedFetch } from "@core/lib/async";
 import type { STACConfig } from "./STACConfig";
+import { DEFAULT_MAX_PAGES, DEFAULT_TIMEOUT_MS } from "./STACConfig";
 import type {
     STACCatalog,
     STACCollection,
@@ -13,6 +14,48 @@ import type {
     STACItem,
 } from "../types";
 import { isSTACCatalog, isSTACCollection } from "../types";
+
+/**
+ * Entity types the single-entity gate admits. FeatureCollection pages
+ * have their own gate in parseItemsResponse.
+ */
+const ENTITY_TYPES: ReadonlySet<string> = new Set([
+    "Catalog",
+    "Collection",
+    "Feature",
+]);
+
+/**
+ * Shape guard for a fetched entity: the wire value of `type` must be one
+ * of the known kinds and `id` a string — presence checks alone would let
+ * any JSON object through as a "Collection".
+ */
+function isStacEntityShape(data: unknown): data is STACEntity {
+    if (!data || typeof data !== "object") return false;
+    const record = data as Record<string, unknown>;
+    return (
+        typeof record.stac_version === "string" &&
+        typeof record.type === "string" &&
+        ENTITY_TYPES.has(record.type) &&
+        typeof record.id === "string"
+    );
+}
+
+/** Element guard for /collections responses. */
+function isCollectionShape(value: unknown): value is STACCollection {
+    if (!value || typeof value !== "object") return false;
+    const record = value as Record<string, unknown>;
+    return (
+        record.type === "Collection" && typeof record.id === "string"
+    );
+}
+
+/** Element guard for item listings and single-feature responses. */
+function isItemShape(value: unknown): value is STACItem {
+    if (!value || typeof value !== "object") return false;
+    const record = value as Record<string, unknown>;
+    return record.type === "Feature" && typeof record.id === "string";
+}
 
 export class STACClient {
     constructor(private readonly config: STACConfig) {}
@@ -23,18 +66,13 @@ export class STACClient {
     ): Promise<STACEntity> {
         const data: unknown = await this.request(url, baseUrlOverride);
 
-        if (
-            !data ||
-            typeof data !== "object" ||
-            !("stac_version" in data) ||
-            !("type" in data)
-        ) {
+        if (!isStacEntityShape(data)) {
             throw new Error(
                 "Response does not appear to be a valid STAC entity",
             );
         }
 
-        return data as STACEntity;
+        return data;
     }
 
     async fetchCatalog(
@@ -84,11 +122,18 @@ export class STACClient {
             );
         }
 
-        const response = data as STACCollectionsResponse;
+        const raw = (data as STACCollectionsResponse).collections;
+        const collections = raw.filter(isCollectionShape);
+        const dropped = raw.length - collections.length;
+        if (dropped > 0) {
+            logger.warn(
+                `Dropped ${dropped} malformed collection(s) from: ${collectionsUrl}`,
+            );
+        }
         logger.debug(
-            `Loaded ${response.collections.length} collections from: ${collectionsUrl}`,
+            `Loaded ${collections.length} collections from: ${collectionsUrl}`,
         );
-        return response.collections as STACCollection[];
+        return collections;
     }
 
     /**
@@ -99,7 +144,7 @@ export class STACClient {
         url: string,
         baseUrlOverride?: string,
     ): Promise<STACItem[]> {
-        const maxPages = this.config.maxPages ?? 10;
+        const maxPages = this.config.maxPages ?? DEFAULT_MAX_PAGES;
         const allItems: STACItem[] = [];
         let nextUrl: string | null = url;
         let page = 0;
@@ -121,37 +166,52 @@ export class STACClient {
         return allItems;
     }
 
-    // ---- private ----
 
     private async request(
         url: string,
         baseUrlOverride?: string,
     ): Promise<unknown> {
         const absoluteUrl = this.resolveUrl(url, baseUrlOverride);
-        const timeout = this.config.timeout ?? 10_000;
+        const timeout = this.config.timeout ?? DEFAULT_TIMEOUT_MS;
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeout);
-
+        // Only the network/JSON stage is wrapped — an HTTP status error is
+        // already precise and must not be re-wrapped by the catch below.
+        let response: Response;
         try {
-            const response = await fetch(absoluteUrl, {
+            response = await boundedFetch(absoluteUrl, {
                 headers: { Accept: "application/json", ...this.config.headers },
-                signal: controller.signal,
+                timeoutMs: timeout,
             });
-
-            if (!response.ok) {
+        } catch (error) {
+            if (
+                error instanceof TypeError &&
+                error.message === "Failed to fetch"
+            ) {
+                // The browser reports CORS refusals exactly like network
+                // deaths; only the text differs, so translate it here —
+                // the user-facing hint is the actionable part.
                 throw new Error(
-                    `HTTP ${response.status}: ${response.statusText}`,
+                    `Failed to fetch from ${url}: network error or CORS ` +
+                        `(the STAC server must allow cross-origin reads)`,
                 );
             }
+            const message =
+                error instanceof Error ? error.message : "Unknown error";
+            throw new Error(`Failed to fetch from ${url}: ${message}`);
+        }
 
+        if (!response.ok) {
+            throw new Error(
+                `HTTP ${response.status}: ${response.statusText} (${absoluteUrl})`,
+            );
+        }
+
+        try {
             return await response.json();
         } catch (error) {
             const message =
                 error instanceof Error ? error.message : "Unknown error";
-            throw new Error(`Failed to fetch from ${url}: ${message}`);
-        } finally {
-            clearTimeout(timeoutId);
+            throw new Error(`Failed to parse JSON from ${url}: ${message}`);
         }
     }
 
@@ -173,6 +233,29 @@ export class STACClient {
  * Parses a STAC response into items and the next page link.
  * Handles both single items and FeatureCollections with pagination links.
  */
+/** Parse a FeatureCollection page; null when the payload is not one. */
+function parseFeatureCollection(
+    record: Record<string, unknown>,
+    sourceUrl: string,
+): { items: STACItem[]; nextHref: string | null } | null {
+    if (!("features" in record) || !Array.isArray(record.features)) {
+        return null;
+    }
+    const fc = record as unknown as {
+        features: unknown[];
+        links?: Array<{ rel: string; href: string }>;
+    };
+    const items = fc.features.filter(isItemShape);
+    const dropped = fc.features.length - items.length;
+    if (dropped > 0) {
+        logger.warn(
+            `Dropped ${dropped} malformed item(s) from: ${sourceUrl}`,
+        );
+    }
+    const nextLink = fc.links?.find((l) => l.rel === "next");
+    return { items, nextHref: nextLink?.href ?? null };
+}
+
 function parseItemsResponse(
     data: unknown,
     sourceUrl: string,
@@ -183,23 +266,17 @@ function parseItemsResponse(
 
     const record = data as Record<string, unknown>;
 
-    // Single Item
     if (record.type === "Feature") {
-        return { items: [data as STACItem], nextHref: null };
+        if (!isItemShape(data)) {
+            throw new Error(
+                `Response from ${sourceUrl} is not a valid STAC Item or FeatureCollection`,
+            );
+        }
+        return { items: [data], nextHref: null };
     }
 
-    // FeatureCollection
-    if ("features" in record && Array.isArray(record.features)) {
-        const fc = data as {
-            features: STACItem[];
-            links?: Array<{ rel: string; href: string }>;
-        };
-        const nextLink = fc.links?.find((l) => l.rel === "next");
-        return {
-            items: fc.features,
-            nextHref: nextLink?.href ?? null,
-        };
-    }
+    const page = parseFeatureCollection(record, sourceUrl);
+    if (page) return page;
 
     throw new Error(
         `Response from ${sourceUrl} is not a valid STAC Item or FeatureCollection`,

@@ -1,93 +1,54 @@
----
-name: frontend_engineer
-description: Strictly adheres to project architecture, type safety, and development rules.
----
+# AGENTS.md
 
-## Project Context
-- **Specs location**: `openspec/specs/` (source of truth)
-- **Active changes**: `openspec/changes/`
-- **Verification**: `npm run lint`
-- **Rules**: `openspec/config.yaml`
-- **Archive**: `openspec/changes/archive/`
+Mapdeck is a browser-based geospatial application framework that ships as the
+npm package `mapdeck`; this repository also contains a demo application built
+on the same public API. Read
+[docs/architecture.md](docs/architecture.md) before changing `src/core/`, and
+[docs/extending.md](docs/extending.md) plus [docs/api/](docs/api/) before
+changing anything that affects extension authors. Domain terms are defined in
+[docs/glossary.md](docs/glossary.md); decisions and their rationale are in
+[docs/adr/](docs/adr/). Commands and the contribution process are in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
----
+## Rules that are not enforced automatically
 
-## OpenSpec Workflow
-Before implementing any feature:
-1. Check if a spec exists in `openspec/specs/`
-2. If not, use `/opsx:propose <feature-name>` to create one
-3. Review generated specs, design, and tasks
-4. Use `/opsx:apply` to implement tasks
+- Domain logic lives in pure modules (`logic/` directories) with colocated
+  tests; MobX stores hold observable state and call those operations. React
+  components render state and call store methods — interaction orchestration
+  belongs in controller classes obtained from the state store.
+- Cross-domain communication goes through interfaces in `src/core/contracts`;
+  the known exceptions are recorded in ADR-0006 (the raw `maplibregl.Map`
+  handed to map tools) and ADR-0010 (deck.gl types in the overlay port).
+- Extension registration is explicit and per kind (see `src/app/bootstrap.ts`).
+  Registries throw on duplicate ids unless an explicit `{ override: true }` is
+  passed.
+- A new external dependency needs justification in review: what it is used for
+  and why an existing dependency or a small local implementation does not fit.
+  Dependencies that change the architecture, a public contract or the package
+  surface also need an ADR (ADR-0020).
+- Kit components in `src/core/ui` use the annotated-const form
+  (`export const X: (props: XProps) => ReactNode = …`) uniformly; not a
+  toolchain requirement — a convention. Do not mix in `export function`
+  components.
 
-Never write code without a corresponding spec unless it's a hotfix.
+The full dependency rules between layers are enforced by the ESLint zones in
+`eslint.config.js` — do not add imports that the zones reject.
 
----
+## Verification
 
-## Layer Rules
+| Command | Purpose |
+|---|---|
+| `npm run lint` | TypeScript check + ESLint |
+| `npm run test` | Vitest suite |
+| `npm run build` | production build |
+| `npm run build:lib` | library build into `dist/` |
+| `npm run test:e2e` | Playwright smoke against live demo sources; run it for user-facing changes |
 
-### Pure Functions (`src/domain/`, `feature/lib/`)
-- Contain only business rules, validation, calculations, transformations.
-- Deterministic: same input → same output. No side effects.
-- Never import React, MobX, stores, API clients, or external services.
-- Do not mutate inputs — use spread or explicit clone.
+Git hooks run lint + test on commit and the build on push.
 
-### MobX Stores (Orchestrators)
-- Sole responsibilities: hold state, manage `isLoading`/`error`, trigger reactions.
-- All business logic is delegated to pure functions. No `if/else` business rules inside `@action`/`@computed`.
-- Async mutations wrapped in `runInAction` or `flow`.
-- Dependencies (API, managers, utils) injected via constructor.
+## Architecture decisions
 
-### React Components (Pure View)
-- Wrapped in `observer()`. Contain only JSX, `store.*` reads, and `store.action()` calls.
-- **Forbidden**: `useState`, `useReducer`, `useMemo`, `useCallback`, `useEffect` for business data.
-- Local state allowed only for UI trivia: focus, hover, animation, open/close popups.
-
-### Dependency Graph
-```
-Component → Store → Pure Function
-```
-Cross-imports between `widgets/`, `tools/`, `map-tools/` are forbidden.
-`core/` contains no domain logic and no UI components.
-
----
-
-## Code Quality
-
-### Simplicity
-- **Max 6 entities per function** (parameters + local variables + return values). Extract if exceeded.
-- No premature abstractions. Implement only what the task explicitly requires (YAGNI).
-- One component / store / hook = one clear purpose (SRP).
-
-### Comments
-- Inline comments are allowed **only** to explain non-obvious architectural constraints
-  that cannot be expressed in the code itself. They MUST state WHY, not WHAT.
-- Business logic comments are forbidden — rewrite the code instead.
-- **Docstrings** on all exported functions, classes, and non-obvious types.
-- `TODO` is forbidden without a direct link to a task in `openspec/changes/<change>/tasks.md`.
-
-### Type Safety
-- `strict: true`, zero `any`, explicit interfaces and generics everywhere.
-
----
-
-## Boundaries
-
-### Always
-- Follow OpenSpec workflow: spec → design → tasks → apply
-- Maintain spec.md + design.md pair for every feature module
-- Cite file paths when reusing or adapting existing code.
-- Place code strictly per the architecture directory rules.
-- Run type checks and linter before delivering output.
-
-### Ask First
-- Modifying public interfaces, API contracts, or store schemas.
-- Adding external dependencies to `package.json`.
-- Changing build, linter, TSConfig, or CI/CD configuration.
-- Refactoring `core/` or highly coupled modules.
-
-### Never
-- Skip OpenSpec workflow (except hotfixes).
-- Duplicate logic without explicit justification.
-- Use framework state hooks for business data.
-- Write inline comments to explain business logic instead of clearer code.
-- Leave `TODO`s without a task reference.
+Create or update an ADR in `docs/adr/` when a change introduces a significant
+architectural decision, changes a public contract, or adds a major dependency.
+An ADR records status, date, the problem (context), the decision, and its
+consequences; list alternatives only when they were actually considered.

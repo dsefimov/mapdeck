@@ -1,0 +1,90 @@
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition:
+        background-color var(--transition-fast),
+        color var(--transition-fast),
+        border-color var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.button:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.button:disabled {
+    cursor: not-allowed;
+    opacity: var(--opacity-disabled);
+}
+
+.ghost {
+    border: none;
+    border-radius: var(--radius-full);
+    background: transparent;
+    color: var(--color-text-secondary);
+}
+
+.ghost:hover:not(:disabled) {
+    background-color: var(--color-hover);
+    color: var(--color-text);
+}
+
+.ghostActive {
+    color: var(--color-accent);
+}
+
+.error {
+    color: var(--color-error);
+}
+
+.error:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--color-error) 15%, transparent);
+    color: var(--color-error);
+}
+
+/* Tile: bordered box sized by its own padding, not a fixed square. */
+.tile {
+    padding: var(--space-md);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+
+.tile:hover:not(:disabled) {
+    background: var(--color-hover);
+}
+
+.tileActive {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-on-accent);
+}
+
+.sm {
+    --icon-button-size: var(--icon-sm);
+}
+
+.md {
+    --icon-button-size: var(--icon-lg);
+}
+
+/* Ghost buttons are icon-only: the button itself is the glyph box. */
+.ghost {
+    width: var(--icon-button-size);
+    height: var(--icon-button-size);
+}
+
+.icon,
+.tile .placeholder {
+    width: var(--icon-button-size);
+    height: var(--icon-button-size);
+}
+
+.placeholder {
+    display: block;
+}

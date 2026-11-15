@@ -1,0 +1,66 @@
+.maplibregl-ctrl-attrib.maplibregl-compact {
+    margin: var(--space-sm) !important;
+    margin-right: var(--space-md) !important;
+}
+
+.react-grid-item {
+    transition: none;
+}
+
+.react-grid-item.resizing,
+.react-grid-item.react-draggable-dragging {
+    /* Deliberately above everything in the workspace, including the
+       --z-floating (1000) layer — a dragged/resized window must not dip
+       behind widgets, panels or open dropdowns mid-gesture. */
+    z-index: var(--z-dragging);
+    transition: none;
+    user-select: none;
+}
+
+.react-grid-item.resizing *,
+.react-grid-item.react-draggable-dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+}
+
+.react-resizable-handle {
+    position: absolute;
+    width: var(--space-lg);
+    height: var(--space-lg);
+    bottom: 0;
+    right: 0;
+    cursor: se-resize;
+    background: linear-gradient(
+        135deg,
+        transparent 50%,
+        var(--color-border) 50%
+    );
+}
+
+.react-resizable-handle:hover {
+    background: linear-gradient(
+        135deg,
+        transparent 50%,
+        var(--color-accent) 50%
+    );
+}
+
+.react-resizable-handle::after {
+    content: "";
+    position: absolute;
+    width: var(--space-md);
+    height: var(--space-md);
+    bottom: var(--space-md);
+    right: var(--space-md);
+    border-right: var(--border-md) solid var(--color-border);
+    border-bottom: var(--border-md) solid var(--color-border);
+}
+
+/* deck's interleaved overlay rewrites the canvas cursor inline every
+   frame (default getCursor → grab/grabbing), so a tool's cursor needs
+   !important to outrank it — useMapCursor toggles the class. */
+.mapdeck-canvas-tool-cursor {
+    cursor: var(--mapdeck-canvas-cursor, pointer) !important;
+}

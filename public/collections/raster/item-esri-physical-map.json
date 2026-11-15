@@ -1,0 +1,20 @@
+{
+    "stac_version": "1.0.0",
+    "type": "Feature",
+    "id": "esri-world-physical-map",
+    "bbox": [-180.0, -85.05, 180.0, 85.05],
+    "properties": {
+        "title": "World Physical Map (Esri)",
+        "description": "Natural Earth physical geography — elevation shading and surface forms — from Esri's Living Atlas. XYZ tiles up to zoom 8.",
+        "datetime": "2024-01-01T00:00:00Z"
+    },
+    "assets": {
+        "tiles": {
+            "href": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}",
+            "roles": ["raster-tile"],
+            "title": "Esri World Physical Map tiles",
+            "type": "image/jpeg",
+            "raster:max-zoom": 8
+        }
+    }
+}

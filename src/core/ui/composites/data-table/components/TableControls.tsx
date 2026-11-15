@@ -1,5 +1,6 @@
-import React from "react";
-import type { TranslationDict } from "@core/framework/types";
+import type { ReactNode } from "react";
+import { Button } from "../../../components/primitives/button/Button";
+import type { DataTableLabels } from "../types";
 import styles from "../AttributeTable.module.css";
 
 interface TableControlsProps {
@@ -7,38 +8,31 @@ interface TableControlsProps {
     hasActiveFilters: boolean;
     onToggleFilters: () => void;
     onClearFilters: () => void;
-    dict: TranslationDict;
+    labels: DataTableLabels;
+    /** Host controls appended to the same row (e.g. selection views). */
+    children?: ReactNode;
 }
 
-export const TableControls: React.FC<TableControlsProps> = React.memo(
-    ({
-        showFilters,
-        hasActiveFilters,
-        onToggleFilters,
-        onClearFilters,
-        dict,
-    }) => (
-        <div className={styles.controls}>
-            <button
-                type="button"
-                className={styles.controlButton}
-                onClick={onToggleFilters}
-            >
-                {showFilters
-                    ? dict["attributeTable.hide"]
-                    : dict["attributeTable.show"]}{" "}
-                {dict["attributeTable.filters"]}
-            </button>
-            {hasActiveFilters && (
-                <button
-                    type="button"
-                    className={styles.controlButton}
-                    onClick={onClearFilters}
-                >
-                    {dict["attributeTable.clearFilters"]}
-                </button>
-            )}
-        </div>
-    ),
+export const TableControls: (props: TableControlsProps) => ReactNode = ({
+    showFilters,
+    hasActiveFilters,
+    onToggleFilters,
+    onClearFilters,
+    labels,
+    children,
+}) => (
+    <div className={styles.controls}>
+        <Button size="sm" onClick={onToggleFilters}>
+            {showFilters
+                ? labels["dataTable.hide"]
+                : labels["dataTable.show"]}{" "}
+            {labels["dataTable.filters"]}
+        </Button>
+        {hasActiveFilters && (
+            <Button size="sm" onClick={onClearFilters}>
+                {labels["dataTable.clearFilters"]}
+            </Button>
+        )}
+        {children}
+    </div>
 );
-TableControls.displayName = "TableControls";

@@ -1,91 +1,111 @@
-import type { TranslationDict } from "@core/framework/types";
-import type { SortDirection } from "./types";
-import { GLOBAL_FILTER_KEY } from "./constants";
+import type { SortDirection, DataTableLabels, ValueRenderer } from "./types";
 
-// ── Formatting ───────────────────────────────────────────────────────────────
+/** One comparison locale for the whole module — not per pair. */
+const COLLATOR = new Intl.Collator();
+
+function formatBoolean(value: boolean, labels: DataTableLabels): string {
+    return value ? labels["dataTable.yes"] : labels["dataTable.no"];
+}
 
 function formatNumber(value: number): string {
-    if (Math.abs(value) >= 1_000_000) return value.toExponential(4);
     return value.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
-function formatBoolean(value: boolean, dict: TranslationDict): string {
-    return value
-        ? (dict["attributeTable.yes"] ?? "Yes")
-        : (dict["attributeTable.no"] ?? "No");
-}
-
-export function formatValue(value: unknown, dict: TranslationDict): string {
-    if (value == null) return dict["attributeTable.nullValue"] ?? "";
-    if (typeof value === "boolean") return formatBoolean(value, dict);
+/**
+ * Render a cell value for display: booleans and nulls localized through the
+ * table labels, arrays joined, objects JSON-serialized.
+ */
+export function formatValue(value: unknown, labels: DataTableLabels): string {
+    if (value == null) return labels["dataTable.nullValue"];
+    if (typeof value === "boolean") return formatBoolean(value, labels);
     if (typeof value === "number") return formatNumber(value);
     if (typeof value === "string") return value;
     if (Array.isArray(value)) return `[${value.join(", ")}]`;
-    if (typeof value === "object") return JSON.stringify(value, null, 2);
+    if (typeof value === "object") return JSON.stringify(value);
     return String(value);
 }
 
+/** Sort-direction arrow for a column header; empty string when unsorted. */
 export function getSortIndicator(direction: SortDirection): string {
     if (direction === "asc") return " ↑";
     if (direction === "desc") return " ↓";
     return "";
 }
 
-// ── Comparison ───────────────────────────────────────────────────────────────
+/**
+ * aria-sort value for a column header: the direction when the column is
+ * the active sort key, absent otherwise (per the WAI-ARIA table pattern).
+ */
+export function getAriaSort(
+    isActive: boolean,
+    direction: SortDirection,
+): "ascending" | "descending" | undefined {
+    if (!isActive) return undefined;
+    return direction === "asc" ? "ascending" : "descending";
+}
 
+/** Total-order comparison for mixed cell values: nulls sort last, numbers
+ * numerically, everything else by one shared collator. */
 export function compareValues(a: unknown, b: unknown): number {
     if (a === b) return 0;
     if (a == null) return 1;
     if (b == null) return -1;
     if (typeof a === "number" && typeof b === "number") return a - b;
-    return String(a).localeCompare(String(b));
+    return COLLATOR.compare(String(a), String(b));
 }
 
-// ── Filtering ────────────────────────────────────────────────────────────────
-
+/**
+ * Whether a row passes the active per-column filters (case-insensitive
+ * substrings over the formatted cell values).
+ */
 export function applyRowFilters(
     row: Record<string, unknown>,
     filters: Record<string, string>,
-    dict: TranslationDict,
+    labels: DataTableLabels,
+    valueRenderers?: readonly ValueRenderer[],
 ): boolean {
-    const globalFilter = filters[GLOBAL_FILTER_KEY]?.toLowerCase();
-
-    if (globalFilter !== undefined) {
-        return Object.values(row).some((val) =>
-            formatValue(val, dict).toLowerCase().includes(globalFilter),
-        );
-    }
-
     return Object.entries(filters)
-        .filter(([col]) => col !== GLOBAL_FILTER_KEY)
-        .every(([col, filterVal]) => {
-            if (!filterVal) return true;
-            return formatValue(row[col], dict)
+        .filter(([, filterVal]) => filterVal.length > 0)
+        .every(([col, filterVal]) =>
+            valueToText(row[col], labels, valueRenderers)
                 .toLowerCase()
-                .includes(filterVal.toLowerCase());
-        });
+                .includes(filterVal.toLowerCase()),
+        );
 }
 
-// ── KV sorting ───────────────────────────────────────────────────────────────
+/** The first renderer claiming the value, in list order. */
+export function resolveValueRenderer(
+    value: unknown,
+    renderers?: readonly ValueRenderer[],
+): ValueRenderer | undefined {
+    return renderers?.find((renderer) => renderer.matches(value));
+}
 
-export function applyKvSorting(
-    rows: Record<string, unknown>[],
-    sortColumn?: string | null,
-    sortDirection?: SortDirection,
-): [string, unknown][] {
-    // flatMap + filter already produces a new array — no extra copy needed
-    const entries = rows
-        .flatMap(Object.entries)
-        .filter(([key]) => !key.startsWith("_"));
+/** Filterable text of a cell: the matched renderer's `toText` or the default formatting. */
+export function valueToText(
+    value: unknown,
+    labels: DataTableLabels,
+    renderers?: readonly ValueRenderer[],
+): string {
+    const renderer = resolveValueRenderer(value, renderers);
+    return renderer?.toText?.(value) ?? formatValue(value, labels);
+}
 
-    if (!sortColumn || !sortDirection) {
-        return entries.sort((a, b) => a[0].localeCompare(b[0]));
-    }
+/** Column names of the key-value view. */
+export const KV_COLUMNS = ["attribute", "value"] as const;
 
-    return entries.sort((a, b) => {
-        const aVal = sortColumn === "attribute" ? a[0] : a[1];
-        const bVal = sortColumn === "attribute" ? b[0] : b[1];
-        const result = compareValues(aVal, bVal);
-        return sortDirection === "desc" ? -result : result;
-    });
+export type KvRow = { attribute: string; value: unknown };
+
+/**
+ * Flatten rows into key/value rows (reserved `_`-keys dropped), sorted
+ * alphabetically by attribute — the KV view's default order. The `_`
+ * prefix is the FeatureRow reserved-key convention — ui cannot import
+ * the contract, so the convention is restated here.
+ */
+export function toKvRows(rows: Record<string, unknown>[]): KvRow[] {
+    return rows
+        .flatMap((row) => Object.entries(row))
+        .filter(([key]) => !key.startsWith("_"))
+        .map(([attribute, value]) => ({ attribute, value }))
+        .sort((a, b) => COLLATOR.compare(a.attribute, b.attribute));
 }

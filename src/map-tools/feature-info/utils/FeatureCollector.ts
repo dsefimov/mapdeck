@@ -1,25 +1,29 @@
 import type {
+    FeatureProviderRegistry as FeatureProviderRegistryPort,
     Feature,
     FeatureGroup,
     CollectParams,
-    CollectResult,
-} from "../types";
-import {
-    featureProviderRegistry,
-    FeatureProviderRegistry,
-} from "../providers/FeatureProvider";
+} from "@core/contracts";
+import { logger } from "@core/lib/logger";
+
+/** Features of one click, grouped for display — owned by the sole consumer. */
+export interface CollectResult {
+    groups: FeatureGroup[];
+    /** True while any provider is still collecting */
+    loading: boolean;
+}
 
 /**
  * Orchestrator that collects features from all registered providers.
  *
  * - Runs all providers in parallel
- * - Results are grouped by layerId
+ * - Each feature becomes its own group — one selectable item per feature
  * - Loading state tracks whether any provider is still pending
  */
 export class FeatureCollector {
-    private registry: FeatureProviderRegistry;
+    private registry: FeatureProviderRegistryPort;
 
-    constructor(registry: FeatureProviderRegistry = featureProviderRegistry) {
+    constructor(registry: FeatureProviderRegistryPort) {
         this.registry = registry;
     }
 
@@ -38,30 +42,34 @@ export class FeatureCollector {
     ): Promise<CollectResult> {
         const providers = this.registry.getAll();
 
-        // Signal initial loading state
         onUpdate({ groups: [], loading: true });
 
-        // Check if already aborted
         if (params.signal?.aborted) {
             return { groups: [], loading: false };
         }
 
-        // Run all providers in parallel
         const results = await Promise.allSettled(
             providers.map((provider) => provider.collect(params)),
         );
 
-        // Check again after providers complete
         if (params.signal?.aborted) {
             return { groups: [], loading: false };
         }
 
-        // Combine all features from successful results
         const allFeatures: Feature[] = [];
         for (const result of results) {
-            if (result.status === "fulfilled") {
-                allFeatures.push(...result.value);
+            if (result.status === "rejected") {
+                // A provider rejecting outright is unexpected — reporting a
+                // failure through its own result channel (an error feature)
+                // is the designed path. Best-effort contract: keep the
+                // other providers' results flowing, loudly.
+                logger.warn(
+                    "FeatureCollector: a provider failed, skipping its features:",
+                    result.reason,
+                );
+                continue;
             }
+            allFeatures.push(...result.value);
         }
 
         const finalResult: CollectResult = {
@@ -80,12 +88,7 @@ export class FeatureCollector {
         return features.map((feature) => ({
             layerId: feature.layerId,
             layerName: feature.layerName,
-            sourceType: feature.sourceType,
             features: [feature],
-            loading: false,
         }));
     }
 }
-
-// Singleton instance
-export const featureCollector = new FeatureCollector();

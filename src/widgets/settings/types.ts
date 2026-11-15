@@ -1,13 +1,11 @@
-import type { SettingMetadata, SettingOption } from "@core/framework/types";
+import type {
+    SettingMetadata,
+    SettingOption,
+} from "@core/contracts";
 
 export interface SettingsWidgetProps {
+    widgetId: string;
     className?: string;
-}
-
-export interface RegisterSettingsOptions {
-    ownerId: string;
-    ownerName: string;
-    settings: SettingMetadata[];
 }
 
 export type { SettingMetadata, SettingOption };

@@ -1,15 +1,11 @@
-import React, { useRef, useCallback, useState } from "react";
-import { useClickOutside } from "@core/framework/hooks";
-import { cn } from "@core/ui/utils/cn";
+import React, { useEffect, useRef } from "react";
+import { useClickOutside } from "../../../hooks/useClickOutside";
+import { useMenuKeyboard } from "../../../hooks/useMenuKeyboard";
+import { useRestoreFocus } from "../../../hooks/useRestoreFocus";
+import { cn } from "../../../utils/cn";
 import styles from "./CollapsibleMenu.module.css";
 
-export interface CollapsibleMenuItem {
-    id: string;
-    component: (nodeId: string) => React.ReactNode;
-}
-
 export interface CollapsibleMenuProps {
-    items?: CollapsibleMenuItem[];
     children?: React.ReactNode;
     open?: boolean;
     onClose?: () => void;
@@ -17,107 +13,66 @@ export interface CollapsibleMenuProps {
     panelClassName?: string | undefined;
     closeOnClickOutside?: boolean;
     hideIfEmpty?: boolean;
-    nodeId?: string;
 }
 
-export const CollapsibleMenu: React.FC<CollapsibleMenuProps> = (props) => {
-    const items = props.items ?? [];
-    const open = props.open ?? false;
-    const closeOnClickOutside = props.closeOnClickOutside ?? true;
-    const hideIfEmpty = props.hideIfEmpty ?? false;
-
-    const [panelHeight, setPanelHeight] = useState(0);
-
+export const CollapsibleMenu: (props: CollapsibleMenuProps) => React.ReactNode = ({
+    children,
+    open = false,
+    onClose,
+    className,
+    panelClassName,
+    closeOnClickOutside = true,
+    hideIfEmpty = false,
+}) => {
     const menuRef = useRef<HTMLDivElement | null>(null);
+    const panelRef = useRef<HTMLDivElement | null>(null);
 
-    const hidden = shouldHide(hideIfEmpty, items.length, props.children);
-
-    // Stable callback ref: required to avoid remount on every render.
-    const panelRef = useCallback(
-        (node: HTMLDivElement | null) => {
-            if (node && open) {
-                setPanelHeight(node.scrollHeight);
-            } else if (!open) {
-                setPanelHeight(0);
-            }
-        },
-        [open],
-    );
+    // Callers express optional children as expressions (`{tools.map(...)}
+    // {hasReports && ...}`), which arrive as a truthy array of empties —
+    // only a real child list keeps the menu mounted.
+    const hidden =
+        hideIfEmpty && React.Children.toArray(children).length === 0;
 
     useClickOutside(
         menuRef,
-        () => props.onClose?.(),
+        () => onClose?.(),
         !hidden && closeOnClickOutside && open,
     );
+
+    const handleKeyDown = useMenuKeyboard(panelRef, open, () =>
+        onClose?.(),
+    );
+
+    // The menu owns focus while open: a div panel is not focusable by
+    // default, and keys pressed with focus on <body> never reach the
+    // container's keydown handler. Closing returns focus to the trigger.
+    useRestoreFocus(open);
+    useEffect(() => {
+        if (open) panelRef.current?.focus({ preventScroll: true });
+    }, [open]);
 
     if (hidden) {
         return null;
     }
 
-    const containerClasses = cn(styles.collapsibleMenu, props.className);
     const panelClasses = cn(
         styles.menuPanel,
-        props.panelClassName,
+        panelClassName,
         open && styles.menuPanelOpen,
     );
-    const panelStyle = getPanelStyle(panelHeight, open);
 
     return (
         <div
             ref={menuRef}
-            className={containerClasses}
+            className={className}
             data-testid="collapsible-menu"
+            onKeyDown={handleKeyDown}
         >
-            <div
-                ref={panelRef}
-                className={panelClasses}
-                style={panelStyle}
-                role="menu"
-                aria-hidden={!open}
-            >
-                <div className={styles.menuContent}>
-                    <MenuItems items={items} nodeId={props.nodeId}>
-                        {props.children}
-                    </MenuItems>
+            <div ref={panelRef} className={panelClasses} role="group" tabIndex={-1}>
+                <div className={styles.menuPanelInner}>
+                    <div className={styles.menuContent}>{children}</div>
                 </div>
             </div>
         </div>
     );
 };
-
-interface MenuItemsProps {
-    items: CollapsibleMenuItem[];
-    nodeId: string | undefined;
-    children?: React.ReactNode;
-}
-
-const MenuItems = ({ items, nodeId, children }: MenuItemsProps) => (
-    <>
-        {items.map((item) => (
-            <div key={item.id} className={styles.menuComponent}>
-                {item.component(nodeId ?? "")}
-            </div>
-        ))}
-        {children}
-    </>
-);
-
-function shouldHide(
-    hideIfEmpty: boolean,
-    itemsLength: number,
-    children?: React.ReactNode,
-): boolean {
-    return hideIfEmpty && itemsLength === 0 && !children;
-}
-
-function getPanelStyle(
-    panelHeight: number,
-    open: boolean,
-): React.CSSProperties {
-    return {
-        maxHeight: `${panelHeight}px`,
-        opacity: open ? 1 : 0,
-    };
-}
-
-export default CollapsibleMenu;

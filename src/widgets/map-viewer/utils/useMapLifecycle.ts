@@ -1,15 +1,11 @@
 import { useEffect, useRef, type RefObject } from "react";
 import maplibregl from "maplibre-gl";
-import { Protocol } from "pmtiles";
-import type { RootStore } from "@core/framework/store";
+import type { StoreRegistry } from "@core/store-registry";
 
-const pmtilesProtocol = new Protocol();
-maplibregl.addProtocol("pmtiles", pmtilesProtocol.tile);
-
-/** Create/dispose the maplibre map and start basemap sync. Runs once. */
+/** Runs once per mount. */
 export function useMapLifecycle(
     containerRef: RefObject<HTMLDivElement | null>,
-    rootStore: RootStore,
+    rootStore: StoreRegistry,
 ): RefObject<maplibregl.Map | null> {
     const mapRef = useRef<maplibregl.Map | null>(null);
     const initRef = useRef(false);
@@ -19,7 +15,8 @@ export function useMapLifecycle(
         initRef.current = true;
 
         rootStore.mapStore.initializeMap(containerRef.current);
-        const map = rootStore.mapStore.getMap()!;
+        const map = rootStore.mapStore.getMap();
+        if (!map) return;
         mapRef.current = map;
 
         map.once("load", () => {

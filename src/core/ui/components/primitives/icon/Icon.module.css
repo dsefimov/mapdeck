@@ -1,5 +1,20 @@
+/*
+ * Icons render as masks painted with currentColor: the glyph comes from
+ * the --icon-<name> theme token, so artwork and color are host-set the
+ * same way as every other token. The component points --icon at the
+ * token, so any name works without a per-name rule here.
+ */
 .icon {
     display: block;
     width: 100%;
     height: 100%;
+    background-color: currentColor;
+    -webkit-mask-image: var(--icon);
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-size: contain;
+    mask-image: var(--icon);
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
 }

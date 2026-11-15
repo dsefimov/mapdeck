@@ -1,69 +1,40 @@
 .reportDownloadsContainer {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
-}
-
-.reportLabel {
-    font-size: var(--font-size-xs);
-    font-weight: var(--font-semibold);
-    color: var(--color-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    gap: var(--space-md);
 }
 
 .reportButtons {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-md);
 }
 
 .reportRow {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
-}
-
-/* Base — shared button styles, composed by reportButton and downloadButton */
-.actionButton {
-    display: flex;
-    align-items: center;
-    padding: var(--space-sm);
-    border: var(--border-sm) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    background-color: var(--color-background);
-    font-family: inherit;
-    font-size: var(--font-size-md);
-    transition: background-color var(--transition-fast);
-}
-
-.actionButton:hover {
-    background: var(--color-secondary);
+    gap: var(--space-md);
 }
 
 .reportButton {
-    composes: actionButton;
-    gap: var(--space-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background-color: var(--color-bg);
+    transition: background-color var(--transition-fast);
     flex: 1;
-    min-width: calc(var(--icon-sm) + 2 * var(--space-sm));
+    min-width: calc(var(--icon-sm) + 2 * var(--space-md));
 }
 
-.downloadButton {
-    composes: actionButton;
-    justify-content: center;
-}
-
-.downloadIcon {
-    width: var(--icon-sm);
-    height: var(--icon-sm);
-    flex-shrink: 0;
+.reportButton:hover {
+    background: var(--color-hover);
 }
 
 .reportButtonText {
     flex: 1;
     text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }

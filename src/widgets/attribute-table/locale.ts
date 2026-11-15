@@ -1,7 +1,7 @@
-import type { SupportedLanguage, TranslationDict } from "@core/framework/types";
+import type { TranslationDict } from "@core/contracts";
 
 export const attributeTableTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en: {
         "widget.name": "Attribute Table",
@@ -9,5 +9,6 @@ export const attributeTableTranslations: Partial<
         "layerSelector.placeholder": "— Select a layer —",
         "aria.layerSelect": "Select layer for attribute table",
         "empty.noLayers": "No layers with WFS attribute data available",
+        "selection.pinToTop": "Show selected on top",
     },
 };

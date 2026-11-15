@@ -1,22 +1,47 @@
-import type { Widget, WidgetConfig } from "@core/framework/types";
+import type { Widget, WidgetSizeConfig } from "@core/contracts";
+import { readWidgetConfig } from "@core/contracts";
+import type { StoreRegistry } from "@core/store-registry";
 import icon from "@core/ui/icons/attribute-table.svg";
 import { attributeTableTranslations } from "./locale";
-import AttributeTableWidget from "./components/Widget";
+import AttributeTableComponent from "./components/Widget";
+import { AttributeTableStore } from "./store/AttributeTableStore";
 import type { AttributeTableWidgetProps } from "./types";
 import config from "./config.json";
 
-export const ATTRIBUTE_TABLE_WIDGET_ID = "attribute-table-widget" as const;
+/** The widget's id — owned here; openers coordinate through stateStore keyed by it. */
+export const ATTRIBUTE_TABLE_WIDGET_ID = "attribute-table-widget";
 
-const typedConfig = config as WidgetConfig;
+/**
+ * Creates the widget's persistent state up front, so openers can prepare
+ * it (e.g. select a layer) before the widget is ever shown.
+ */
+export function ensureAttributeTableState(rootStore: StoreRegistry): void {
+    rootStore.stateStore.get(
+        ATTRIBUTE_TABLE_WIDGET_ID,
+        () => new AttributeTableStore(rootStore),
+    );
+}
 
-const AttributeTableWidgetDef: Widget<AttributeTableWidgetProps> = {
-    id: ATTRIBUTE_TABLE_WIDGET_ID,
-    icon,
-    localeTranslations: attributeTableTranslations,
-    component: AttributeTableWidget,
-    showInSidebar: typedConfig.base?.showInSidebar ?? true,
-    ...typedConfig.size,
-};
+/** The attribute table widget for a selected layer's feature data. */
+export class AttributeTableWidget implements Widget<AttributeTableWidgetProps> {
+    readonly id = ATTRIBUTE_TABLE_WIDGET_ID;
+    readonly icon = icon;
+    readonly localeTranslations = attributeTableTranslations;
+    readonly component = AttributeTableComponent;
+    readonly showInSidebar: boolean;
+    readonly size?: WidgetSizeConfig;
 
-export default AttributeTableWidgetDef;
+    constructor() {
+        const { showInSidebar, size } = readWidgetConfig(
+            ATTRIBUTE_TABLE_WIDGET_ID,
+            config,
+        );
+        this.showInSidebar = showInSidebar;
+        if (size) {
+            this.size = size;
+        }
+    }
+}
+
+export default AttributeTableWidget;
 export type { AttributeTableWidgetProps } from "./types";

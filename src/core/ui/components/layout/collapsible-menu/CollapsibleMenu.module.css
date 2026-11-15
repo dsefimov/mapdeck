@@ -1,34 +1,34 @@
 .menuPanel {
-    position: relative;
-    background: var(--color-background);
-    border: var(--border-sm) solid var(--color-border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    visibility: hidden;
+    width: 100%;
     transition:
-        max-height var(--transition-fast) ease,
+        grid-template-rows var(--transition-fast) ease,
         opacity var(--transition-fast) ease,
         visibility var(--transition-fast) ease;
-    visibility: hidden;
-    max-height: 0;
-    opacity: 0;
-    width: 100%;
 }
 
 .menuPanelOpen {
+    grid-template-rows: 1fr;
+    opacity: 1;
     visibility: visible;
+}
+
+/* The row child of the 0fr track carries every box property — its own
+   padding or border would keep the collapsed row that many pixels tall. */
+.menuPanelInner {
+    overflow: hidden;
+    min-height: 0;
+    background: var(--color-bg);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-sm);
 }
 
 .menuContent {
     display: flex;
     flex-direction: column;
-    font-size: var(--font-size-md);
-}
-
-.menuComponent {
-    padding-bottom: var(--space-sm);
-    background-color: var(--color-background);
-}
-
-.menuComponent:last-child {
-    border-bottom: none;
+    gap: var(--space-md);
+    padding: var(--space-md);
 }

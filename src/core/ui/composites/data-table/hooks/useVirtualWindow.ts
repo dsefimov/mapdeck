@@ -1,6 +1,7 @@
 import {
     useCallback,
     useEffect,
+    useLayoutEffect,
     useRef,
     useState,
     type RefObject,
@@ -11,6 +12,7 @@ import {
     PRELOAD_BUFFER_ROWS,
     ROW_HEIGHT,
 } from "../constants";
+import { logger } from "@core/lib/logger";
 
 interface UseVirtualWindowOptions {
     rowCount: number;
@@ -32,10 +34,29 @@ interface UseVirtualWindowResult {
     bottomPaddingHeight: number;
 }
 
+interface ViewportGeometry {
+    scrollTop: number;
+    containerHeight: number;
+    rowHeight: number;
+    rowCount: number;
+    pageSize: number | undefined;
+}
+
+/** Rows to request, or null when the viewport does not reach past the loaded window. */
+function fetchCount(view: ViewportGeometry): number | null {
+    const visibleEndRow =
+        Math.ceil((view.scrollTop + view.containerHeight) / view.rowHeight) +
+        PRELOAD_BUFFER_ROWS;
+    if (visibleEndRow <= view.rowCount) return null;
+    const minPage = view.pageSize ?? 50;
+    const shortage = Math.max(minPage, visibleEndRow - view.rowCount);
+    return Math.ceil(shortage / minPage) * minPage;
+}
+
 /**
- * Manages virtual scroll state: tracks scroll position via a ResizeObserver +
- * scroll handler, computes the visible window indices, and triggers fetchMore
- * when the user scrolls near the end of loaded data.
+ * Manages virtual scroll state: tracks scroll position and container size,
+ * computes the visible window indices, and triggers fetchMore when the
+ * user scrolls near the end of loaded data.
  */
 export function useVirtualWindow(
     options: UseVirtualWindowOptions,
@@ -44,109 +65,104 @@ export function useVirtualWindow(
     const effectiveTotal = totalRows ?? rowCount;
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const containerHeightRef = useRef(DEFAULT_CONTAINER_HEIGHT);
-    const isFetchingRef = useRef(false);
+    // "rowCount:totalRows" a fetch was already requested for — a server
+    // that reports more rows than it delivers must not turn the effect
+    // into a refetch loop; a total change unlocks a retry.
+    const requestedFor = useRef<string | null>(null);
+    const rowHeightMeasuredRef = useRef(false);
+    const [rowHeight, setRowHeight] = useState(ROW_HEIGHT);
     const [scrollTop, setScrollTop] = useState(0);
     const [containerHeight, setContainerHeight] = useState(
         DEFAULT_CONTAINER_HEIGHT,
     );
-    const [fetchTrigger, setFetchTrigger] = useState(0);
 
-    // Track container height via ResizeObserver without triggering re-renders
+    // Rows size themselves from CSS — measure one real row and let it
+    // drive every formula below; the constant is only the first-frame
+    // fallback. The guard flag also keeps a later first-child spacer row
+    // (present once the window is scrolled) from being measured instead.
+    useLayoutEffect(() => {
+        if (rowHeightMeasuredRef.current) return;
+        const row = containerRef.current?.querySelector(
+            "tbody tr:not([data-spacer])",
+        );
+        const height = row?.getBoundingClientRect().height ?? 0;
+        if (height > 0) {
+            rowHeightMeasuredRef.current = true;
+            setRowHeight(height);
+        }
+    }, [rowCount]);
+
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
         const ro = new ResizeObserver((entries) => {
             for (const entry of entries) {
-                const h = entry.contentRect.height;
-                containerHeightRef.current = h;
-                setContainerHeight(h);
+                setContainerHeight(entry.contentRect.height);
             }
         });
         ro.observe(el);
         return () => ro.disconnect();
     }, []);
 
-    // On scroll: read fresh height from ref, update state once
     const handleScroll = useCallback(() => {
         const el = containerRef.current;
         if (!el) return;
         setScrollTop(el.scrollTop);
-        setContainerHeight(containerHeightRef.current);
     }, []);
 
-    // Trigger fetchMore when the visible window extends beyond loaded data.
-    // Uses isFetchingRef to prevent duplicate calls during the gap between
-    // fetchMore start and loading flag update from the store.
-    // Uses raw useEffect (not useAsyncEffect) to control isFetchingRef reset
-    // in cleanup when dependencies change and the previous fetch is cancelled.
     useEffect(() => {
-        let cancelled = false;
+        if (!fetchMore || loading) return;
+        if (rowCount >= effectiveTotal) return;
+        if (requestedFor.current === `${rowCount}:${effectiveTotal}`) return;
 
-        const run = async () => {
-            if (cancelled) return;
-            if (!fetchMore || loading || isFetchingRef.current) return;
-            if (rowCount >= effectiveTotal) return;
+        const count = fetchCount({
+            scrollTop,
+            containerHeight,
+            rowHeight,
+            rowCount,
+            pageSize,
+        });
+        if (count === null) return;
 
-            const visibleEndRow =
-                Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) +
-                PRELOAD_BUFFER_ROWS;
-            const needMoreData = visibleEndRow > rowCount;
-
-            if (!needMoreData) return;
-
-            const minPage = pageSize ?? 50;
-            const shortage = Math.max(minPage, visibleEndRow - rowCount);
-            const count = Math.ceil(shortage / minPage) * minPage;
-
-            isFetchingRef.current = true;
-            try {
-                await fetchMore(count);
-            } finally {
-                if (!cancelled) {
-                    isFetchingRef.current = false;
-                    setFetchTrigger((t) => t + 1);
-                }
-            }
-        };
-
-        run();
-
-        return () => {
-            cancelled = true;
-            isFetchingRef.current = false;
-        };
+        requestedFor.current = `${rowCount}:${effectiveTotal}`;
+        void Promise.resolve(fetchMore(count)).catch((error: unknown) => {
+            logger.warn("useVirtualWindow: fetchMore failed", error);
+            // A failed fetch must not pin the guard: the next scroll
+            // retries instead of silently running out of data.
+            requestedFor.current = null;
+        });
     }, [
         scrollTop,
-        rowCount,
         containerHeight,
+        rowHeight,
+        rowCount,
+        effectiveTotal,
         loading,
         fetchMore,
         pageSize,
-        fetchTrigger,
     ]);
 
-    const rawStart = Math.floor(scrollTop / ROW_HEIGHT);
+    const rawStart = Math.floor(scrollTop / rowHeight);
     const startIndex = Math.max(0, rawStart - BUFFER_SIZE);
     const visibleCount =
-        Math.ceil(containerHeight / ROW_HEIGHT) + 2 * BUFFER_SIZE;
+        Math.ceil(containerHeight / rowHeight) + 2 * BUFFER_SIZE;
     const endIndex = Math.min(effectiveTotal, startIndex + visibleCount);
-    const topPaddingHeight = startIndex * ROW_HEIGHT;
+    const topPaddingHeight = startIndex * rowHeight;
     const bottomPaddingHeight =
-        Math.max(0, effectiveTotal - endIndex) * ROW_HEIGHT;
+        Math.max(0, effectiveTotal - endIndex) * rowHeight;
 
     // Reset scroll position when total shrinks below current viewport
     // (e.g., filter applied while scrolled deep into the list).
     useEffect(() => {
         const el = containerRef.current;
         if (!el || effectiveTotal === 0) return;
-        const totalHeight = effectiveTotal * ROW_HEIGHT;
+        const totalHeight = effectiveTotal * rowHeight;
         const maxScrollTop = Math.max(0, totalHeight - containerHeight);
         if (el.scrollTop > maxScrollTop) {
             el.scrollTop = 0;
             setScrollTop(0);
         }
-    }, [effectiveTotal, containerHeight]);
+    }, [effectiveTotal, containerHeight, rowHeight]);
 
     return {
         containerRef,

@@ -1,7 +1,7 @@
-import type { SupportedLanguage, TranslationDict } from "@core/framework/types";
+import type { TranslationDict } from "@core/contracts";
 
 export const resetOrientationTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en: {
         "tool.name": "Reset Orientation",

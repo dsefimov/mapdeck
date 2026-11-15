@@ -1,53 +1,35 @@
-/* Settings widget styles */
 .settings {
-    padding: var(--space-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
 }
 
-/* Settings group - container for each widget/tools settings */
+/* Group card mirrors the WidgetShell chrome (the measure-tool panels). */
 .settings__group {
-    padding: var(--space-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-md);
 }
 
-.settings__group:last-child {
-    margin-bottom: 0;
-}
-
-/* Group content */
 .settings__group_content {
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
 }
 
-/* Group title - simple heading, not highlighted */
-.settings__group_title {
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-semibold);
-    color: var(--color-text);
-    margin-bottom: var(--space-sm);
+.settings__group_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
 }
 
-/* Setting label */
-.settings__item_label {
-    display: block;
-    margin-bottom: var(--space-sm);
-}
-
-/* Checkbox */
 .settings__item_checkbox {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-md);
     cursor: pointer;
-}
-
-/* Error state */
-.settings__item_input--error {
-    border-color: var(--color-error);
-}
-
-.settings__item_error {
-    margin-top: var(--space-sm);
-    font-size: var(--font-size-xs);
-    color: var(--color-error);
 }

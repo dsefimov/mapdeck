@@ -1,9 +1,10 @@
-import type { SupportedLanguage, TranslationDict } from "@core/framework/types";
+import type { TranslationDict } from "@core/contracts";
 
 export const mapViewerTranslations: Partial<
-    Record<SupportedLanguage, TranslationDict>
+    Record<string, TranslationDict>
 > = {
     en: {
         "widget.name": "Map Viewer",
+        "contextMenu.header": "Map Tools",
     },
 };

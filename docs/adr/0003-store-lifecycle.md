@@ -1,0 +1,48 @@
+# ADR-0003: Store lifecycle
+
+Status: Accepted · Date: 2026-09-22
+
+## Context
+
+Stores run async operations (tree fetch, basemap health checks) and acquire resources
+(reactions, abort controllers, listeners). The application needs an observable
+initialization gate so the UI does not render against a partially assembled store graph.
+These contracts are not visible from interfaces — `isInitialized`/`initError` exist only
+as `RootStore` fields — so they are recorded here. The public instance lifecycle built on
+top of them (`restart()`, `dispose()`, initialization errors) is documented in
+[docs/api/lifecycle.md](../api/lifecycle.md).
+
+## Decision
+
+**Initialization contract.** `RootStore` exposes `isInitialized: boolean` and
+`initError: string | null`. `initialize()` clears the previous error, initializes the tree
+adapter, refreshes the tree, and only then sets `isInitialized = true`; on failure it
+stores the message and leaves `isInitialized` false. Components observe one of three
+states — initializing (`isInitialized` false, `initError` null), error (`initError` set),
+or initialized (`isInitialized` true) — with no intermediate value. The root component
+(`MapdeckRoot`) maps them to LoadingScreen / ErrorScreen (with retry) / MapWorkspace. The
+states are observable fields rather than a ready promise because the render path reads
+them synchronously, and a promise hides the error state from it.
+
+**Async operation state.** Async operation state uses `AsyncState` / `KeyedAsyncState`
+from `src/core/common/state/` (the MobX-flavored primitives; the plain async utilities
+live in `lib/async/`): statuses idle/loading/error, per-key isolation, an aggregate
+loading query, cancellation via `AbortSignal` (settles at `idle`, no error), and a
+generation counter so superseded runs cannot overwrite newer state. New code does not
+hand-roll `isLoading`/`error` fields — the primitives' semantics are the contract.
+
+**Disposal contract.** A store that acquires resources (reactions, `AbortController`s,
+event listeners, external references) exposes `dispose()` that releases them; calling it
+twice is safe. `RootStore.dispose()` disposes all stores in reverse construction order
+and reaches keyed instance state: a `StateStore` entry that acquires resources (a tool
+controller, a tech-layer store) is disposed with the graph, so a restart does not leave
+instance state subscribed to singletons outside it. Stores do not call `dispose()` on
+siblings. Undisposed reactions keep firing on stale observables, and undisposed abort
+controllers leak in-flight requests — hence the contract.
+
+## Consequences
+
+- `RootStore.dispose()` disposes every store that has resources in reverse construction
+  order; `StateStore`'s keyed entries carry the contract into instance state. Stores
+  without resources (e.g. `SettingsStore`) need no `dispose()` — the contract applies to
+  stores that acquire resources.

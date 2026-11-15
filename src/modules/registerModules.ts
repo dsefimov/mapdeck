@@ -1,37 +1,30 @@
-import { logger } from "@core/shared/diagnostics/logger";
+import type { ModuleContext } from "@core/contracts";
+import type { Module } from "@core/contracts";
+import { logger } from "@core/lib/logger";
 import { stacModule } from "./stac";
-import type { RootStore } from "@core/framework/store";
-import type { Module } from "@core/framework/types";
 
-export async function registerModules(rootStore: RootStore): Promise<void> {
-    try {
-        logger.debug("Starting module registration...");
+/** The built-in module set — assemblies prepend it to the consumer's modules. */
+export const builtInModules: readonly Module[] = [stacModule];
 
-        const modules: Module<Record<string, unknown>>[] = [
-            stacModule,
-            // Add future modules here
-        ];
+/**
+ * Explicit registration of modules through the declared-points context.
+ * Array order is execution order — built-ins first, the
+ * consumer's modules after, so the latter may override.
+ */
+export async function registerModules(
+    context: ModuleContext,
+    modules: readonly Module[],
+): Promise<void> {
+    const ids = new Set(modules.map((m) => m.id));
 
-        for (const module of modules) {
-            logger.debug(
-                `Registering module "${module.id}" (${module.name})...`,
-            );
-
-            if (module.setRootStore) {
-                module.setRootStore(rootStore);
-                logger.debug(`RootStore provided to module "${module.id}"`);
+    for (const module of modules) {
+        for (const dep of module.dependencies ?? []) {
+            if (!ids.has(dep)) {
+                logger.warn(
+                    `Module "${module.id}" depends on unknown module "${dep}"`,
+                );
             }
-
-            await module.register();
-
-            logger.debug(`Module "${module.id}" registered successfully`);
         }
-
-        logger.info(`All modules registered (${modules.length} total)`);
-    } catch (error) {
-        logger.error("Failed to register modules:", error);
-        throw error;
+        await module.register(context);
     }
 }
-
-export default registerModules;

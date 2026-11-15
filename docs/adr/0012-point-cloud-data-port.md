@@ -1,0 +1,38 @@
+# ADR-0012: Point-cloud data port
+
+Status: Accepted · Date: 2026-09-22
+
+## Context
+
+Measure tools need read access to the cloud data a COPC layer has streamed: the volume
+tool folds every loaded point into a grid computation, and picking reads one layer's
+current points. The generic `LayerAdapter` exposes no typed access to loaded data, and
+tools must not name a protocol id, cast to a concrete adapter class, or import protocol
+internals.
+
+## Decision
+
+The capability becomes a contracts port next to the data it serves.
+`contracts/domain/point-cloud.ts` declares `PointCloudDataAdapter`
+(`getLoadedData(layerId)` / `getAllLoadedData()`) and `toPointCloudDataAdapter`, a
+runtime-checked narrowing that returns null when an adapter serves no clouds.
+`PointCloudAdapter` declares conformance (`implements PointCloudDataAdapter`) —
+structural typing keeps the engine unchanged. The protocol id has one owner:
+`COPC_PROTOCOL_ID` in the copc domain (`types.ts`). Tools read cloud data by capability
+(`toPointCloudDataAdapter`), not by id: contracts provides the lookup that narrows the
+adapters of every registered protocol, and the picking helpers consume the port's data
+accessor plus the overlay's `pickObject`. Extensions import only `@core/contracts`, not
+the copc barrel. The two layer tools `point-color-scheme` and `point-size-slider` bind
+to the literal `"copc"` as a registration key (ADR-0007); binding by capability is
+deferred until a second point-cloud protocol exists.
+
+## Consequences
+
+- One public contracts type pair more; the generic `ProtocolRegistry` stays untouched —
+  no per-protocol accessors leak into it.
+- A future adapter that drops either method fails visibly — the narrowing returns null
+  — instead of silently breaking tool reads.
+- A second cloud protocol later gets the port by implementing two methods, with no
+  changes to consumers.
+- The pattern — capability port, checked narrowing, id constant owned by its domain —
+  is the precedent for any future tool-facing protocol capability.

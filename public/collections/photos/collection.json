@@ -1,0 +1,24 @@
+{
+    "id": "demo-photos",
+    "type": "Collection",
+    "stac_version": "1.0.0",
+    "title": "Photos — demo points",
+    "description": "Static GeoJSON points carrying photo and album attribute values, served from this deployment. A demonstration of attribute value renderers: previews in the attribute table and feature info open into a fullscreen viewer.",
+    "license": "proprietary",
+    "extent": {
+        "spatial": {
+            "bbox": [[-0.13, 48.85, 13.41, 52.53]]
+        },
+        "temporal": {
+            "interval": [["2026-01-01T00:00:00Z", null]]
+        }
+    },
+    "links": [
+        {
+            "rel": "item",
+            "href": "/collections/photos/item-photos.json",
+            "type": "application/json",
+            "title": "Photo points"
+        }
+    ]
+}

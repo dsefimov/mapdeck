@@ -1,35 +1,30 @@
 import React, { useCallback } from "react";
-import { Icon } from "@core/ui/components";
-import type { Bbox } from "@core/shared/geo";
-import { Bbox as BboxClass } from "@core/shared/geo";
-import type { TranslationDict } from "@core/framework/types";
+import { IconButton } from "../../../components/primitives/icon-button/IconButton";
+import type { Bbox } from "@core/lib/geo";
+import { Bbox as BboxClass } from "@core/lib/geo";
+import type { DataTableLabels } from "../types";
 import styles from "../AttributeTable.module.css";
 
 interface ZoomButtonCellProps {
     bbox: unknown;
-    isLoaded: boolean;
     onZoom: (bbox: Bbox) => void;
-    dict: TranslationDict;
+    labels: DataTableLabels;
 }
 
-export const ZoomButtonCell: React.FC<ZoomButtonCellProps> = React.memo(
-    ({ bbox, isLoaded, onZoom, dict }) => {
+export const ZoomButtonCell = React.memo<ZoomButtonCellProps>(
+    ({ bbox, onZoom, labels }) => {
         const handleClick = useCallback(() => {
             if (bbox instanceof BboxClass) onZoom(bbox);
         }, [bbox, onZoom]);
 
         return (
             <td className={styles.zoomCell}>
-                <button
-                    type="button"
-                    className={styles.zoomButton}
-                    title={dict["attributeTable.zoomToObject"]}
-                    aria-label={dict["attributeTable.zoomToObject"]}
-                    disabled={!isLoaded || bbox == null}
+                <IconButton
+                    icon="zoom"
+                    label={labels["dataTable.zoomToObject"]}
+                    disabled={bbox == null}
                     onClick={handleClick}
-                >
-                    <Icon name="zoom" />
-                </button>
+                />
             </td>
         );
     },

@@ -1,5 +1,6 @@
-import React from "react";
-import { cn } from "@core/ui/utils/cn";
+import type { CSSProperties, ReactNode } from "react";
+import { cn } from "../../../utils/cn";
+import { useFieldAria } from "../field/FieldContext";
 import styles from "./SliderInput.module.css";
 
 export interface SliderInputProps {
@@ -9,43 +10,61 @@ export interface SliderInputProps {
     max: number;
     step?: number;
     onChange: (value: number) => void;
-    onPointerUp?: React.PointerEventHandler<HTMLInputElement>;
-    onMouseUp?: React.MouseEventHandler<HTMLInputElement>;
-    onTouchEnd?: React.TouchEventHandler<HTMLInputElement>;
+    /** Fired when an adjustment settles: pointer release or a value-key
+        release. Plain focus loss is not a commit. */
+    onCommit?: (() => void) | undefined;
     disabled?: boolean;
-    className?: string;
+    /** Accessible name for the slider when there is no visible label */
+    ariaLabel?: string;
+    className?: string | undefined;
 }
 
-export const SliderInput: React.FC<SliderInputProps> = ({
+const VALUE_KEYS: ReadonlySet<string> = new Set([
+    "ArrowUp",
+    "ArrowDown",
+    "ArrowLeft",
+    "ArrowRight",
+    "Home",
+    "End",
+    "PageUp",
+    "PageDown",
+]);
+
+export const SliderInput: (props: SliderInputProps) => ReactNode = ({
     id,
     value,
     min,
     max,
     step,
     onChange,
-    onPointerUp,
-    onMouseUp,
-    onTouchEnd,
+    onCommit,
     disabled,
+    ariaLabel,
     className,
 }) => {
-    const percent = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    const field = useFieldAria();
+    const raw = max > min ? ((value - min) / (max - min)) * 100 : 0;
+    const percent = Math.min(100, Math.max(0, raw));
 
     return (
         <input
             id={id}
             type="range"
             className={cn(styles.slider, className)}
-            style={{ "--slider-fill": `${percent}%` } as React.CSSProperties}
+            style={{ "--slider-fill": `${percent}%` } as CSSProperties}
             value={value}
             min={min}
             max={max}
             step={step ?? 1}
             disabled={disabled}
+            aria-label={ariaLabel}
+            aria-describedby={field.describedBy}
+            aria-invalid={field.invalid || undefined}
             onChange={(e) => onChange(Number(e.target.value))}
-            onPointerUp={onPointerUp}
-            onMouseUp={onMouseUp}
-            onTouchEnd={onTouchEnd}
+            onPointerUp={onCommit}
+            onKeyUp={(e) => {
+                if (VALUE_KEYS.has(e.key)) onCommit?.();
+            }}
         />
     );
 };

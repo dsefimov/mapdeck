@@ -1,0 +1,25 @@
+{
+    "stac_version": "1.0.0",
+    "type": "Feature",
+    "id": "photo-points",
+    "bbox": [-0.13, 48.85, 13.41, 52.53],
+    "properties": {
+        "title": "Photo points",
+        "description": "Points with photo and album attribute values. Renders on the map from the same static GeoJSON that serves the attribute table. Zoom to 2 or closer to load.",
+        "datetime": "2026-01-01T00:00:00Z"
+    },
+    "assets": {
+        "map": {
+            "href": "/collections/photos/items",
+            "roles": ["geojson"],
+            "title": "Photo points map layer",
+            "type": "application/geo+json"
+        },
+        "attributes": {
+            "href": "/collections/photos/items",
+            "roles": ["ogc-feature-api"],
+            "title": "Photo point attributes",
+            "type": "application/geo+json"
+        }
+    }
+}

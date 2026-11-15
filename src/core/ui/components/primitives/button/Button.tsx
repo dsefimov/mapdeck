@@ -1,0 +1,56 @@
+import type { ReactNode } from "react";
+import { cn } from "../../../utils/cn";
+import { Text } from "../text/Text";
+import styles from "./Button.module.css";
+
+export interface ButtonProps {
+    /** Visual variant: default — bordered, primary — accent, danger — error */
+    variant?: "default" | "primary" | "danger";
+    size?: "sm" | "md";
+    /** Stretch to the full container width */
+    fullWidth?: boolean;
+    disabled?: boolean;
+    /** Native title (tooltip) */
+    title?: string;
+    children: ReactNode;
+    onClick?: () => void;
+    className?: string | undefined;
+}
+
+export const Button: (props: ButtonProps) => ReactNode = ({
+    variant = "default",
+    size = "md",
+    fullWidth,
+    disabled,
+    title,
+    children,
+    onClick,
+    className,
+}) => {
+    const toneByVariant = {
+        primary: "on-accent",
+        danger: "error",
+        default: undefined,
+    } as const;
+    const labelTone = toneByVariant[variant];
+    return (
+        <button
+            type="button"
+            title={title}
+            disabled={disabled}
+            onClick={onClick}
+            className={cn(
+                styles.button,
+                styles[variant],
+                styles[size],
+                fullWidth && styles.fullWidth,
+                className,
+            )}
+        >
+            <Text variant="body" tone={labelTone}>
+                {children}
+            </Text>
+        </button>
+    );
+};
+

@@ -1,3 +1,8 @@
+/**
+ * Distinct column names across features. `_`-prefixed keys are excluded:
+ * they are the FeatureRow reserved-key convention and carry
+ * spatial metadata, not data columns.
+ */
 export function extractColumns(
     features: readonly Record<string, unknown>[],
 ): string[] {

@@ -1,6 +1,7 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { useRootStore } from "@core/framework/store";
+import { useRootStore } from "@core/shell";
+import { EmptyState } from "@core/ui/components";
 import { SettingsGroupComponent } from "./SettingsGroup";
 import type { SettingsWidgetProps } from "../types";
 import { SETTINGS_ID } from "../index";
@@ -15,7 +16,7 @@ const SettingsWidgetComponent: (props: SettingsWidgetProps) => React.ReactNode =
         if (groups.length === 0) {
             return (
                 <div className={`${styles.settings} ${className}`}>
-                    <p>{dict["empty.noSettings"]}</p>
+                    <EmptyState message={dict["empty.noSettings"]} />
                 </div>
             );
         }

@@ -1,12 +1,20 @@
-import React from "react";
-import { Icon } from "@core/ui/components";
-import type { TranslationDict } from "@core/framework/types";
-import type { SortDirection, GeometryColumnConfig } from "../types";
-import { getSortIndicator } from "../utils";
+import type { ReactNode } from "react";
+import { interpolate } from "@core/lib/text";
+import { Icon } from "../../../components/primitives/icon/Icon";
+import { Text } from "../../../components/primitives/text/Text";
+import type {
+    SortDirection,
+    GeometryColumnConfig,
+    DataTableLabels,
+} from "../types";
+import { getAriaSort, getSortIndicator } from "../utils";
 import styles from "../AttributeTable.module.css";
 
 interface ColumnarHeaderRowProps {
     columns: string[];
+    /** Display names for literal columns (the KV view's attribute/value). */
+    headerLabels?: Record<string, string> | undefined;
+    showRowNumbers?: boolean;
     sortColumn: string | null;
     sortDirection: SortDirection;
     onSort: (column: string) => void;
@@ -14,74 +22,102 @@ interface ColumnarHeaderRowProps {
     filters: Record<string, string>;
     onFilterChange: (column: string, value: string) => void;
     geometryColumn?: GeometryColumnConfig | undefined;
-    dict: TranslationDict;
+    hasSelectionColumn?: boolean;
+    labels: DataTableLabels;
 }
 
-export const ColumnarHeaderRow: React.FC<ColumnarHeaderRowProps> = React.memo(
-    ({
-        columns,
-        sortColumn,
-        sortDirection,
-        onSort,
-        showFilters,
-        filters,
-        onFilterChange,
-        geometryColumn,
-        dict,
-    }) => (
-        <>
-            <tr>
+export const ColumnarHeaderRow: (
+    props: ColumnarHeaderRowProps,
+) => ReactNode = ({
+    columns,
+    headerLabels,
+    showRowNumbers = true,
+    sortColumn,
+    sortDirection,
+    onSort,
+    showFilters,
+    filters,
+    onFilterChange,
+    geometryColumn,
+    hasSelectionColumn,
+    labels,
+}) => (
+    <>
+        <tr>
+            {showRowNumbers && (
                 <th className={styles.rowNumberHeader}>
-                    {dict["attributeTable.rowNumber"]}
+                    <Text variant="caption">
+                        {labels["dataTable.rowNumber"]}
+                    </Text>
                 </th>
-                {geometryColumn && (
-                    <th
-                        className={styles.zoomColumnHeader}
-                        aria-label={dict["attributeTable.zoomToObject"]}
-                    >
-                        <Icon name="zoom" />
-                    </th>
-                )}
-                {columns.map((col) => (
-                    <th
-                        key={col}
-                        className={styles.sortableHeader}
-                        style={{ minWidth: 80 }}
+            )}
+            {hasSelectionColumn && (
+                <th className={styles.selectionColumnHeader} />
+            )}
+            {geometryColumn && (
+                <th
+                    className={styles.zoomColumnHeader}
+                    aria-label={labels["dataTable.zoomToObject"]}
+                >
+                    <Icon name="zoom" />
+                </th>
+            )}
+            {columns.map((col) => (
+                <th
+                    key={col}
+                    className={styles.sortableHeader}
+                    style={{ minWidth: 80 }}
+                    aria-sort={getAriaSort(
+                        sortColumn === col,
+                        sortDirection,
+                    )}
+                >
+                    <button
+                        type="button"
+                        className={styles.sortButton}
                         onClick={() => onSort(col)}
                     >
-                        {col}
-                        {sortColumn === col && (
-                            <span className={styles.sortIndicator}>
-                                {getSortIndicator(sortDirection)}
-                            </span>
-                        )}
+                        <Text variant="caption">
+                            {headerLabels?.[col] ?? col}
+                            {sortColumn === col && (
+                                <span
+                                    className={styles.sortIndicator}
+                                    aria-hidden="true"
+                                >
+                                    {getSortIndicator(sortDirection)}
+                                </span>
+                            )}
+                        </Text>
+                    </button>
+                </th>
+            ))}
+        </tr>
+        {showFilters && (
+            <tr>
+                {showRowNumbers && <th />}
+                {hasSelectionColumn && <th />}
+                {geometryColumn && <th />}
+                {columns.map((col) => (
+                    <th key={col}>
+                        <input
+                            type="text"
+                            className={styles.filterInput}
+                            placeholder={interpolate(
+                                labels["dataTable.filterColumn"] ?? "",
+                                { column: col },
+                            )}
+                            aria-label={interpolate(
+                                labels["dataTable.filterColumn"] ?? "",
+                                { column: col },
+                            )}
+                            value={filters[col] ?? ""}
+                            onChange={(e) =>
+                                onFilterChange(col, e.target.value)
+                            }
+                        />
                     </th>
                 ))}
             </tr>
-            {showFilters && (
-                <tr>
-                    <th />
-                    {geometryColumn && <th />}
-                    {columns.map((col) => (
-                        <th key={col}>
-                            <input
-                                type="text"
-                                className={styles.filterInput}
-                                placeholder={
-                                    dict[
-                                        "attributeTable.filterColumn"
-                                    ]?.replace("{column}", col) ?? ""
-                                }
-                                value={filters[col] ?? ""}
-                                onChange={(e) =>
-                                    onFilterChange(col, e.target.value)
-                                }
-                            />
-                        </th>
-                    ))}
-                </tr>
-            )}
-        </>
-    ),
+        )}
+    </>
 );
-ColumnarHeaderRow.displayName = "ColumnarHeaderRow";

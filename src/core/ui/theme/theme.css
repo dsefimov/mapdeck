@@ -1,0 +1,151 @@
+/*
+ * DESIGN SYSTEM — CORE TOKENS (semantic; one default theme).
+ * Scheme: semantic tokens on :root and on the library's own container
+ * (.mapdeck-root — a ShadowRoot host never matches :root, so the
+ * container carries the tokens itself). Adding a theme means
+ * overriding these variables via [data-theme] on the container — the
+ * library ships exactly one theme and no other.
+ * Color values are flat hex (required by getThemeColor).
+ */
+
+/* The embedding host's box model is unknowable — scope our own reset. */
+.mapdeck-root,
+.mapdeck-root *,
+.mapdeck-root *::before,
+.mapdeck-root *::after {
+    box-sizing: border-box;
+}
+
+:root,
+.mapdeck-root {
+    --color-text: #343a40;
+    --color-text-secondary: #6c757d;
+    --color-text-muted: color-mix(
+        in srgb,
+        var(--color-text) 55%,
+        transparent
+    ); /* placeholders, disabled labels */
+
+    --color-bg: #ffffff;
+    --color-bg-subtle: #f8f9fa; /* menus, dividers, row selection */
+    --color-track: #dee2e6; /* slider track, off-switch */
+
+    --color-border: #ced4da;
+    --color-outline: #eeeeee; /* light divider */
+
+    --color-accent: #0051ca;
+    --color-accent-800: #05379d; /* slider fill */
+    --color-on-accent: #ffffff;
+    --color-focus-ring: color-mix(
+        in srgb,
+        var(--color-accent) 25%,
+        transparent
+    );
+
+    --color-error: #d32f2f;
+    --color-success: #2e7d32; /* confirmations (not accent!) */
+
+    --color-hover: color-mix(in srgb, var(--color-text) 10%, transparent);
+    --color-disabled: color-mix(in srgb, var(--color-text) 30%, transparent);
+    --color-scrim: rgba(0, 0, 0, 0.3); /* modal overlays */
+    --shadow-color: #191218;
+
+    --space-sm: 0.25rem; /* tight gaps, sub-element padding */
+    --space-md: 0.5rem; /* primary rhythm: gaps, control padding */
+    --space-lg: 1rem; /* group insets, menu/sidebar padding */
+
+    --font-family: "Roboto", system-ui, sans-serif;
+
+    /* Three text sizes (decision: Roboto is larger than condensed PF DinText):
+       xl — headings, base — main text, xs — hints/labels */
+    --font-size-xs: 0.625rem; /* hints, caption, uppercase labels */
+    --font-size-base: 0.75rem; /* main text, labels, buttons */
+    --font-size-xl: 0.875rem; /* headings */
+
+    --font-regular: 400;
+    --font-semibold: 600;
+    --font-bold: 700;
+
+    --line-none: 1;
+    --line-tight: 1.25;
+    --line-normal: 1.5;
+    --letter-spacing-caption: 0.04em; /* uppercase labels */
+
+    --border-sm: 1px;
+    --border-md: 2px;
+    --border-lg: 4px;
+    --radius-xs: 0.125rem; /* slider track, tiny elements */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem; /* widgets, cards, inputs */
+    --radius-lg: 0.75rem;
+    --radius-full: 9999px; /* pills, icon buttons, switch */
+
+    --shadow-sm: 0 2px 6px
+        color-mix(in srgb, var(--shadow-color) 12%, transparent);
+    --shadow-md: 0 4px 12px
+        color-mix(in srgb, var(--shadow-color) 18%, transparent);
+    --shadow-lg: 0 8px 24px
+        color-mix(in srgb, var(--shadow-color) 25%, transparent);
+
+    --z-sticky: 10;
+    --z-tooltip: 400;
+    --z-modal: 500;
+    --z-floating: 1000; /* portaled panels above all chrome (selects) */
+    --z-dragging: 10000; /* mid-gesture windows — top of everything */
+
+    --icon-sm: 1rem; /* inline icons, buttons */
+    --icon-lg: 1.5rem; /* widget icons, large buttons */
+
+    /* Every control and interactive row. Structurally equals a tile-sm
+       icon button: glyph + its padding + both borders. */
+    --control-height: calc(
+        var(--icon-sm) + 2 * var(--space-md) + 2 * var(--border-sm)
+    );
+    --opacity-disabled: 0.5;
+    --focus-ring: 0 0 0 var(--border-md) var(--color-focus-ring);
+
+    /* Artwork: icons render as masks painted with currentColor, so a host
+       swaps a glyph or recolors the set by overriding these on its
+       container — the same gesture as any other token. */
+    --icon-zoom: url("../icons/zoom.svg");
+    --icon-raster: url("../icons/raster.svg");
+    --icon-vector: url("../icons/vector.svg");
+    --icon-point-cloud: url("../icons/point-cloud.svg");
+    --icon-report: url("../icons/report.svg");
+    --icon-collapsed: url("../icons/collapsed.svg");
+    --icon-not-collapsed: url("../icons/not-collapsed.svg");
+    --icon-layers: url("../icons/layers.svg");
+    --icon-map: url("../icons/map.svg");
+    --icon-settings: url("../icons/settings.svg");
+    --icon-refresh: url("../icons/refresh.svg");
+    --icon-ruler: url("../icons/ruler.svg");
+    --icon-area: url("../icons/area.svg");
+    --icon-volume: url("../icons/volume.svg");
+    --icon-compass: url("../icons/compass.svg");
+    --icon-info: url("../icons/info.svg");
+    --icon-attribute-table: url("../icons/attribute-table.svg");
+    --icon-settings-sliders: url("../icons/settings-sliders.svg");
+    --icon-file-download: url("../icons/file-download.svg");
+    --icon-search: url("../icons/search.svg");
+    --icon-angle-down: url("../icons/angle-down.svg");
+    --icon-close: url("../icons/close.svg");
+    --icon-photo: url("../icons/photo.svg");
+    --icon-select: url("../icons/select.svg");
+
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+}
+
+/* Forced-colors (Windows High Contrast) paints no box-shadows, so the
+   shared focus ring would vanish. The system outline is restored with
+   !important — module rules set `outline: none` at equal-or-higher
+   specificity, and this backstop must win. Scoped to the library's own
+   containers; portaled panels (body-level) stay out until they render
+   into a portal root inside .mapdeck-root. */
+@media (forced-colors: active) {
+    .mapdeck-root
+        :is(button, a[href], input, select, textarea, [tabindex]):focus-visible {
+        outline: 2px solid Highlight !important;
+        outline-offset: 2px !important;
+    }
+}

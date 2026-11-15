@@ -1,4 +1,5 @@
 import { useCallback, useReducer } from "react";
+import { logger } from "@core/lib/logger";
 import type { SortDirection, OnSortHandler } from "../types";
 
 interface SortState {
@@ -6,12 +7,13 @@ interface SortState {
     direction: SortDirection;
 }
 
-// Cycles: different column → asc; same + asc → desc; same + desc → reset
+/** Cycles: different column → asc; same + asc → desc; same + desc → reset. */
 function sortReducer(state: SortState, column: string): SortState {
-    if (state.column !== column) return { column, direction: "asc" };
+    if (state.direction === null || state.column !== column) {
+        return { column, direction: "asc" };
+    }
     if (state.direction === "asc") return { column, direction: "desc" };
-    if (state.direction === "desc") return { column: null, direction: null };
-    return { column, direction: "asc" };
+    return { column: null, direction: null };
 }
 
 interface UseSortModeProps {
@@ -52,8 +54,11 @@ export function useSortMode(props: UseSortModeProps): UseSortModeResult {
                 );
                 try {
                     await props.onSort(next.column, next.direction);
-                } catch {
-                    // Parent sort handler error is non-critical — ignore
+                } catch (error) {
+                    logger.warn(
+                        "useSortMode: parent sort handler failed",
+                        error,
+                    );
                 }
             } else {
                 dispatch(column);

@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# The AGENTS.md stage gate, fast half: types, lint rules, tests.
+# The full gate adds `npm run build`, which pre-push runs before code
+# leaves the machine. Escape hatch for WIP snapshots: --no-verify.
+
+set -e
+
+echo "[pre-commit] lint (tsc + eslint)"
+npm run --silent lint
+
+echo "[pre-commit] test (vitest)"
+npm run --silent test

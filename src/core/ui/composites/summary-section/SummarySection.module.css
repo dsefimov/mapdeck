@@ -1,0 +1,37 @@
+.summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    border-radius: var(--radius-md);
+    padding: var(--space-md) var(--space-sm);
+    border: var(--border-sm) solid var(--color-border);
+}
+
+.item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-sm);
+}
+
+.label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+}
+
+.marker {
+    width: var(--space-md);
+    height: var(--space-md);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.markerMuted {
+    background-color: var(--color-track);
+}
+
+.markerAccent {
+    background-color: var(--color-accent);
+}

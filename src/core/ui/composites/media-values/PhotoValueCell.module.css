@@ -1,0 +1,45 @@
+.cell {
+    display: inline-flex;
+    position: relative;
+    padding: 0;
+    border: var(--border-sm) solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg);
+    cursor: pointer;
+    /* The table's cells are top-aligned; the preview centres against the
+       text line and fits the row (min-height --control-height) without
+       growing it — virtualization assumes uniform row heights. */
+    vertical-align: middle;
+    height: var(--space-lg);
+    aspect-ratio: 1;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.cell:hover {
+    border-color: var(--color-accent);
+}
+
+.cell:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+.thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.badge {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-size: var(--font-size-xs);
+    line-height: 1.2;
+    padding: 0 var(--space-sm);
+    border-radius: var(--radius-sm) 0 0 0;
+}

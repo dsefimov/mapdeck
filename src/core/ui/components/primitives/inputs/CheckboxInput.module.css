@@ -1,6 +1,6 @@
 .input {
-    width: var(--font-size-lg);
-    height: var(--font-size-lg);
+    width: var(--icon-sm);
+    height: var(--icon-sm);
     cursor: pointer;
-    accent-color: var(--color-primary);
+    accent-color: var(--color-accent);
 }

@@ -1,15 +1,11 @@
-import React, { useEffect, useState, type ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { observer } from "mobx-react-lite";
-import type {
-    BaseMapConfig,
-    MapToolComponentProps,
-} from "@core/framework/types";
-import { checkBasemapHealth } from "../utils/checkBasemapHealth";
-import { BASEMAP_TOOL_ID } from "./Tool";
+import type { MapToolComponentProps } from "@core/contracts";
+import type { BaseMapConfig, BasemapStatus } from "@core/contracts";
+import { Text } from "@core/ui/components";
+import { BASEMAP_TOOL_ID } from "../toolId";
 
 import styles from "./Grid.module.css";
-
-type BasemapStatus = "loading" | "success" | "error";
 
 interface CardProps {
     basemap: BaseMapConfig;
@@ -19,12 +15,25 @@ interface CardProps {
     onSelect: (id: string) => void;
 }
 
+/** Background style of the preview tile; empty when there is nothing to show. */
+function previewStyle(
+    previewSrc: string | null,
+    status: BasemapStatus,
+): React.CSSProperties {
+    if (!previewSrc || status === "error") return {};
+    return {
+        backgroundImage: `url(${previewSrc})`,
+        backgroundSize: "cover",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+    };
+}
+
 const BasemapCard: (props: CardProps) => ReactNode = observer(
     ({ basemap, status, isActive, dict, onSelect }) => {
         const isDisabled = status === "error";
         const previewSrc = basemap.previewImage ?? null;
         const showPlaceholder = !previewSrc;
-        const hasPreview = previewSrc && status !== "error";
 
         const cardClass = [
             styles.basemap_card,
@@ -43,31 +52,34 @@ const BasemapCard: (props: CardProps) => ReactNode = observer(
             >
                 <div
                     className={styles.basemap_card_preview}
-                    style={
-                        hasPreview
-                            ? {
-                                  backgroundImage: `url(${previewSrc})`,
-                                  backgroundSize: "cover",
-                                  backgroundRepeat: "no-repeat",
-                                  backgroundPosition: "center",
-                              }
-                            : {}
-                    }
+                    style={previewStyle(previewSrc, status)}
                 >
                     {showPlaceholder && status !== "error" && (
-                        <span className={styles.placeholder}>
+                        <Text
+                            variant="title"
+                            tone="muted"
+                            className={styles.placeholder}
+                        >
                             {basemap.name.charAt(0).toUpperCase()}
-                        </span>
+                        </Text>
                     )}
                     {isDisabled && (
-                        <span className={styles.error_text}>
+                        <Text
+                            variant="hint"
+                            tone="error"
+                            weight="semibold"
+                            className={styles.error_text}
+                        >
                             {dict["status.unavailable"]}
-                        </span>
+                        </Text>
                     )}
                 </div>
-                <span className={styles.basemap_card_label}>
+                <Text
+                    variant="body"
+                    className={styles.basemap_card_label}
+                >
                     {basemap.name}
-                </span>
+                </Text>
             </button>
         );
     },
@@ -75,50 +87,23 @@ const BasemapCard: (props: CardProps) => ReactNode = observer(
 
 export const BasemapComponent: (
     props: MapToolComponentProps,
-) => React.ReactNode = observer(({ rootStore }) => {
-    const dict = rootStore.localeStore.t(BASEMAP_TOOL_ID);
-    const [statusMap, setStatusMap] = useState<Map<string, BasemapStatus>>(
-        new Map(),
-    );
+) => React.ReactNode = observer(({ context }) => {
+    const dict = context.locale.t(BASEMAP_TOOL_ID);
+    const basemapStore = context.basemap;
 
-    useEffect(() => {
-        let alive = true;
-        const basemaps = rootStore.basemapStore.availableBasemaps;
-        for (const basemap of basemaps) {
-            setStatusMap((prev) => {
-                if (prev.has(basemap.id)) return prev;
-                const next = new Map(prev);
-                next.set(basemap.id, "loading");
-                return next;
-            });
-
-            checkBasemapHealth(basemap, 3000).then((isAvailable) => {
-                if (!alive) return;
-                setStatusMap((prev) => {
-                    const next = new Map(prev);
-                    next.set(basemap.id, isAvailable ? "success" : "error");
-                    return next;
-                });
-            });
-        }
-        return () => {
-            alive = false;
-        };
-    }, [rootStore]);
-
-    const activeBasemapId = rootStore.basemapStore.activeBasemap?.id;
+    const activeBasemapId = basemapStore.activeBasemap?.id;
 
     return (
         <div className={styles.basemap_component}>
-            {rootStore.basemapStore.availableBasemaps.map((basemap) => (
+            {basemapStore.availableBasemaps.map((basemap) => (
                 <BasemapCard
                     key={basemap.id}
                     basemap={basemap}
-                    status={statusMap.get(basemap.id) ?? "loading"}
+                    status={basemapStore.healthStatuses.get(basemap.id) ?? "loading"}
                     isActive={activeBasemapId === basemap.id}
                     dict={dict}
                     onSelect={(id) =>
-                        rootStore.basemapStore.setActiveBasemap(id)
+                        basemapStore.setActiveBasemap(id)
                     }
                 />
             ))}
